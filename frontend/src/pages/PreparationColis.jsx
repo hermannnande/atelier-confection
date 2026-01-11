@@ -79,7 +79,9 @@ const PreparationColis = () => {
   };
 
   const filteredCommandes = filterStatut 
-    ? commandes.filter(c => c.statut === filterStatut)
+    ? (filterStatut === 'confectionnee' 
+        ? commandes.filter(c => c.statut === 'confectionnee' || c.statut === 'en_stock')
+        : commandes.filter(c => c.statut === filterStatut))
     : commandes;
 
   // Statistiques
@@ -127,47 +129,67 @@ const PreparationColis = () => {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="stat-card bg-gradient-to-br from-purple-50 to-indigo-50">
-          <p className="text-sm font-semibold text-purple-600 uppercase">Total</p>
-          <p className="text-3xl font-black text-purple-900">{stats.total}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500 uppercase">Total</p>
+          <p className="text-2xl font-black text-gray-900">{stats.total}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-amber-50 to-orange-50">
-          <p className="text-sm font-semibold text-amber-600 uppercase flex items-center">
-            <Scissors size={16} className="mr-1" /> En Découpe
-          </p>
-          <p className="text-3xl font-black text-amber-900">{stats.enDecoupe}</p>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-amber-600 uppercase">✂️ Découpe</p>
+          <p className="text-2xl font-black text-amber-900">{stats.enDecoupe}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-orange-50 to-red-50">
-          <p className="text-sm font-semibold text-orange-600 uppercase flex items-center">
-            <Shirt size={16} className="mr-1" /> En Couture
-          </p>
-          <p className="text-3xl font-black text-orange-900">{stats.enCouture}</p>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-orange-600 uppercase">🧵 Couture</p>
+          <p className="text-2xl font-black text-orange-900">{stats.enCouture}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-green-50 to-emerald-50">
-          <p className="text-sm font-semibold text-green-600 uppercase flex items-center">
-            <CheckCircle size={16} className="mr-1" /> Terminées
-          </p>
-          <p className="text-3xl font-black text-green-900">{stats.terminees}</p>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-green-600 uppercase">✅ Terminées</p>
+          <p className="text-2xl font-black text-green-900">{stats.terminees}</p>
         </div>
       </div>
 
       {/* Filtres */}
-      <div className="card">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-semibold text-gray-700">Filtrer par statut :</label>
-          <select
-            value={filterStatut}
-            onChange={(e) => setFilterStatut(e.target.value)}
-            className="input"
-          >
-            <option value="">Tous les statuts</option>
-            <option value="en_decoupe">✂️ En Découpe</option>
-            <option value="en_couture">🧵 En Couture</option>
-            <option value="confectionnee">✅ Confection Terminée</option>
-            <option value="en_stock">✅ Confection Terminée</option>
-          </select>
-        </div>
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => setFilterStatut('')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === '' 
+              ? 'bg-purple-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Tous
+        </button>
+        <button
+          onClick={() => setFilterStatut('en_decoupe')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'en_decoupe' 
+              ? 'bg-amber-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          ✂️ Découpe
+        </button>
+        <button
+          onClick={() => setFilterStatut('en_couture')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'en_couture' 
+              ? 'bg-orange-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          🧵 Couture
+        </button>
+        <button
+          onClick={() => setFilterStatut('confectionnee')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'confectionnee' 
+              ? 'bg-green-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          ✅ Terminées
+        </button>
       </div>
 
       {/* Liste des commandes */}
@@ -182,7 +204,7 @@ const PreparationColis = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredCommandes.map((commande) => {
             const statutInfo = getStatutInfo(commande.statut);
             const StatutIcon = statutInfo.icon;
@@ -190,118 +212,71 @@ const PreparationColis = () => {
             return (
               <div 
                 key={commande._id} 
-                className={`card ${statutInfo.bgLight} ${statutInfo.borderColor} border-2 hover:shadow-xl transition-all`}
+                className="card bg-white hover:shadow-lg transition-all"
               >
-                {/* Header avec badge de statut */}
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-black text-gray-900">
-                      {commande.numeroCommande}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {new Date(commande.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                  
-                  {/* Badge de statut avec animation */}
-                  <div className={`${statutInfo.color} text-white px-4 py-2 rounded-xl shadow-lg flex items-center space-x-2`}>
-                    <StatutIcon size={20} strokeWidth={2.5} />
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {commande.numeroCommande}
+                  </h3>
+                  {commande.urgence && (
+                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded">
+                      🔥 URGENT
+                    </span>
+                  )}
+                </div>
+
+                {/* Badge de statut */}
+                <div className={`${statutInfo.color} text-white px-3 py-2 rounded-lg mb-3 flex items-center justify-between`}>
+                  <div className="flex items-center space-x-2">
+                    <StatutIcon size={18} />
                     <span className="font-bold text-sm">{statutInfo.label}</span>
                   </div>
+                  <span className="text-sm font-bold">{statutInfo.progress}%</span>
                 </div>
 
-                {/* Barre de progression */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-xs font-semibold text-gray-600 mb-2">
-                    <span>Progression</span>
-                    <span>{statutInfo.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className={`h-full ${statutInfo.color} transition-all duration-500`}
-                      style={{ width: `${statutInfo.progress}%` }}
-                    ></div>
-                  </div>
+                {/* Client */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Client</p>
+                  <p className="font-bold text-gray-900">
+                    {typeof commande.client === 'object' ? commande.client.nom : commande.client}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {typeof commande.client === 'object' ? commande.client.ville : ''}
+                  </p>
                 </div>
 
-                {/* Urgence */}
-                {commande.urgence && (
-                  <div className="mb-4 p-2 bg-red-100 border border-red-300 rounded-lg flex items-center space-x-2">
-                    <AlertCircle className="text-red-600" size={20} />
-                    <span className="text-sm font-bold text-red-900">🔥 COMMANDE URGENTE</span>
-                  </div>
-                )}
-
-                {/* Détails de la commande */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Client</p>
-                    <p className="font-bold text-gray-900">
-                      {typeof commande.client === 'object' ? commande.client.nom : commande.client}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {typeof commande.client === 'object' ? commande.client.contact : ''}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase font-semibold">Ville</p>
-                    <p className="font-bold text-gray-900">
-                      {typeof commande.client === 'object' ? commande.client.ville : ''}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Modèle avec image */}
-                <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-                  <div className="flex items-center space-x-4">
-                    {commande.modele?.image && (
-                      <img
-                        src={commande.modele.image}
-                        alt={commande.modele.nom}
-                        className="w-20 h-20 object-cover rounded-lg border-2 border-gray-300"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase font-semibold">Modèle</p>
-                      <p className="font-bold text-gray-900 text-lg">
-                        {typeof commande.modele === 'object' ? commande.modele.nom : commande.modele}
-                      </p>
-                      <div className="flex items-center space-x-3 mt-2">
-                        <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
-                          📏 {commande.taille}
-                        </span>
-                        <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-semibold text-gray-700">
-                          🎨 {commande.couleur}
-                        </span>
-                      </div>
-                    </div>
+                {/* Modèle */}
+                <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Modèle</p>
+                  <p className="font-bold text-gray-900">
+                    {typeof commande.modele === 'object' ? commande.modele.nom : commande.modele}
+                  </p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold text-gray-700">
+                      📏 {commande.taille}
+                    </span>
+                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold text-gray-700">
+                      🎨 {commande.couleur}
+                    </span>
                   </div>
                 </div>
 
                 {/* Prix */}
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 mb-4 flex justify-between items-center">
-                  <span className="text-white font-semibold">Prix Total</span>
-                  <span className="text-white text-2xl font-black">
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 mb-3 flex justify-between items-center">
+                  <span className="text-white text-sm font-semibold">Prix Total</span>
+                  <span className="text-white text-xl font-black">
                     {commande.prix?.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
 
                 {/* Équipe */}
                 {(commande.styliste || commande.couturier) && (
-                  <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-blue-600 uppercase font-semibold mb-2">Équipe assignée</p>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {commande.styliste && (
-                        <div>
-                          <span className="text-gray-500">✂️ Styliste:</span>
-                          <p className="font-semibold text-gray-900">{commande.styliste.nom}</p>
-                        </div>
-                      )}
+                  <div className="bg-blue-50 rounded-lg p-2 mb-3">
+                    <p className="text-xs text-blue-600 uppercase font-semibold mb-1">Équipe</p>
+                    <div className="text-xs text-gray-700">
                       {commande.couturier && (
-                        <div>
-                          <span className="text-gray-500">🧵 Couturier:</span>
-                          <p className="font-semibold text-gray-900">{commande.couturier.nom}</p>
-                        </div>
+                        <p>🧵 {commande.couturier.nom}</p>
                       )}
                     </div>
                   </div>
@@ -309,18 +284,18 @@ const PreparationColis = () => {
 
                 {/* Note */}
                 {commande.noteAppelant && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                  <div className="bg-yellow-50 rounded-lg p-2 mb-3">
                     <p className="text-xs font-semibold text-yellow-800 mb-1">📝 Instructions</p>
-                    <p className="text-sm text-gray-700">{commande.noteAppelant}</p>
+                    <p className="text-xs text-gray-700 line-clamp-2">{commande.noteAppelant}</p>
                   </div>
                 )}
 
-                {/* Bouton voir détails */}
+                {/* Bouton */}
                 <Link
                   to={`/commandes/${commande._id}`}
-                  className="btn btn-primary w-full flex items-center justify-center space-x-2"
+                  className="btn btn-primary w-full flex items-center justify-center space-x-2 text-sm"
                 >
-                  <Eye size={20} />
+                  <Eye size={16} />
                   <span>Voir les détails</span>
                 </Link>
               </div>
