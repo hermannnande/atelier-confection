@@ -209,44 +209,6 @@ const Appel = () => {
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6">
-        <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
-          <AlertTriangle className="text-blue-600" size={20} />
-          <span>Actions disponibles</span>
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-          <div className="flex items-center space-x-2">
-            <CheckCircle className="text-green-600" size={18} />
-            <div>
-              <p className="font-bold text-gray-900">CONFIRMER</p>
-              <p className="text-gray-600">→ Envoyée aux commandes</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="text-red-600" size={18} />
-            <div>
-              <p className="font-bold text-gray-900">URGENT</p>
-              <p className="text-gray-600">→ Priorité aux commandes</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="text-amber-600" size={18} />
-            <div>
-              <p className="font-bold text-gray-900">EN ATTENTE</p>
-              <p className="text-gray-600">→ Reste dans appel</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <XCircle className="text-gray-600" size={18} />
-            <div>
-              <p className="font-bold text-gray-900">ANNULER</p>
-              <p className="text-gray-600">→ Supprimée</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Grille des commandes */}
       {commandesAppel.length === 0 ? (
         <div className="stat-card text-center py-16">
