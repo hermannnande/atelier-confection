@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Appel from './pages/Appel';
 import Commandes from './pages/Commandes';
+import HistoriqueCommandes from './pages/HistoriqueCommandes';
 import CommandeDetail from './pages/CommandeDetail';
 import NouvelleCommande from './pages/NouvelleCommande';
 import AtelierStyliste from './pages/AtelierStyliste';
@@ -90,6 +91,13 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="commandes/:id" element={<CommandeDetail />} />
+          
+          {/* Historique Complet - Gestionnaires, Admins */}
+          <Route path="historique" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <HistoriqueCommandes />
+            </ProtectedRoute>
+          } />
           
           {/* Atelier - Stylistes */}
           <Route path="atelier/styliste" element={

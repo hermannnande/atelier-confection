@@ -2,17 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Filter, AlertCircle, Eye, Edit, Send } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { Search, AlertCircle, Eye, History, Download } from 'lucide-react';
 
-const Commandes = () => {
+const HistoriqueCommandes = () => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
-  const [sendingToAtelier, setSendingToAtelier] = useState(null);
-  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchCommandes();
@@ -25,14 +22,8 @@ const Commandes = () => {
       if (filterUrgence) params.urgence = filterUrgence;
 
       const response = await api.get('/commandes', { params });
-      
-      // Filtrer pour afficher uniquement les commandes confirmées et en cours de traitement
-      // Exclure: en_attente_validation, en_attente_paiement, annulee
-      const commandesConfirmees = response.data.commandes.filter(cmd => 
-        !['en_attente_validation', 'en_attente_paiement', 'annulee'].includes(cmd.statut)
-      );
-      
-      setCommandes(commandesConfirmees);
+      // Affiche TOUTES les commandes sans exception
+      setCommandes(response.data.commandes);
     } catch (error) {
       toast.error('Erreur lors du chargement des commandes');
       console.error(error);
@@ -41,39 +32,15 @@ const Commandes = () => {
     }
   };
 
-  const envoyerAAtelier = async (commandeId) => {
-    if (!window.confirm('Envoyer cette commande à l\'atelier styliste ?')) {
-      return;
-    }
-
-    setSendingToAtelier(commandeId);
-    try {
-      await api.put(`/commandes/${commandeId}`, {
-        statut: 'en_decoupe'
-      });
-      
-      toast.success('Commande envoyée à l\'atelier styliste ! ✂️');
-      fetchCommandes(); // Recharger la liste
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi');
-      console.error(error);
-    } finally {
-      setSendingToAtelier(null);
-    }
-  };
-
-  const peutEnvoyerAAtelier = () => {
-    return user?.role === 'administrateur' || user?.role === 'gestionnaire';
-  };
-
   const getStatutBadge = (statut) => {
     const badges = {
-      nouvelle: 'badge-info',
-      validee: 'badge-success',
+      en_attente_validation: 'badge-warning',
       en_attente_paiement: 'badge-warning',
+      validee: 'badge-success',
       en_decoupe: 'badge-primary',
+      decoupee: 'badge-info',
       en_couture: 'badge-secondary',
-      en_stock: 'badge-info',
+      confectionnee: 'badge-success',
       en_livraison: 'badge-primary',
       livree: 'badge-success',
       refusee: 'badge-danger',
@@ -84,16 +51,17 @@ const Commandes = () => {
 
   const getStatutLabel = (statut) => {
     const labels = {
-      nouvelle: 'Nouvelle',
-      validee: 'Validée',
-      en_attente_paiement: 'Attente Paiement',
-      en_decoupe: 'En Découpe',
-      en_couture: 'En Couture',
-      en_stock: 'En Stock',
-      en_livraison: 'En Livraison',
-      livree: 'Livrée',
-      refusee: 'Refusée',
-      annulee: 'Annulée',
+      en_attente_validation: '📞 Attente Validation',
+      en_attente_paiement: '⏳ Attente Paiement',
+      validee: '✅ Validée',
+      en_decoupe: '✂️ En Découpe',
+      decoupee: '✂️ Découpée',
+      en_couture: '🧵 En Couture',
+      confectionnee: '✅ Confectionnée',
+      en_livraison: '🚚 En Livraison',
+      livree: '✅ Livrée',
+      refusee: '❌ Refusée',
+      annulee: '🚫 Annulée',
     };
     return labels[statut] || statut;
   };
@@ -101,11 +69,20 @@ const Commandes = () => {
   const filteredCommandes = commandes.filter((commande) => {
     const matchSearch = 
       commande.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commande.client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
+      (typeof commande.client === 'object' ? commande.client.nom : commande.client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (typeof commande.modele === 'object' ? commande.modele.nom : commande.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchSearch;
   });
+
+  // Statistiques rapides
+  const stats = {
+    total: commandes.length,
+    enAttente: commandes.filter(c => ['en_attente_validation', 'en_attente_paiement'].includes(c.statut)).length,
+    enCours: commandes.filter(c => ['validee', 'en_decoupe', 'decoupee', 'en_couture', 'confectionnee', 'en_livraison'].includes(c.statut)).length,
+    terminees: commandes.filter(c => c.statut === 'livree').length,
+    annulees: commandes.filter(c => ['annulee', 'refusee'].includes(c.statut)).length,
+  };
 
   if (loading) {
     return (
@@ -117,22 +94,49 @@ const Commandes = () => {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec actions */}
+      {/* En-tête */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Commandes</h1>
-          <p className="text-gray-600 mt-1">Gérez toutes les commandes clients</p>
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
+              <History className="text-white" size={28} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Historique Complet</h1>
+              <p className="text-gray-600 mt-1">Toutes les commandes avec tous les statuts</p>
+            </div>
+          </div>
         </div>
-        <Link to="/commandes/nouvelle" className="btn btn-primary inline-flex items-center space-x-2">
-          <Plus size={20} />
-          <span>Nouvelle Commande</span>
-        </Link>
+      </div>
+
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="stat-card bg-gradient-to-br from-blue-50 to-blue-100">
+          <p className="text-sm font-semibold text-blue-600 uppercase">Total</p>
+          <p className="text-3xl font-black text-blue-900">{stats.total}</p>
+        </div>
+        <div className="stat-card bg-gradient-to-br from-yellow-50 to-yellow-100">
+          <p className="text-sm font-semibold text-yellow-600 uppercase">En Attente</p>
+          <p className="text-3xl font-black text-yellow-900">{stats.enAttente}</p>
+        </div>
+        <div className="stat-card bg-gradient-to-br from-indigo-50 to-indigo-100">
+          <p className="text-sm font-semibold text-indigo-600 uppercase">En Cours</p>
+          <p className="text-3xl font-black text-indigo-900">{stats.enCours}</p>
+        </div>
+        <div className="stat-card bg-gradient-to-br from-green-50 to-green-100">
+          <p className="text-sm font-semibold text-green-600 uppercase">Livrées</p>
+          <p className="text-3xl font-black text-green-900">{stats.terminees}</p>
+        </div>
+        <div className="stat-card bg-gradient-to-br from-red-50 to-red-100">
+          <p className="text-sm font-semibold text-red-600 uppercase">Annulées</p>
+          <p className="text-3xl font-black text-red-900">{stats.annulees}</p>
+        </div>
       </div>
 
       {/* Filtres et recherche */}
       <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
@@ -151,16 +155,17 @@ const Commandes = () => {
               className="input"
             >
               <option value="">Tous les statuts</option>
-              <option value="nouvelle">Nouvelle</option>
-              <option value="validee">Validée</option>
-              <option value="en_attente_paiement">Attente Paiement</option>
-              <option value="en_decoupe">En Découpe</option>
-              <option value="en_couture">En Couture</option>
-              <option value="en_stock">En Stock</option>
-              <option value="en_livraison">En Livraison</option>
-              <option value="livree">Livrée</option>
-              <option value="refusee">Refusée</option>
-              <option value="annulee">Annulée</option>
+              <option value="en_attente_validation">📞 Attente Validation</option>
+              <option value="en_attente_paiement">⏳ Attente Paiement</option>
+              <option value="validee">✅ Validée</option>
+              <option value="en_decoupe">✂️ En Découpe</option>
+              <option value="decoupee">✂️ Découpée</option>
+              <option value="en_couture">🧵 En Couture</option>
+              <option value="confectionnee">✅ Confectionnée</option>
+              <option value="en_livraison">🚚 En Livraison</option>
+              <option value="livree">✅ Livrée</option>
+              <option value="refusee">❌ Refusée</option>
+              <option value="annulee">🚫 Annulée</option>
             </select>
           </div>
           <div>
@@ -170,8 +175,8 @@ const Commandes = () => {
               className="input"
             >
               <option value="">Toutes les urgences</option>
-              <option value="true">Urgentes</option>
-              <option value="false">Non urgentes</option>
+              <option value="true">🔥 Urgentes</option>
+              <option value="false">Normal</option>
             </select>
           </div>
         </div>
@@ -187,7 +192,7 @@ const Commandes = () => {
           <p className="text-gray-600">
             {searchTerm || filterStatut || filterUrgence
               ? 'Essayez de modifier vos filtres'
-              : 'Créez votre première commande'}
+              : 'Aucune commande dans le système'}
           </p>
         </div>
       ) : (
@@ -214,19 +219,27 @@ const Commandes = () => {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">Client</p>
-                      <p className="font-medium text-gray-900">{commande.client.nom}</p>
-                      <p className="text-gray-600">{commande.client.contact}</p>
+                      <p className="font-medium text-gray-900">
+                        {typeof commande.client === 'object' ? commande.client.nom : commande.client}
+                      </p>
+                      <p className="text-gray-600">
+                        {typeof commande.client === 'object' ? commande.client.contact : ''}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Modèle</p>
-                      <p className="font-medium text-gray-900">{commande.modele.nom}</p>
+                      <p className="font-medium text-gray-900">
+                        {typeof commande.modele === 'object' ? commande.modele.nom : commande.modele}
+                      </p>
                       <p className="text-gray-600">
                         {commande.taille} - {commande.couleur}
                       </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Ville</p>
-                      <p className="font-medium text-gray-900">{commande.client.ville}</p>
+                      <p className="font-medium text-gray-900">
+                        {typeof commande.client === 'object' ? commande.client.ville : ''}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Prix</p>
@@ -236,30 +249,17 @@ const Commandes = () => {
                     </div>
                   </div>
 
-                  {commande.noteAppelant && (
+                  {(commande.noteAppelant || commande.note) && (
                     <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
                       <p className="text-sm text-gray-700">
                         <span className="font-medium">Note: </span>
-                        {commande.noteAppelant}
+                        {commande.noteAppelant || commande.note}
                       </p>
                     </div>
                   )}
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  {/* Bouton Envoyer à l'atelier - visible seulement pour gestionnaire/admin et commandes validées */}
-                  {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
-                    <button
-                      onClick={() => envoyerAAtelier(commande._id)}
-                      disabled={sendingToAtelier === commande._id}
-                      className="btn btn-primary btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
-                      title="Envoyer à l'atelier styliste"
-                    >
-                      <Send size={16} />
-                      <span>{sendingToAtelier === commande._id ? 'Envoi...' : 'Envoyer à l\'atelier'}</span>
-                    </button>
-                  )}
-                  
                   <Link
                     to={`/commandes/${commande._id}`}
                     className="btn btn-secondary btn-sm inline-flex items-center space-x-1"
@@ -277,8 +277,5 @@ const Commandes = () => {
   );
 };
 
-export default Commandes;
-
-
-
+export default HistoriqueCommandes;
 
