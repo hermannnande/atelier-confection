@@ -1,0 +1,150 @@
+═══════════════════════════════════════════════════════════════════
+  🔥 RAPPEL EXPRESS - ATELIER CONFECTION (Janvier 2026)
+═══════════════════════════════════════════════════════════════════
+
+📍 SITES & REPOS
+  • App      : https://atelier-confection.vercel.app
+  • GitHub   : https://github.com/hermannnande/atelier-confection.git
+  • Supabase : https://rgvojiacsitztpdmruss.supabase.co
+  • Login    : admin@atelier.com / admin123
+
+───────────────────────────────────────────────────────────────────
+🎯 FONCTIONNALITÉS COMPLÈTES
+───────────────────────────────────────────────────────────────────
+
+✅ PAGE APPEL (/appel)
+   → Commandes en grille responsive
+   → Contacts CLIQUABLES (tel:) pour appeler
+   → Popup traitement : CONFIRMER | URGENT | EN ATTENTE | ANNULER
+   → Statuts filtrés : en_attente_validation + en_attente_paiement
+
+✅ INTÉGRATION SITE WEB
+   → formulaire-site-web.html
+   → API publique : POST /api/commandes/public
+   → Token : NOUSUNIQUE123
+   → Envoi DOUBLE : API Vercel + Google Sheets en parallèle
+   → Résultat : Commande apparaît dans /appel automatiquement
+
+✅ BIBLIOTHÈQUE MODÈLES (/modeles)
+   → Table : modeles (nom unique, prix_base, image, categorie)
+   → Modèle actif : "Robe Volante" (11 000 FCFA, catégorie "Robe")
+   → Liaison AUTO : Commandes web cherchent modèle par nom
+   → Si trouvé : image + infos enrichies automatiquement
+
+✅ WORKFLOW COMPLET
+   Site Web → 📞 Appel → ✅ Commandes → ✂️ Styliste → 🧵 Couturier → 📦 Stock → 🚚 Livraison
+
+✅ DESIGN 2026
+   → Glassmorphism + gradients bleu/violet
+   → Animations fluides + hover effects
+   → Grid responsive 1-4 colonnes
+   → Modal moderne
+
+───────────────────────────────────────────────────────────────────
+⏳ TÂCHE EN COURS
+───────────────────────────────────────────────────────────────────
+
+AJOUTER "ROBE VOLANTE" DANS SUPABASE
+
+Script : AJOUTER_ROBE_VOLANTE_SIMPLE.sql
+
+INSERT INTO public.modeles (nom, categorie, image, prix_base, actif)
+VALUES (
+  'Robe Volante',
+  'Robe',
+  'https://nousunique.com/wp-content/uploads/2025/12/Femme-en-robe-bleu-ciel-avec-talons-noirs-1.png',
+  11000,
+  true
+)
+ON CONFLICT (nom) DO UPDATE SET
+  categorie = EXCLUDED.categorie,
+  image = EXCLUDED.image,
+  prix_base = EXCLUDED.prix_base,
+  actif = EXCLUDED.actif,
+  updated_at = NOW();
+
+Exécuter dans : Supabase Dashboard → SQL Editor → + New query → Run
+
+───────────────────────────────────────────────────────────────────
+🛠️ COMMANDES ESSENTIELLES
+───────────────────────────────────────────────────────────────────
+
+# Dev local
+cd frontend && npm run dev    # Port 5173
+cd backend && npm run dev     # Port 5000
+
+# Deploy Vercel
+git add . && git commit -m "feat: ..." && git push origin main
+
+# Test API publique
+$body = @{token="NOUSUNIQUE123"; client="Test"; phone="+225..."; ville="Abidjan"; name="Robe Volante"; taille="M"; couleur="Terracotta"; price="11000"} | ConvertTo-Json
+Invoke-RestMethod -Uri "https://atelier-confection.vercel.app/api/commandes/public" -Method POST -ContentType "application/json" -Body $body
+
+───────────────────────────────────────────────────────────────────
+🔑 VARIABLES ENV
+───────────────────────────────────────────────────────────────────
+
+SUPABASE_URL=https://rgvojiacsitztpdmruss.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGci...
+JWT_SECRET=secret_ultra_securise
+PUBLIC_API_SECRET=NOUSUNIQUE123
+VITE_API_URL=/api
+USE_SUPABASE=true
+
+───────────────────────────────────────────────────────────────────
+📁 FICHIERS CLÉS
+───────────────────────────────────────────────────────────────────
+
+formulaire-site-web.html                          → Formulaire web
+frontend/src/pages/Appel.jsx                      → Page Appel
+backend/supabase/routes/commandes-public.js       → API publique
+supabase/migrations/20260111000000_add_modeles... → Table modèles
+vercel.json                                        → Config deploy
+📚_SAUVEGARDE_COMPLETE_PROJET.md                  → Doc complète
+
+───────────────────────────────────────────────────────────────────
+💡 RAPPELS CRITIQUES
+───────────────────────────────────────────────────────────────────
+
+• Token API publique    : NOUSUNIQUE123
+• Colonne correcte      : prix_base (PAS prix_de_base)
+• Catégorie Robe Volante: Robe (PAS Robes Femme)
+• Contacts cliquables   : <a href="tel:+numéro">
+• Envoi formulaire      : DOUBLE (API + Sheets en parallèle)
+• Statuts page Appel    : en_attente_validation | en_attente_paiement
+
+───────────────────────────────────────────────────────────────────
+🐛 RÉSOLUTION RAPIDE
+───────────────────────────────────────────────────────────────────
+
+Login échoue               → Vérifier variables Vercel
+Commandes invisibles       → Vérifier statut dans Supabase
+Formulaire ne soumet pas   → Console F12, vérifier token
+Erreur SQL "prix_de_base"  → Utiliser prix_base
+
+───────────────────────────────────────────────────────────────────
+🗄️ BASE DE DONNÉES (4 tables principales)
+───────────────────────────────────────────────────────────────────
+
+users       → 6 rôles (admin, gestionnaire, appelant, styliste, couturier, livreur)
+commandes   → numero_commande auto, client jsonb, modele jsonb, statuts multiples
+modeles     → nom unique, prix_base, image, categorie (Robe/Chemise/Pantalon/...)
+stock       → variations (modele+taille+couleur), quantites (principal + livraison)
+
+───────────────────────────────────────────────────────────────────
+🎉 STATUT FINAL
+───────────────────────────────────────────────────────────────────
+
+✅ Application COMPLÈTE et FONCTIONNELLE
+✅ Déployée en PRODUCTION sur Vercel
+✅ Design MODERNE et PROFESSIONNEL
+✅ Intégrations site web + Google Sheets OPÉRATIONNELLES
+✅ Page Appel avec contacts CLIQUABLES
+✅ Système modèles avec liaison AUTOMATIQUE
+
+📚 Documentation complète : 📚_SAUVEGARDE_COMPLETE_PROJET.md
+⚡ Aide-mémoire session  : ⚡_SESSION_SUIVANTE.md
+
+═══════════════════════════════════════════════════════════════════
+  🚀 PROJET PRÊT - DERNIÈRE ÉTAPE : AJOUTER ROBE VOLANTE SQL
+═══════════════════════════════════════════════════════════════════

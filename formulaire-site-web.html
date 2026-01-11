@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Section Produits — Vêtements Féminins</title>
+<style>
+  :root{
+    --primary:#E91E63;--accent:#4CAF50;--muted:#f8fafc;
+    --radius:18px;--shadow:0 10px 24px rgba(0,0,0,.10);
+    --gap:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,'Helvetica Neue',Arial,sans-serif;color:#111;background:var(--muted)}
+  .container{max-width:min(1100px,96vw);margin:auto;padding:clamp(10px,2.5vw,16px)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--gap)}
+
+  .p-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-width:0}
+  .p-media{aspect-ratio:1/1.05;background:#f9fafb center/cover no-repeat;cursor:zoom-in;position:relative;isolation:isolate}
+  .p-media::after{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+    background:
+      radial-gradient(60% 60% at 20% 15%, rgba(255,255,255,.28), transparent 65%),
+      linear-gradient(120deg, transparent 45%, rgba(255,255,255,.55) 50%, transparent 55%);
+    transform:translateX(-160%);
+    mix-blend-mode:screen;
+  }
+  .p-media.flash::after{animation:shine .9s ease-out forwards}
+  @keyframes shine{
+    0%{opacity:.0;transform:translateX(-160%)}
+    10%{opacity:.45}
+    100%{opacity:0;transform:translateX(160%)}
+  }
+
+  .thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 10px 6px;background:#fff}
+  .thumb{aspect-ratio:1/1;border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#f3f4f6 center/cover no-repeat}
+  .thumb.active{border-color:var(--primary)}
+  .thumb.disabled{opacity:.55;cursor:not-allowed;border-style:dashed;background:#f1f5f9!important}
+
+  .p-body{padding:clamp(8px,1.8vw,12px)}
+  .p-name{font-weight:800;margin:0 0 2px;color:#0f172a;line-height:1.15;font-size:clamp(0.95rem,2.2vw,1.05rem)}
+  .p-desc{margin:0 0 4px;color:#475569;font-size:clamp(.9rem,2vw,.95rem);line-height:1.32;min-height:28px}
+  .price{font-size:clamp(1rem,2.3vw,1.08rem);font-weight:900;color:#0b1220;margin:2px 0 6px}
+
+  .btn{cursor:pointer;display:inline-flex;justify-content:center;align-items:center;padding:8px 10px;border-radius:12px;border:0;background:var(--primary);color:#fff;font-weight:800;box-shadow:0 4px 8px rgba(0,0,0,.15);transition:all .25s ease}
+  .btn:hover{box-shadow:0 8px 16px rgba(0,0,0,.22);transform:translateY(-1px)}
+  .btn:active{box-shadow:0 4px 10px rgba(0,0,0,.2);transform:translateY(0)}
+  .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+  .btn.order{position:relative;overflow:hidden;animation:glowPulse 1.8s ease-in-out infinite,shakeTease 6s ease-in-out infinite;box-shadow:0 10px 22px rgba(233,30,99,.35)}
+  .btn.order::after{content:"";position:absolute;inset:-20% -60%;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.45) 50%,transparent 100%);transform:translateX(-150%);animation:shimmer 2.2s linear infinite;mix-blend-mode:screen;pointer-events:none}
+  @keyframes shimmer{0%{transform:translateX(-150%)}100%{transform:translateX(150%)}}
+  @keyframes glowPulse{0%,100%{box-shadow:0 8px 18px rgba(233,30,99,.32)}50%{box-shadow:0 12px 24px rgba(233,30,99,.52),0 0 18px rgba(233,30,99,.35)}}
+  @keyframes shakeTease{0%,89%,100%{transform:none}90%{transform:translateX(-1px) rotate(-.6deg)}92%{transform:translateX(1.4px) rotate(.6deg)}94%{transform:translateY(-1px) rotate(-.5deg)}96%{transform:translateY(1px) rotate(.5deg)}98%{transform:translateX(.6px) rotate(-.3deg)}}
+
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;background:#fff;border-top-left-radius:20px;border-top-right-radius:20px;
+    box-shadow:0 -8px 24px rgba(0,0,0,.25);max-height:85vh;overflow:auto;z-index:50;
+    transform:translateY(100%);transition:transform .32s ease;
+    pointer-events:none;
+  }
+  .sheet.open{transform:translateY(0);pointer-events:auto;}
+  .sheet-head{position:sticky;top:0;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #e5e7eb;z-index:1}
+  .sheet-title{font-weight:800}
+  .sheet-close{background:#f3f4f6;border:0;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer}
+  .sheet-body{padding:14px;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+
+  .form{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    max-width:520px;
+    margin:0 auto;
+  }
+  label{font-size:.83rem;color:#374151}
+  input,select{width:100%;padding:9px 10px;border-radius:10px;border:1px solid #ddd;min-height:40px}
+
+  .total{
+    grid-column:1/-1;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 12px;background:#0f172a;color:#fff;border-radius:12px;font-weight:800;margin-top:4px;
+    position:sticky;bottom:0;
+    max-width:520px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  @media (max-width:680px){
+    :root{--gap:12px}
+    .p-desc{min-height:auto}
+    .btn{width:100%}
+    .thumbs{grid-template-columns:repeat(4,1fr);gap:5px;padding:6px 8px}
+    .form{grid-template-columns:1fr;max-width:560px}
+    .sheet{border-top-left-radius:0;border-top-right-radius:0;max-height:calc(100vh - env(safe-area-inset-top))}
+    .total{border-radius:0;margin-left:-12px;margin-right:-12px;padding-left:14px;padding-right:14px;max-width:none}
+  }
+
+  .popup-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;transition:.25s ease;z-index:1000;backdrop-filter:blur(2px);
+    pointer-events:none;
+  }
+  .popup-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
+  .popup{background:#fff;max-width:420px;width:min(92vw,420px);border-radius:16px;box-shadow:0 10px 24px rgba(0,0,0,.25);padding:16px 14px 12px}
+  .popup h3{margin:0 0 6px;font-size:clamp(1rem,2.6vw,1.1rem);font-weight:800;color:#0f172a}
+  .popup-text{font-size:clamp(.9rem,2.3vw,.96rem);line-height:1.45;color:#1f2937;margin:0 0 12px}
+  .popup-actions{display:flex;justify-content:flex-end}
+
+  .loader-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;
+    opacity:0;visibility:hidden;transition:.25s ease;z-index:9999;backdrop-filter:blur(2px);
+    pointer-events:none;
+  }
+  .loader-overlay.active{opacity:1;visibility:visible;pointer-events:auto;}
+  .loader-box{background:#fff;padding:16px 18px;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;font-weight:700;color:#0f172a;min-width:200px;justify-content:center}
+  .spinner{width:20px;height:20px;border:3px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<main class="container">
+  <section class="grid" id="productGrid">
+
+    <!-- CARTE 2 -->
+    <article class="p-card"
+      data-sku="Robe Volante"
+      data-name="Robe Volante"
+      data-price="11000"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Terracotta","Vert Treillis","Blanc","Noir","Bleu ciel","Bleu bic","Rouge Bordeaux","Grise","Violet clair","Marron","Saumon","Jaune Moutarde"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-en-robe-bleu-ciel-avec-talons-noirs-1.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-avec-robe-blanche.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme_robe_marron_amelioree.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme_robe_olive_nouvelle_pose.png"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Collection Femme Ultime</h3>
+        <p class="p-desc">Élégant pour bureau & événements.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <!-- CARTE 1 -->
+    <article class="p-card"
+      data-sku="Robe Volante"
+      data-name="Robe Volante"
+      data-price="11000"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Terracotta","Vert Treillis","Blanc","Noir","Bleu ciel","Bleu bic","Rouge Bordeaux","Grise","Violet clair","Marron","Saumon","Jaune Moutarde"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-en-robe-terracotta-foncee.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-robe-grise-fusion-2.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-avec-robe-olive-1.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-en-robe-bordeau.png"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Perle Rare</h3>
+        <p class="p-desc">Look moderne & léger.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <!-- CARTE 3 -->
+    <article class="p-card"
+      data-sku="Robe Volante"
+      data-name="Robe Volante"
+      data-price="11000"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Terracotta","Vert Treillis","Blanc","Noir","Bleu ciel","Bleu bic","Rouge Bordeaux","Grise","Violet clair","Marron","Saumon","Jaune Moutarde"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme_robe_mustard_amelioree.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Affiche-Lifestyle-Robe-Grise-1-Amelioree.webp",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme_robe_saumon-1.png",
+        "https://nousunique.com/wp-content/uploads/2025/12/Femme-avec-robe-olive.png"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Perle Rare</h3>
+        <p class="p-desc">Look moderne & léger.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <!-- CARTE 4 -->
+    <article class="p-card"
+      data-sku="Robe Volante"
+      data-name="Robe Volante"
+      data-price="11000"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Terracotta","Vert Treillis","Blanc","Noir","Bleu ciel","Bleu bic","Rouge Bordeaux","Grise","Violet clair","Marron","Saumon","Jaune Moutarde"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2025/09/femme_robe_rouille_baies_vitrees-1.png",
+        "https://nousunique.com/wp-content/uploads/2025/09/Robe_saumon.png",
+        "https://nousunique.com/wp-content/uploads/2025/09/Robe_noire.png",
+        "https://nousunique.com/wp-content/uploads/2025/09/Robe_bleu_roi.png"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Perle Rare</h3>
+        <p class="p-desc">Look moderne & léger.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+  </section>
+</main>
+
+<!-- Sheet (unique) -->
+<aside class="sheet" id="orderSheet" aria-hidden="true">
+  <div class="sheet-head">
+    <div class="sheet-title">Finaliser ma commande</div>
+    <button class="sheet-close" id="closeSheetBtn" aria-label="Fermer">Fermer</button>
+  </div>
+  <div class="sheet-body">
+    <form class="form" id="orderForm" novalidate>
+      <div>
+        <label>Nom & Prénom</label>
+        <input required name="client" placeholder="Ex: Kouadio Serge" autocomplete="name" />
+      </div>
+      <div>
+        <label>Téléphone</label>
+        <input required name="phone" placeholder="Ex: +225 0700000000"
+               inputmode="tel" autocomplete="tel"
+               pattern="^(\+?\d{7,15}|0\d{8,12})$" />
+      </div>
+      <div><label>Taille</label><select name="taille"></select></div>
+      <div><label>Couleur</label><select name="couleur"></select></div>
+
+      <div>
+        <label>Ville</label>
+        <input required name="ville" placeholder="ou Commune..." autocomplete="address-level2" />
+      </div>
+
+      <div class="total"><span>Total</span><strong id="total">0 CFA</strong></div>
+      <button type="submit" class="btn" id="submitBtn" style="grid-column:1/-1;margin-top:6px">Confirmer la commande</button>
+    </form>
+  </div>
+</aside>
+
+<!-- Pop-up livraison -->
+<div class="popup-overlay" id="popupLivraison" aria-hidden="true">
+  <div class="popup">
+    <h3>Information livraison</h3>
+    <p class="popup-text">
+      ✨ <strong>Bonjour Madame,</strong><br/>
+      Nous vous proposons de magnifiques tenues, confectionnées avec soin et de belles finitions.<br/><br/>
+      ⏱️ <strong>Délai :</strong> confection + livraison en 3 jours ouvrables.<br/><br/>
+      Afin de vous garantir un rendu élégant, bien fini et de qualité avant expédition.
+    </p>
+    <div class="popup-actions"><button type="button" class="btn" id="popupFinaliser">Continuer</button></div>
+  </div>
+</div>
+
+<!-- Loader -->
+<div class="loader-overlay" id="loader">
+  <div class="loader-box">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Envoi de votre commande…</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ✅ CONFIGURATION : ENVOI DOUBLE (API + GOOGLE SHEETS)
+  // 1) API (pour que la commande apparaisse dans /appel)
+  const API_URL = 'https://atelier-confection.vercel.app/api/commandes/public';
+  const SECRET_TOKEN = 'NOUSUNIQUE123';
+  // 2) Google Sheets (pour stocker aussi dans ton Sheet)
+  const GOOGLE_SCRIPT_URL='https://script.google.com/macros/s/AKfycby9TNJ2e6DSL39DxUrAAV5QoS9-cxFSFJ1_XMey5kUob0KQ-jgFFfXmtOjS7J5RnUGb/exec';
+  const THANK_YOU_URL = 'https://nousunique.com/robeeclatmoulante44/';
+
+  const sheet=document.getElementById('orderSheet');
+  const closeBtn=document.getElementById('closeSheetBtn');
+  const form=document.getElementById('orderForm');
+  const totalEl=document.getElementById('total');
+  const submitBtn=document.getElementById('submitBtn');
+  const loader=document.getElementById('loader');
+
+  const popup=document.getElementById('popupLivraison');
+  const popupFinaliser=document.getElementById('popupFinaliser');
+
+  function lockScroll(){}
+  function unlockScroll(){}
+
+  let current={sku:'',name:'',price:0,variants:{},images:[],imageIndex:0};
+  let pendingProduct=null,sheetIsOpen=false;
+
+  function openSheet(){
+    if(sheetIsOpen)return;
+    lockScroll();
+    void sheet.offsetHeight;
+    sheet.classList.add('open');
+    sheet.setAttribute('aria-hidden','false');
+    sheetIsOpen=true;
+  }
+  function closeSheet(){
+    sheet.classList.remove('open');
+    sheet.setAttribute('aria-hidden','true');
+    unlockScroll();
+    sheetIsOpen = false;
+  }
+
+  function openPopup(){
+    popup.classList.add('active');
+    popup.setAttribute('aria-hidden','false');
+  }
+  function closePopup(){
+    popup.classList.remove('active');
+    popup.setAttribute('aria-hidden','true');
+  }
+
+  function showLoader(){loader.classList.add('active')}
+  function hideLoader(){loader.classList.remove('active')}
+
+  window.addEventListener('pageshow',()=>{
+    closeSheet();
+    closePopup();
+    hideLoader();
+    pendingProduct=null;
+    submitBtn.disabled=false;
+  });
+
+  closeBtn.addEventListener('click',closeSheet);
+  sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheet()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+
+  popup.addEventListener('click',e=>{if(e.target===popup)closePopup()});
+
+  const stateByCard=new WeakMap();
+
+  function preload(src){
+    return new Promise(resolve=>{
+      if(!src) return resolve(false);
+      const im=new Image();
+      im.onload=()=>resolve(true);
+      im.onerror=()=>resolve(false);
+      im.src=src;
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.js-open-sheet');
+    if(!btn) return;
+
+    const card = btn.closest('.p-card');
+    if(!card) return;
+
+    const st = stateByCard.get(card);
+    if(st){
+      pendingProduct = {
+        sku: st.sku, name: st.name, price: st.price,
+        variants: st.variants, images: st.images, imageIndex: st.imageIndex || 0
+      };
+    }else{
+      pendingProduct = {
+        sku: card.dataset.sku,
+        name: card.dataset.name,
+        price: parseInt(card.dataset.price,10)||0,
+        variants: JSON.parse(card.dataset.variants||'{}'),
+        images: JSON.parse(card.dataset.images||'[]'),
+        imageIndex: 0
+      };
+    }
+
+    openPopup();
+  }, { passive: true });
+
+  const AUTOPLAY_MS = 2000;
+
+  function triggerFlash(el){
+    el.classList.remove('flash');
+    el.offsetHeight;
+    el.classList.add('flash');
+  }
+
+  function createAutoplay(card, mediaEl, product, setMainImage){
+    let paused=false;
+    const tick=()=>{ if(paused) return;
+      const next=(product.imageIndex+1)%product.images.length;
+      setMainImage(next,true);
+    };
+    const id=setInterval(tick, AUTOPLAY_MS);
+
+    card.addEventListener('mouseenter',()=>{paused=true});
+    card.addEventListener('mouseleave',()=>{paused=false});
+
+    document.addEventListener('visibilitychange',()=>{paused=(document.visibilityState!=='visible')});
+
+    const io=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{ if(e.target===card){ paused = !e.isIntersecting; }});
+    },{threshold:0.25});
+    io.observe(card);
+
+    return {stop:()=>{clearInterval(id);io.disconnect();}, setPaused:(v)=>{paused=!!v}};
+  }
+
+  async function initCard(card, idx){
+    const mediaEl=card.querySelector('.p-media');
+    const thumbsEl=card.querySelector('.thumbs');
+    const priceEl=card.querySelector('[data-bind="price"]');
+
+    const rawImages = JSON.parse(card.dataset.images||'[]');
+    const images = [...new Set(rawImages.filter(Boolean))].slice(0,4);
+
+    const product={
+      sku:card.dataset.sku,
+      name:card.dataset.name,
+      price:parseInt(card.dataset.price,10)||0,
+      variants:JSON.parse(card.dataset.variants||'{}'),
+      images:images,
+      imageIndex:0
+    };
+
+    if(priceEl){
+      priceEl.textContent = product.price.toLocaleString('fr-FR') + ' CFA';
+    }
+
+    function setMainImage(i, withFlash=false){
+      const src=product.images[i]||'';
+      if(!src) return;
+      product.imageIndex=i;
+      mediaEl.style.backgroundImage=`url('${src}')`;
+      thumbsEl.querySelectorAll('.thumb').forEach((t,idx)=>t.classList.toggle('active',idx===i));
+      if(withFlash) triggerFlash(mediaEl);
+    }
+
+    thumbsEl.innerHTML='';
+    const loadStatuses = await Promise.all(product.images.map(preload));
+    product.images.forEach((src,idx)=>{
+      const ok=loadStatuses[idx];
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='thumb'+(ok?'':' disabled');
+      if(ok){
+        b.style.backgroundImage=`url('${src}')`;
+        b.addEventListener('click',()=>setMainImage(idx,true));
+      }else{
+        b.setAttribute('aria-disabled','true');
+      }
+      thumbsEl.appendChild(b);
+    });
+
+    const firstOkIndex = loadStatuses.findIndex(Boolean);
+    if(firstOkIndex>-1){ setMainImage(firstOkIndex,false); }
+    else{ mediaEl.style.backgroundImage='none'; }
+
+    const auto = createAutoplay(card, mediaEl, product, setMainImage);
+    stateByCard.set(card,{...product, auto});
+  }
+
+  document.querySelectorAll('.p-card').forEach((card, idx)=>{ initCard(card, idx); });
+
+  function updateTotal(){
+    totalEl.textContent = (current.price).toLocaleString('fr-FR') + ' CFA';
+  }
+
+  popupFinaliser.addEventListener('click',()=>{
+    if(pendingProduct){
+      current={...pendingProduct};
+      const tailleSel=form.elements['taille'];
+      const couleurSel=form.elements['couleur'];
+      tailleSel.innerHTML=''; couleurSel.innerHTML='';
+
+      (current.variants['Taille']||[]).forEach(v=>tailleSel.add(new Option(v,v)));
+
+      const couleurs = (current.variants['Couleur']||[]);
+      const terr = 'Terracotta';
+      const ordered = [terr, ...couleurs.filter(c=>c !== terr)];
+      ordered.forEach(v=>couleurSel.add(new Option(v,v)));
+
+      if(form.elements['ville']) form.elements['ville'].value = '';
+      updateTotal();
+    }
+    closePopup();
+    openSheet();
+  });
+
+  form.addEventListener('submit',async (e)=>{
+    e.preventDefault();
+    const phoneEl=form.elements['phone'];
+
+    if(phoneEl.pattern){
+      try{
+        const re=new RegExp(phoneEl.pattern);
+        if(!re.test(phoneEl.value||'')){ alert('Numéro de téléphone invalide'); return; }
+      }catch(_){}
+    }
+
+    const villeEl=form.elements['ville'];
+    if(!villeEl || !(villeEl.value||'').trim()){
+      alert('Veuillez renseigner votre ville.');
+      villeEl && villeEl.focus();
+      return;
+    }
+
+    submitBtn.disabled=true;
+    showLoader();
+
+    // ✅ Payload API (JSON) -> /appel
+    const payloadApi = {
+      token: SECRET_TOKEN,
+      client: form.elements['client'].value,
+      phone: phoneEl.value,
+      ville: (villeEl.value||'').trim(),
+      sku: current.sku,
+      name: current.name,
+      taille: form.elements['taille'].value,
+      couleur: form.elements['couleur'].value,
+      price: String(current.price),
+      source: location.href
+    };
+
+    try{
+      // ✅ Payload Google Sheets (x-www-form-urlencoded)
+      const payloadSheet = {
+        token: SECRET_TOKEN,
+        client: form.elements['client'].value,
+        phone: phoneEl.value,
+        ville: (villeEl.value||'').trim(),
+        sku: current.sku,
+        name: current.name,
+        taille: form.elements['taille'].value,
+        couleur: form.elements['couleur'].value,
+        price: String(current.price),
+        source: location.href
+      };
+      const params = new URLSearchParams(payloadSheet).toString();
+
+      // 🔥 ENVOI EN PARALLÈLE (API + SHEET)
+      const [apiResult, sheetResult] = await Promise.allSettled([
+        fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payloadApi)
+        }),
+        fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: params
+        })
+      ]);
+
+      // 1) Vérifier API (obligatoire)
+      if(apiResult.status !== 'fulfilled'){
+        throw new Error('API indisponible');
+      }
+      const apiRes = apiResult.value;
+      let apiJson = null;
+      try { apiJson = await apiRes.json(); } catch(_){}
+      if(!(apiRes.ok && apiJson && apiJson.success)){
+        alert('❌ Erreur API: ' + (apiJson?.message || ('HTTP ' + apiRes.status)));
+        return;
+      }
+
+      // 2) Vérifier Google Sheets (optionnel mais souhaité)
+      if(sheetResult.status === 'fulfilled'){
+        const sheetRes = sheetResult.value;
+        const raw = await sheetRes.text();
+        let sheetJson=null; try{ sheetJson = JSON.parse(raw); } catch(_){}
+        if(!(sheetRes.ok && sheetJson?.success)){
+          console.warn('⚠️ Commande OK dans l’app, mais Google Sheets a échoué:', sheetRes.status, sheetJson || raw);
+        }
+      } else {
+        console.warn('⚠️ Commande OK dans l’app, mais envoi Google Sheets échoué:', sheetResult.reason);
+      }
+
+      // ✅ Succès: la commande est dans /appel (et si Sheets a marché, aussi dans le sheet)
+      window.location.href = THANK_YOU_URL;
+      return;
+    }catch(err){
+      console.error(err);
+      alert('❌ Réseau indisponible.');
+    }finally{
+      hideLoader();
+      submitBtn.disabled=false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

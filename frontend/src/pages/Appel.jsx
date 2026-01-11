@@ -1,0 +1,431 @@
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+import toast from 'react-hot-toast';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X } from 'lucide-react';
+
+const Appel = () => {
+  const [commandesAppel, setCommandesAppel] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [selectedCommande, setSelectedCommande] = useState(null);
+
+  useEffect(() => {
+    fetchCommandesAppel();
+  }, []);
+
+  const fetchCommandesAppel = async () => {
+    try {
+      const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement');
+      setCommandesAppel(response.data.commandes || []);
+    } catch (error) {
+      toast.error('Erreur lors du chargement des appels');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (commandeId, action) => {
+    setProcessing(true);
+    
+    try {
+      let newStatut = '';
+      let message = '';
+      
+      switch (action) {
+        case 'confirmer':
+          newStatut = 'validee';
+          message = 'Commande confirmée et envoyée aux commandes !';
+          break;
+        case 'urgent':
+          newStatut = 'validee';
+          message = 'Commande marquée URGENTE et envoyée aux commandes !';
+          break;
+        case 'attente':
+          newStatut = 'en_attente_paiement';
+          message = 'Commande mise en attente';
+          break;
+        case 'annuler':
+          newStatut = 'annulee';
+          message = 'Commande annulée';
+          break;
+      }
+
+      const payload = { statut: newStatut };
+      if (action === 'urgent') {
+        payload.urgence = true;
+      }
+
+      await api.put(`/commandes/${commandeId}`, payload);
+      
+      toast.success(message);
+      
+      // Fermer la modal
+      setSelectedCommande(null);
+      
+      // Retirer de la liste si confirmé, urgent ou annulé
+      if (['confirmer', 'urgent', 'annuler'].includes(action)) {
+        setCommandesAppel(prev => prev.filter(c => (c._id || c.id) !== commandeId));
+      } else {
+        fetchCommandesAppel();
+      }
+      
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Fonction utilitaire pour afficher les données (string ou objet)
+  const getModeleNom = (modele) => {
+    if (!modele) return 'N/A';
+    return typeof modele === 'string' ? modele : (modele.nom || modele.sku || 'N/A');
+  };
+
+  const getClientNom = (commande) => {
+    if (commande.nomClient) return commande.nomClient;
+    if (commande.client) {
+      return typeof commande.client === 'string' ? commande.client : (commande.client.nom || 'N/A');
+    }
+    return 'N/A';
+  };
+
+  const getClientContact = (commande) => {
+    if (commande.contactClient) return commande.contactClient;
+    if (commande.client) {
+      return typeof commande.client === 'object' ? (commande.client.contact || 'N/A') : 'N/A';
+    }
+    return 'N/A';
+  };
+
+  const getVille = (commande) => {
+    if (commande.ville) return commande.ville;
+    if (commande.client && typeof commande.client === 'object') {
+      return commande.client.ville || 'Non spécifié';
+    }
+    return 'Non spécifié';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200/30 rounded-full"></div>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
+              <Phone className="text-white" size={32} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Appels à Traiter
+              </h1>
+              <p className="text-gray-600 font-medium">Nouvelles commandes en attente de validation</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
+          <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            {commandesAppel.length}
+          </p>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6">
+        <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+          <AlertTriangle className="text-blue-600" size={20} />
+          <span>Actions disponibles</span>
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="text-green-600" size={18} />
+            <div>
+              <p className="font-bold text-gray-900">CONFIRMER</p>
+              <p className="text-gray-600">→ Envoyée aux commandes</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="text-red-600" size={18} />
+            <div>
+              <p className="font-bold text-gray-900">URGENT</p>
+              <p className="text-gray-600">→ Priorité aux commandes</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="text-amber-600" size={18} />
+            <div>
+              <p className="font-bold text-gray-900">EN ATTENTE</p>
+              <p className="text-gray-600">→ Reste dans appel</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <XCircle className="text-gray-600" size={18} />
+            <div>
+              <p className="font-bold text-gray-900">ANNULER</p>
+              <p className="text-gray-600">→ Supprimée</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grille des commandes */}
+      {commandesAppel.length === 0 ? (
+        <div className="stat-card text-center py-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
+            <CheckCircle className="text-green-600" size={40} />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun appel en attente</h3>
+          <p className="text-gray-600">Toutes les commandes ont été traitées ! 🎉</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {commandesAppel.map((commande, index) => (
+            <div
+              key={commande._id || commande.id}
+              className="stat-card hover:scale-105 transition-transform cursor-pointer group"
+              style={{ animationDelay: `${index * 0.05}s` }}
+              onClick={() => setSelectedCommande(commande)}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">
+                    #{commande.numeroCommande || (commande._id || commande.id).slice(-6).toUpperCase()}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                <span className="badge badge-warning text-xs px-2 py-1">
+                  📞 Appel
+                </span>
+              </div>
+
+              {/* Client */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3">
+                <div className="flex items-center space-x-2 mb-2">
+                  <User className="text-blue-600" size={16} />
+                  <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
+                </div>
+                <a 
+                  href={`tel:${getClientContact(commande)}`}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Phone size={12} />
+                  <span>{getClientContact(commande)}</span>
+                </a>
+                <div className="flex items-center space-x-1 mt-1">
+                  <MapPin className="text-emerald-600" size={14} />
+                  <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
+                </div>
+              </div>
+
+              {/* Détails */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500 flex items-center space-x-1">
+                    <Package size={14} />
+                    <span>Modèle</span>
+                  </span>
+                  <span className="font-bold text-gray-900">{getModeleNom(commande.modele)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Taille</span>
+                  <span className="font-bold text-gray-900">{commande.taille}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Couleur</span>
+                  <span className="font-bold text-gray-900">{commande.couleur}</span>
+                </div>
+              </div>
+
+              {/* Prix */}
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-white text-xs font-semibold">Prix Total</span>
+                  <span className="text-white text-xl font-black">
+                    {commande.prix?.toLocaleString('fr-FR')} FCFA
+                  </span>
+                </div>
+              </div>
+
+              {/* Bouton Traiter */}
+              <button
+                className="w-full btn btn-primary py-3 font-bold group-hover:shadow-xl transition-shadow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCommande(commande);
+                }}
+              >
+                Traiter la commande
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal de traitement */}
+      {selectedCommande && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !processing && setSelectedCommande(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Modal */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-t-2xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black">
+                    #{selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
+                  </h2>
+                  <p className="text-blue-100 text-sm">
+                    {new Date(selectedCommande.dateCommande || selectedCommande.created_at).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => !processing && setSelectedCommande(null)}
+                  className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                  disabled={processing}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu Modal */}
+            <div className="p-6 space-y-6">
+              {/* Client */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                  <User className="text-blue-600" size={20} />
+                  <span>Informations Client</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Nom</p>
+                    <p className="font-bold text-gray-900 text-lg">{getClientNom(selectedCommande)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Contact</p>
+                    <a 
+                      href={`tel:${getClientContact(selectedCommande)}`}
+                      className="font-bold text-blue-600 hover:text-blue-800 text-lg hover:underline flex items-center space-x-2 transition-colors"
+                    >
+                      <Phone size={18} />
+                      <span>{getClientContact(selectedCommande)}</span>
+                    </a>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase">Ville</p>
+                    <p className="font-bold text-gray-900 text-lg flex items-center space-x-1">
+                      <MapPin className="text-emerald-600" size={18} />
+                      <span>{getVille(selectedCommande)}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Détails Commande */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                  <Package className="text-indigo-600" size={20} />
+                  <span>Détails de la commande</span>
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Modèle</span>
+                    <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Taille</span>
+                    <span className="font-bold text-gray-900">{selectedCommande.taille}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Couleur</span>
+                    <span className="font-bold text-gray-900">{selectedCommande.couleur}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <span className="text-gray-600 font-semibold">Prix Total</span>
+                    <span className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                      {selectedCommande.prix?.toLocaleString('fr-FR')} FCFA
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note */}
+              {(selectedCommande.note || selectedCommande.noteAppelant) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">📝 Note</p>
+                  <p className="text-sm text-gray-700">{selectedCommande.note || selectedCommande.noteAppelant}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
+                  disabled={processing}
+                  className="btn btn-success flex items-center justify-center space-x-2 py-4 text-lg font-bold"
+                >
+                  <CheckCircle size={24} />
+                  <span>CONFIRMER</span>
+                </button>
+
+                <button
+                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
+                  disabled={processing}
+                  className="btn btn-danger flex items-center justify-center space-x-2 py-4 text-lg font-bold"
+                >
+                  <AlertTriangle size={24} />
+                  <span>URGENT</span>
+                </button>
+
+                <button
+                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
+                  disabled={processing}
+                  className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-4 rounded-lg font-bold transition-all hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Clock size={24} />
+                  <span>EN ATTENTE</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (confirm('Êtes-vous sûr de vouloir annuler cette commande ?')) {
+                      handleAction(selectedCommande._id || selectedCommande.id, 'annuler');
+                    }
+                  }}
+                  disabled={processing}
+                  className="bg-gray-500 text-white px-4 py-4 rounded-lg font-bold transition-all hover:bg-gray-600 flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <XCircle size={24} />
+                  <span>ANNULER</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Appel;
