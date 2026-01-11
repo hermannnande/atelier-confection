@@ -10,6 +10,7 @@ const Appel = () => {
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [noteAppelant, setNoteAppelant] = useState('');
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -91,13 +92,19 @@ const Appel = () => {
       if (action === 'urgent') {
         payload.urgence = true;
       }
+      
+      // Ajouter la note de l'appelant si elle existe
+      if (noteAppelant.trim()) {
+        payload.noteAppelant = noteAppelant.trim();
+      }
 
       await api.put(`/commandes/${commandeId}`, payload);
       
       toast.success(message);
       
-      // Fermer la modal
+      // Fermer la modal et réinitialiser la note
       setSelectedCommande(null);
+      setNoteAppelant('');
       
       // Retirer de la liste si confirmé, urgent ou annulé
       if (['confirmer', 'urgent', 'annuler'].includes(action)) {
@@ -310,7 +317,12 @@ const Appel = () => {
       {selectedCommande && (
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => !processing && setSelectedCommande(null)}
+          onClick={() => {
+            if (!processing) {
+              setSelectedCommande(null);
+              setNoteAppelant('');
+            }
+          }}
         >
           <div 
             className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
@@ -328,7 +340,12 @@ const Appel = () => {
                   </p>
                 </div>
                 <button 
-                  onClick={() => !processing && setSelectedCommande(null)}
+                  onClick={() => {
+                    if (!processing) {
+                      setSelectedCommande(null);
+                      setNoteAppelant('');
+                    }
+                  }}
                   className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                   disabled={processing}
                 >
@@ -398,13 +415,23 @@ const Appel = () => {
                 </div>
               </div>
 
-              {/* Note */}
-              {(selectedCommande.note || selectedCommande.noteAppelant) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-amber-800 mb-1">📝 Note</p>
-                  <p className="text-sm text-gray-700">{selectedCommande.note || selectedCommande.noteAppelant}</p>
-                </div>
-              )}
+              {/* Note de l'appelant */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <label className="block text-sm font-semibold text-blue-800 mb-2">
+                  📝 Note / Précisions de l'appelant
+                </label>
+                <textarea
+                  value={noteAppelant}
+                  onChange={(e) => setNoteAppelant(e.target.value)}
+                  placeholder="Ajouter des précisions pour l'atelier (optionnel)..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows="3"
+                  disabled={processing}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Cette note sera visible par toute l'équipe de production
+                </p>
+              </div>
 
               {/* Actions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 border-t border-gray-200">
