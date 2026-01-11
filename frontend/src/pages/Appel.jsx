@@ -325,140 +325,119 @@ const Appel = () => {
           }}
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Modal */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-t-2xl text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black">
-                    #{selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
-                  </h2>
-                  <p className="text-blue-100 text-sm">
-                    {new Date(selectedCommande.dateCommande || selectedCommande.created_at).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => {
-                    if (!processing) {
-                      setSelectedCommande(null);
-                      setNoteAppelant('');
-                    }
-                  }}
-                  className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
-                  disabled={processing}
-                >
-                  <X size={24} />
-                </button>
-              </div>
+            {/* Header compact */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white flex items-center justify-between">
+              <h2 className="text-xl font-bold">
+                {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
+              </h2>
+              <button 
+                onClick={() => {
+                  if (!processing) {
+                    setSelectedCommande(null);
+                    setNoteAppelant('');
+                  }
+                }}
+                className="hover:bg-white/20 p-1 rounded transition-colors"
+                disabled={processing}
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Contenu Modal */}
-            <div className="p-6 space-y-6">
-              {/* Client */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
-                  <User className="text-blue-600" size={20} />
-                  <span>Informations Client</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Nom</p>
-                    <p className="font-bold text-gray-900 text-lg">{getClientNom(selectedCommande)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Contact</p>
-                    <a 
-                      href={`tel:${getClientContact(selectedCommande)}`}
-                      className="font-bold text-blue-600 hover:text-blue-800 text-lg hover:underline flex items-center space-x-2 transition-colors"
-                    >
-                      <Phone size={18} />
-                      <span>{getClientContact(selectedCommande)}</span>
-                    </a>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Ville</p>
-                    <p className="font-bold text-gray-900 text-lg flex items-center space-x-1">
-                      <MapPin className="text-emerald-600" size={18} />
-                      <span>{getVille(selectedCommande)}</span>
-                    </p>
-                  </div>
+            {/* Contenu compact */}
+            <div className="p-4 space-y-3">
+              {/* Client - Une seule ligne */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
+                  <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
+                  <a 
+                    href={`tel:${getClientContact(selectedCommande)}`}
+                    className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                  >
+                    <Phone size={14} />
+                    <span>{getClientContact(selectedCommande)}</span>
+                  </a>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
+                  <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
                 </div>
               </div>
 
-              {/* Détails Commande */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h3 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
-                  <Package className="text-indigo-600" size={20} />
-                  <span>Détails de la commande</span>
-                </h3>
-                <div className="space-y-3">
+              {/* Détails Commande - Compact */}
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <p className="text-xs text-gray-500 uppercase font-semibold mb-2">📦 Détails de la commande</p>
+                <div className="space-y-1 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Modèle</span>
                     <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Taille</span>
-                    <span className="font-bold text-gray-900">{selectedCommande.taille}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Couleur</span>
-                    <span className="font-bold text-gray-900">{selectedCommande.couleur}</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                    <span className="text-gray-600 font-semibold">Prix Total</span>
-                    <span className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                      {selectedCommande.prix?.toLocaleString('fr-FR')} FCFA
-                    </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">📏 {selectedCommande.taille}</span>
+                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Note de l'appelant */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <label className="block text-sm font-semibold text-blue-800 mb-2">
+              {/* Prix - Compact */}
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 flex justify-between items-center">
+                <span className="text-white text-sm font-semibold">Prix Total</span>
+                <span className="text-white text-2xl font-black">
+                  {selectedCommande.prix?.toLocaleString('fr-FR')} FCFA
+                </span>
+              </div>
+
+              {/* Note - Compact */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
                   📝 Note / Précisions de l'appelant
                 </label>
                 <textarea
                   value={noteAppelant}
                   onChange={(e) => setNoteAppelant(e.target.value)}
                   placeholder="Ajouter des précisions pour l'atelier (optionnel)..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows="3"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows="2"
                   disabled={processing}
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 mt-1">
                   Cette note sera visible par toute l'équipe de production
                 </p>
               </div>
 
-              {/* Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-4 border-t border-gray-200">
+              {/* Actions - Compact en grille 2x2 */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
                   disabled={processing}
-                  className="btn btn-success flex items-center justify-center space-x-2 py-4 text-lg font-bold"
+                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <CheckCircle size={24} />
+                  <CheckCircle size={18} />
                   <span>CONFIRMER</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
                   disabled={processing}
-                  className="btn btn-danger flex items-center justify-center space-x-2 py-4 text-lg font-bold"
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <AlertTriangle size={24} />
+                  <AlertTriangle size={18} />
                   <span>URGENT</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
                   disabled={processing}
-                  className="bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-4 rounded-lg font-bold transition-all hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <Clock size={24} />
+                  <Clock size={18} />
                   <span>EN ATTENTE</span>
                 </button>
 
@@ -469,9 +448,9 @@ const Appel = () => {
                     }
                   }}
                   disabled={processing}
-                  className="bg-gray-500 text-white px-4 py-4 rounded-lg font-bold transition-all hover:bg-gray-600 flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <XCircle size={24} />
+                  <XCircle size={18} />
                   <span>ANNULER</span>
                 </button>
               </div>
