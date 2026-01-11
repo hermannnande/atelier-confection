@@ -32,7 +32,14 @@ const Commandes = () => {
         !['en_attente_validation', 'en_attente_paiement', 'annulee'].includes(cmd.statut)
       );
       
-      setCommandes(commandesConfirmees);
+      // Trier par date de mise à jour (les plus récentes en haut)
+      const commandesTriees = commandesConfirmees.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at);
+        const dateB = new Date(b.updated_at || b.created_at);
+        return dateB - dateA; // Ordre décroissant (plus récent en premier)
+      });
+      
+      setCommandes(commandesTriees);
     } catch (error) {
       toast.error('Erreur lors du chargement des commandes');
       console.error(error);
