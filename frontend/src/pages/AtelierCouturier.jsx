@@ -148,13 +148,7 @@ const AtelierCouturier = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-2 ml-4">
-                    <Link
-                      to={`/commandes/${commande._id}`}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Eye size={16} />
-                    </Link>
+                  <div className="flex items-center ml-4">
                     <button
                       onClick={() => handleTerminerCouture(commande._id, commande)}
                       className="btn btn-success btn-sm"

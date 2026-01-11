@@ -142,12 +142,6 @@ const AtelierStyliste = () => {
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
-                    <Link
-                      to={`/commandes/${commande._id}`}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <Eye size={16} />
-                    </Link>
                     <button
                       onClick={() => handleCommencerDecoupe(commande._id)}
                       className="btn btn-primary btn-sm"
