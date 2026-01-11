@@ -116,7 +116,7 @@ const AtelierStyliste = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                       <div>
                         <p className="text-gray-500">Modèle</p>
                         <p className="font-medium text-gray-900">{commande.modele.nom}</p>
@@ -128,10 +128,6 @@ const AtelierStyliste = () => {
                       <div>
                         <p className="text-gray-500">Couleur</p>
                         <p className="font-medium text-gray-900">{commande.couleur}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Client</p>
-                        <p className="font-medium text-gray-900">{commande.client.nom}</p>
                       </div>
                     </div>
 
@@ -195,7 +191,7 @@ const AtelierStyliste = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
                       <div>
                         <p className="text-gray-500">Modèle</p>
                         <p className="font-medium text-gray-900">{commande.modele.nom}</p>
@@ -207,10 +203,6 @@ const AtelierStyliste = () => {
                       <div>
                         <p className="text-gray-500">Couleur</p>
                         <p className="font-medium text-gray-900">{commande.couleur}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Client</p>
-                        <p className="font-medium text-gray-900">{commande.client.nom}</p>
                       </div>
                     </div>
 
