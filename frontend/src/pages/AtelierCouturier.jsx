@@ -143,25 +143,13 @@ const AtelierCouturier = () => {
                     )}
 
                     {commande.noteAppelant && (
-                      <div className="mb-3 p-3 bg-white rounded-lg border border-orange-300">
+                      <div className="p-3 bg-white rounded-lg border border-orange-300">
                         <p className="text-sm text-gray-700">
                           <span className="font-medium">Instructions: </span>
                           {commande.noteAppelant}
                         </p>
                       </div>
                     )}
-                    
-                    {/* Info ajout stock */}
-                    <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
-                      <p className="text-xs font-bold text-emerald-800 mb-1 flex items-center">
-                        <CheckCircle size={14} className="mr-1" />
-                        Ajout automatique au stock
-                      </p>
-                      <p className="text-xs text-gray-700">
-                        📦 Une fois terminée, cette commande sera automatiquement ajoutée au stock principal
-                        <span className="font-semibold"> ({commande.modele.nom} - {commande.taille} - {commande.couleur})</span>
-                      </p>
-                    </div>
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
