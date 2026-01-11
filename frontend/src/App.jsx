@@ -10,6 +10,7 @@ import Commandes from './pages/Commandes';
 import HistoriqueCommandes from './pages/HistoriqueCommandes';
 import CommandeDetail from './pages/CommandeDetail';
 import NouvelleCommande from './pages/NouvelleCommande';
+import PreparationColis from './pages/PreparationColis';
 import AtelierStyliste from './pages/AtelierStyliste';
 import AtelierCouturier from './pages/AtelierCouturier';
 import Stock from './pages/Stock';
@@ -96,6 +97,13 @@ function App() {
           <Route path="historique" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <HistoriqueCommandes />
+            </ProtectedRoute>
+          } />
+          
+          {/* Préparation Colis - Gestionnaires, Admins */}
+          <Route path="preparation-colis" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <PreparationColis />
             </ProtectedRoute>
           } />
           
