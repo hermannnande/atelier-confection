@@ -1,24 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw } from 'lucide-react';
 
 const Appel = () => {
   const [commandesAppel, setCommandesAppel] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState(null);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     fetchCommandesAppel();
   }, []);
 
-  const fetchCommandesAppel = async () => {
+  // Auto-refresh toutes les 10 secondes
+  useEffect(() => {
+    if (isAutoRefreshing) {
+      intervalRef.current = setInterval(() => {
+        fetchCommandesAppel(true); // true = silent refresh
+      }, 10000); // 10 secondes
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+  }, [isAutoRefreshing]);
+
+  const fetchCommandesAppel = async (silent = false) => {
     try {
       const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement');
-      setCommandesAppel(response.data.commandes || []);
+      const newCommandes = response.data.commandes || [];
+      
+      // Vérifier s'il y a de nouvelles commandes
+      if (silent && newCommandes.length > commandesAppel.length) {
+        const diff = newCommandes.length - commandesAppel.length;
+        toast.success(`🔔 ${diff} nouvelle${diff > 1 ? 's' : ''} commande${diff > 1 ? 's' : ''} !`, {
+          icon: '📞',
+          duration: 4000,
+        });
+      }
+      
+      setCommandesAppel(newCommandes);
+      setLastRefresh(new Date());
     } catch (error) {
-      toast.error('Erreur lors du chargement des appels');
+      if (!silent) {
+        toast.error('Erreur lors du chargement des appels');
+      }
       console.error(error);
     } finally {
       setLoading(false);
@@ -132,6 +168,36 @@ const Appel = () => {
                 Appels à Traiter
               </h1>
               <p className="text-gray-600 font-medium">Nouvelles commandes en attente de validation</p>
+              
+              {/* Indicateur de rafraîchissement auto */}
+              <div className="flex items-center space-x-3 mt-2">
+                <button
+                  onClick={() => setIsAutoRefreshing(!isAutoRefreshing)}
+                  className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    isAutoRefreshing 
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <RefreshCw 
+                    size={14} 
+                    className={isAutoRefreshing ? 'animate-spin' : ''} 
+                  />
+                  <span>{isAutoRefreshing ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</span>
+                </button>
+                
+                <span className="text-xs text-gray-500">
+                  Dernière mise à jour: {lastRefresh.toLocaleTimeString('fr-FR')}
+                </span>
+                
+                <button
+                  onClick={() => fetchCommandesAppel()}
+                  className="flex items-center space-x-1 px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
+                >
+                  <RefreshCw size={14} />
+                  <span>Actualiser</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
