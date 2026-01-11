@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Eye, Scissors, Shirt, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Package, Eye, Scissors, Shirt, CheckCircle, Clock, AlertCircle, Truck, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const PreparationColis = () => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatut, setFilterStatut] = useState('');
+  const [livreurs, setLivreurs] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedCommande, setSelectedCommande] = useState(null);
+  const [selectedLivreur, setSelectedLivreur] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     fetchCommandes();
+    fetchLivreurs();
     // Auto-refresh toutes les 15 secondes
     const interval = setInterval(fetchCommandes, 15000);
     return () => clearInterval(interval);
@@ -29,6 +35,41 @@ const PreparationColis = () => {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLivreurs = async () => {
+    try {
+      const response = await api.get('/users');
+      const livreursOnly = response.data.users.filter(u => u.role === 'livreur' && u.actif);
+      setLivreurs(livreursOnly);
+    } catch (error) {
+      console.error('Erreur lors du chargement des livreurs', error);
+    }
+  };
+
+  const handleAssignerLivreur = async () => {
+    if (!selectedLivreur) {
+      toast.error('Veuillez sélectionner un livreur');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      await api.post(`/livraisons`, {
+        commandeId: selectedCommande._id,
+        livreurId: selectedLivreur
+      });
+      
+      toast.success('Commande assignée au livreur ! 🚚');
+      setShowModal(false);
+      setSelectedCommande(null);
+      setSelectedLivreur('');
+      fetchCommandes(); // Recharger pour retirer de la liste
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'assignation');
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -270,18 +311,6 @@ const PreparationColis = () => {
                   </span>
                 </div>
 
-                {/* Équipe */}
-                {(commande.styliste || commande.couturier) && (
-                  <div className="bg-blue-50 rounded-lg p-2 mb-3">
-                    <p className="text-xs text-blue-600 uppercase font-semibold mb-1">Équipe</p>
-                    <div className="text-xs text-gray-700">
-                      {commande.couturier && (
-                        <p>🧵 {commande.couturier.nom}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Note */}
                 {commande.noteAppelant && (
                   <div className="bg-yellow-50 rounded-lg p-2 mb-3">
@@ -290,17 +319,110 @@ const PreparationColis = () => {
                   </div>
                 )}
 
-                {/* Bouton */}
-                <Link
-                  to={`/commandes/${commande._id}`}
-                  className="btn btn-primary w-full flex items-center justify-center space-x-2 text-sm"
-                >
-                  <Eye size={16} />
-                  <span>Voir les détails</span>
-                </Link>
+                {/* Boutons */}
+                <div className="space-y-2">
+                  {/* Bouton Assigner au livreur - visible seulement pour commandes terminées */}
+                  {(commande.statut === 'confectionnee' || commande.statut === 'en_stock') && (
+                    <button
+                      onClick={() => {
+                        setSelectedCommande(commande);
+                        setShowModal(true);
+                      }}
+                      className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
+                    >
+                      <Truck size={16} />
+                      <span>Assigner au livreur</span>
+                    </button>
+                  )}
+                  
+                  <Link
+                    to={`/commandes/${commande._id}`}
+                    className="btn btn-primary w-full flex items-center justify-center space-x-2 text-sm"
+                  >
+                    <Eye size={16} />
+                    <span>Voir les détails</span>
+                  </Link>
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Modal d'assignation au livreur */}
+      {showModal && selectedCommande && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !assigning && setShowModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Assigner au livreur</h3>
+              <button 
+                onClick={() => !assigning && setShowModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={assigning}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Info commande */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-sm font-bold text-gray-900 mb-2">
+                {selectedCommande.numeroCommande}
+              </p>
+              <p className="text-sm text-gray-600">
+                {typeof selectedCommande.client === 'object' ? selectedCommande.client.nom : selectedCommande.client}
+              </p>
+              <p className="text-sm text-gray-600">
+                {typeof selectedCommande.modele === 'object' ? selectedCommande.modele.nom : selectedCommande.modele} - {selectedCommande.taille} - {selectedCommande.couleur}
+              </p>
+            </div>
+
+            {/* Sélection livreur */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Sélectionner un livreur
+              </label>
+              <select
+                value={selectedLivreur}
+                onChange={(e) => setSelectedLivreur(e.target.value)}
+                className="input w-full"
+                disabled={assigning}
+              >
+                <option value="">Choisir un livreur...</option>
+                {livreurs.map((livreur) => (
+                  <option key={livreur._id} value={livreur._id}>
+                    {livreur.nom} {livreur.telephone ? `- ${livreur.telephone}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Boutons */}
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => !assigning && setShowModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                disabled={assigning}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAssignerLivreur}
+                disabled={!selectedLivreur || assigning}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-blue-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                <Truck size={20} />
+                <span>{assigning ? 'Assignation...' : 'Assigner'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
