@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Filter, AlertCircle, Eye, Edit } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Eye, Edit, Send } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 const Commandes = () => {
   const [commandes, setCommandes] = useState([]);
@@ -10,6 +11,8 @@ const Commandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
+  const [sendingToAtelier, setSendingToAtelier] = useState(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchCommandes();
@@ -29,6 +32,31 @@ const Commandes = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const envoyerAAtelier = async (commandeId) => {
+    if (!window.confirm('Envoyer cette commande à l\'atelier styliste ?')) {
+      return;
+    }
+
+    setSendingToAtelier(commandeId);
+    try {
+      await api.put(`/commandes/${commandeId}`, {
+        statut: 'en_decoupe'
+      });
+      
+      toast.success('Commande envoyée à l\'atelier styliste ! ✂️');
+      fetchCommandes(); // Recharger la liste
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi');
+      console.error(error);
+    } finally {
+      setSendingToAtelier(null);
+    }
+  };
+
+  const peutEnvoyerAAtelier = () => {
+    return user?.role === 'administrateur' || user?.role === 'gestionnaire';
   };
 
   const getStatutBadge = (statut) => {
@@ -212,6 +240,19 @@ const Commandes = () => {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
+                  {/* Bouton Envoyer à l'atelier - visible seulement pour gestionnaire/admin et commandes validées */}
+                  {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
+                    <button
+                      onClick={() => envoyerAAtelier(commande._id)}
+                      disabled={sendingToAtelier === commande._id}
+                      className="btn btn-primary btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
+                      title="Envoyer à l'atelier styliste"
+                    >
+                      <Send size={16} />
+                      <span>{sendingToAtelier === commande._id ? 'Envoi...' : 'Envoyer à l\'atelier'}</span>
+                    </button>
+                  )}
+                  
                   <Link
                     to={`/commandes/${commande._id}`}
                     className="btn btn-secondary btn-sm inline-flex items-center space-x-1"

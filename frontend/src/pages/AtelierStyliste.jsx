@@ -15,8 +15,9 @@ const AtelierStyliste = () => {
   const fetchCommandes = async () => {
     try {
       const response = await api.get('/commandes');
+      // Affiche uniquement les commandes envoyées par le gestionnaire (statut: en_decoupe)
       const filtered = response.data.commandes.filter(c => 
-        ['validee', 'en_decoupe'].includes(c.statut)
+        c.statut === 'en_decoupe'
       );
       setCommandes(filtered);
     } catch (error) {
