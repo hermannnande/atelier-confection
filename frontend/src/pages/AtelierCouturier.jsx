@@ -27,10 +27,17 @@ const AtelierCouturier = () => {
     }
   };
 
-  const handleTerminerCouture = async (id) => {
+  const handleTerminerCouture = async (id, commande) => {
+    if (!window.confirm(`Confirmer la fin de couture de cette commande ?\n\nCette action ajoutera automatiquement :\n• Modèle : ${commande.modele.nom}\n• Taille : ${commande.taille}\n• Couleur : ${commande.couleur}\n\nAu stock principal (+1 unité)`)) {
+      return;
+    }
+
     try {
       await api.post(`/commandes/${id}/terminer-couture`);
-      toast.success('Couture terminée ! Ajouté au stock.');
+      toast.success(
+        `✅ Couture terminée !\n📦 ${commande.modele.nom} (${commande.taille} - ${commande.couleur}) ajouté au stock.`,
+        { duration: 5000 }
+      );
       fetchCommandes();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
@@ -136,13 +143,25 @@ const AtelierCouturier = () => {
                     )}
 
                     {commande.noteAppelant && (
-                      <div className="p-3 bg-white rounded-lg border border-orange-300">
+                      <div className="mb-3 p-3 bg-white rounded-lg border border-orange-300">
                         <p className="text-sm text-gray-700">
                           <span className="font-medium">Instructions: </span>
                           {commande.noteAppelant}
                         </p>
                       </div>
                     )}
+                    
+                    {/* Info ajout stock */}
+                    <div className="p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+                      <p className="text-xs font-bold text-emerald-800 mb-1 flex items-center">
+                        <CheckCircle size={14} className="mr-1" />
+                        Ajout automatique au stock
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        📦 Une fois terminée, cette commande sera automatiquement ajoutée au stock principal
+                        <span className="font-semibold"> ({commande.modele.nom} - {commande.taille} - {commande.couleur})</span>
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-2 ml-4">
@@ -153,11 +172,11 @@ const AtelierCouturier = () => {
                       <Eye size={16} />
                     </Link>
                     <button
-                      onClick={() => handleTerminerCouture(commande._id)}
+                      onClick={() => handleTerminerCouture(commande._id, commande)}
                       className="btn btn-success btn-sm"
                     >
                       <CheckCircle size={16} className="mr-1" />
-                      Terminer
+                      Terminer & Stocker
                     </button>
                   </div>
                 </div>
