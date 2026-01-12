@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Filter, AlertCircle, Eye, Edit, Send } from 'lucide-react';
+import { Plus, Search, Filter, AlertCircle, Eye, Edit, Send, Package } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const Commandes = () => {
@@ -12,6 +12,7 @@ const Commandes = () => {
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
+  const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -83,6 +84,27 @@ const Commandes = () => {
       console.error(error);
     } finally {
       setSendingToAtelier(null);
+    }
+  };
+
+  const envoyerEnPreparationColis = async (commandeId) => {
+    if (!window.confirm('Envoyer cette commande directement en Préparation Colis (sans passer par l\'atelier) ?')) {
+      return;
+    }
+
+    setSendingToPreparation(commandeId);
+    try {
+      await api.put(`/commandes/${commandeId}`, {
+        statut: 'en_stock'
+      });
+      
+      toast.success('Commande envoyée en Préparation Colis ! 📦');
+      fetchCommandes(); // Recharger la liste
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi');
+      console.error(error);
+    } finally {
+      setSendingToPreparation(null);
     }
   };
 
@@ -271,17 +293,29 @@ const Commandes = () => {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  {/* Bouton Envoyer à l'atelier - visible seulement pour gestionnaire/admin et commandes validées */}
+                  {/* Boutons d'action - visibles seulement pour gestionnaire/admin et commandes validées */}
                   {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
-                    <button
-                      onClick={() => envoyerAAtelier(commande._id)}
-                      disabled={sendingToAtelier === commande._id}
-                      className="btn btn-primary btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
-                      title="Envoyer à l'atelier styliste"
-                    >
-                      <Send size={16} />
-                      <span>{sendingToAtelier === commande._id ? 'Envoi...' : 'Envoyer à l\'atelier'}</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => envoyerAAtelier(commande._id)}
+                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
+                        className="btn btn-primary btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
+                        title="Envoyer à l'atelier styliste"
+                      >
+                        <Send size={16} />
+                        <span>{sendingToAtelier === commande._id ? 'Envoi...' : 'Envoyer à l\'atelier'}</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => envoyerEnPreparationColis(commande._id)}
+                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
+                        className="btn btn-success btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
+                        title="Envoyer directement en Préparation Colis (sans passer par l'atelier)"
+                      >
+                        <Package size={16} />
+                        <span>{sendingToPreparation === commande._id ? 'Envoi...' : 'Direct Préparation'}</span>
+                      </button>
+                    </>
                   )}
                   
                   <Link
