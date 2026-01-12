@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check, Phone } from 'lucide-react';
+import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check, Phone, RotateCcw } from 'lucide-react';
 
 const CaisseLivreurs = () => {
   const [livreurs, setLivreurs] = useState([]);
@@ -10,6 +10,7 @@ const CaisseLivreurs = () => {
   const [selectedLivreur, setSelectedLivreur] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(null);
+  const [markingReturned, setMarkingReturned] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -122,6 +123,31 @@ const CaisseLivreurs = () => {
       console.error(error);
     } finally {
       setMarkingPaid(null);
+    }
+  };
+
+  const handleMarquerRetourne = async (livraisonId, commande) => {
+    const modele = typeof commande?.modele === 'object' ? commande.modele.nom : commande?.modele;
+    const taille = commande?.taille;
+    const couleur = commande?.couleur;
+    
+    if (!window.confirm(`Confirmer le retour de ce colis à la boutique ?\n\nLe stock sera automatiquement mis à jour :\n• ${modele} - ${taille} - ${couleur}\n• +1 unité au stock principal`)) {
+      return;
+    }
+
+    setMarkingReturned(livraisonId);
+    try {
+      await api.post(`/livraisons/${livraisonId}/confirmer-retour`, {
+        commentaire: 'Colis retourné par le livreur'
+      });
+      
+      toast.success(`✅ Colis retourné ! Stock mis à jour (+1 ${modele}).`);
+      await fetchData(); // Rafraîchir les données
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors du retour');
+      console.error(error);
+    } finally {
+      setMarkingReturned(null);
     }
   };
 
@@ -270,6 +296,16 @@ const CaisseLivreurs = () => {
                     </div>
                     <span className="text-xl font-black text-green-900">{livraisonsLivrees.length}</span>
                   </div>
+                  
+                  <div className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <XCircle className="text-red-600" size={16} />
+                      <span className="text-sm font-semibold text-red-900">Refusées</span>
+                    </div>
+                    <span className="text-xl font-black text-red-900">
+                      {livraisonsLivreur.filter(l => l.statut === 'refusee').length}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Montants */}
@@ -348,22 +384,28 @@ const CaisseLivreurs = () => {
                 </button>
               </div>
               
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="bg-white/20 rounded-lg p-3 text-center">
-                  <p className="text-xs font-semibold opacity-90 mb-1">Total Livraisons</p>
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                <div className="bg-white/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] font-semibold opacity-90 mb-1">Total</p>
                   <p className="text-2xl font-black">
                     {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).length}
                   </p>
                 </div>
-                <div className="bg-white/20 rounded-lg p-3 text-center">
-                  <p className="text-xs font-semibold opacity-90 mb-1">Livrées</p>
+                <div className="bg-white/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] font-semibold opacity-90 mb-1">✅ Livrées</p>
                   <p className="text-2xl font-black">
                     {getLivraisonsLivrees(selectedLivreur._id || selectedLivreur.id).length}
                   </p>
                 </div>
-                <div className="bg-white/20 rounded-lg p-3 text-center">
-                  <p className="text-xs font-semibold opacity-90 mb-1">À Remettre</p>
-                  <p className="text-xl font-black">
+                <div className="bg-white/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] font-semibold opacity-90 mb-1">❌ Refusées</p>
+                  <p className="text-2xl font-black">
+                    {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).filter(l => l.statut === 'refusee').length}
+                  </p>
+                </div>
+                <div className="bg-white/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] font-semibold opacity-90 mb-1">À Remettre</p>
+                  <p className="text-lg font-black">
                     {getMontantTotal(selectedLivreur._id || selectedLivreur.id).toLocaleString('fr-FR')} F
                   </p>
                 </div>
@@ -377,6 +419,8 @@ const CaisseLivreurs = () => {
               <div className="space-y-2">
                 {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => {
                   const isPaid = livraison.paiement_recu;
+                  const isRefused = livraison.statut === 'refusee';
+                  const isReturned = livraison.statut === 'retournee';
                   const montant = livraison.commande?.prix || 0;
                   const clientNom = typeof livraison.commande?.client === 'object' 
                     ? livraison.commande.client.nom 
@@ -388,24 +432,31 @@ const CaisseLivreurs = () => {
                     ? livraison.commande.modele.nom 
                     : livraison.commande?.modele || 'N/A';
                   
+                  let bgClass = 'bg-white border-gray-200 hover:shadow-md hover:border-emerald-300';
+                  if (isPaid) bgClass = 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300';
+                  if (isRefused) bgClass = 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300';
+                  if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-400';
+                  
                   return (
                     <div 
                       key={livraison._id || livraison.id} 
-                      className={`relative border rounded-lg p-3 transition-all ${
-                        isPaid 
-                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
-                          : 'bg-white border-gray-200 hover:shadow-md hover:border-emerald-300'
-                      }`}
+                      className={`relative border rounded-lg p-3 transition-all ${bgClass}`}
                     >
-                      {/* Badge Payé en coin */}
-                      {isPaid && (
-                        <div className="absolute top-2 right-2">
+                      {/* Badges en coin */}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1">
+                        {isPaid && (
                           <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-green-600 text-white flex items-center space-x-1 shadow-md">
                             <Check size={10} strokeWidth={4} />
                             <span>PAYÉ</span>
                           </span>
-                        </div>
-                      )}
+                        )}
+                        {isReturned && (
+                          <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
+                            <RotateCcw size={10} strokeWidth={4} />
+                            <span>RETOURNÉ</span>
+                          </span>
+                        )}
+                      </div>
                       
                       <div className="flex items-start justify-between gap-3">
                         {/* Partie gauche - Infos commande */}
@@ -475,7 +526,7 @@ const CaisseLivreurs = () => {
                             <p className="text-[10px] font-bold text-gray-500">FCFA</p>
                           </div>
                           
-                          {/* Bouton de confirmation */}
+                          {/* Boutons d'action */}
                           {livraison.statut === 'livree' && !isPaid && (
                             <button
                               onClick={() => handleMarquerPaye(livraison._id || livraison.id, montant)}
@@ -484,6 +535,18 @@ const CaisseLivreurs = () => {
                             >
                               <Check size={12} strokeWidth={4} />
                               <span>{markingPaid === (livraison._id || livraison.id) ? 'EN COURS...' : 'CONFIRMER'}</span>
+                            </button>
+                          )}
+                          
+                          {/* Bouton Retourné pour les colis refusés */}
+                          {isRefused && !isReturned && (
+                            <button
+                              onClick={() => handleMarquerRetourne(livraison._id || livraison.id, livraison.commande)}
+                              disabled={markingReturned === (livraison._id || livraison.id)}
+                              className="mt-2 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
+                            >
+                              <RotateCcw size={12} strokeWidth={4} />
+                              <span>{markingReturned === (livraison._id || livraison.id) ? 'EN COURS...' : 'RETOURNÉ'}</span>
                             </button>
                           )}
                         </div>
