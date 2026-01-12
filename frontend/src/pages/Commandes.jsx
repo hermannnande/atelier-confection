@@ -34,7 +34,9 @@ const Commandes = () => {
       
       // Trier avec priorité : 
       // 1. Commandes "validee" en PREMIER
-      // 2. Parmi les "validee", les PLUS RÉCENTES en HAUT
+      // 2. Parmi les "validee", tri par DATE DE VALIDATION (updated_at)
+      //    → La dernière validée en HAUT (peu importe quand elle a été créée)
+      //    → Exemple: C (ancienne) validée après A et B → C passe en HAUT
       // 3. Puis autres commandes par date décroissante
       const commandesTriees = commandesConfirmees.sort((a, b) => {
         // Priorité 1 : Les commandes "validee" avant tout le reste
@@ -45,11 +47,13 @@ const Commandes = () => {
           return prioriteA - prioriteB; // Les "validee" (0) avant les autres (1)
         }
         
-        // Priorité 2 : Au sein du même groupe de statut, tri par date
-        // Les plus récentes en premier (ordre décroissant)
+        // Priorité 2 : Au sein du même groupe de statut, tri par DATE DE VALIDATION
+        // updated_at = date de dernière modification (donc date de validation pour les "validee")
+        // Si B validée à 10h, puis A validée à 11h, puis C validée à 12h
+        // → Ordre: C (12h), A (11h), B (10h)
         const dateA = new Date(a.updated_at || a.created_at);
         const dateB = new Date(b.updated_at || b.created_at);
-        return dateB - dateA; // dateB > dateA = dateB en premier
+        return dateB - dateA; // Plus récent en premier
       });
       
       setCommandes(commandesTriees);
