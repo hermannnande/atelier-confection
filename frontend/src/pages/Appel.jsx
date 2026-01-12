@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus } from 'lucide-react';
 
 const Appel = () => {
   const [commandesAppel, setCommandesAppel] = useState([]);
@@ -208,11 +209,21 @@ const Appel = () => {
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
-          <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-            {commandesAppel.length}
-          </p>
+        <div className="flex flex-col items-end space-y-4">
+          <Link
+            to="/commandes/nouvelle"
+            className="btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+          >
+            <Plus size={20} strokeWidth={2.5} />
+            <span>Nouvelle Commande</span>
+          </Link>
+          
+          <div className="text-right">
+            <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
+            <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              {commandesAppel.length}
+            </p>
+          </div>
         </div>
       </div>
 
