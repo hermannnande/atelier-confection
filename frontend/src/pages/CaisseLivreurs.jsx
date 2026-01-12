@@ -316,121 +316,179 @@ const CaisseLivreurs = () => {
             <div className="p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Détails des Livraisons</h3>
               
-              <div className="space-y-2">
-                {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id)
-                  .sort((a, b) => {
-                    // Tri : les colis refusés en bas
-                    const aRefused = a.statut === 'refusee' ? 1 : 0;
-                    const bRefused = b.statut === 'refusee' ? 1 : 0;
-                    return aRefused - bRefused;
-                  })
-                  .map((livraison) => {
-                  const isRefused = livraison.statut === 'refusee';
-                  const isReturned = livraison.statut === 'retournee';
-                  const montant = livraison.commande?.prix || 0;
-                  const clientNom = typeof livraison.commande?.client === 'object' 
-                    ? livraison.commande.client.nom 
-                    : livraison.commande?.client || 'N/A';
-                  const clientContact = typeof livraison.commande?.client === 'object' 
-                    ? livraison.commande.client.contact 
-                    : '';
-                  const modeleNom = typeof livraison.commande?.modele === 'object' 
-                    ? livraison.commande.modele.nom 
-                    : livraison.commande?.modele || 'N/A';
+              <div className="space-y-6">
+                {(() => {
+                  // Grouper les livraisons par date d'assignation
+                  const livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                  const groupedByDate = {};
                   
-                  let bgClass = 'bg-white border-2 border-gray-200 hover:shadow-md hover:border-emerald-300';
-                  if (isRefused) bgClass = 'bg-gradient-to-r from-red-100 to-red-50 border-2 border-red-500';
-                  if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400';
+                  livraisons.forEach(livraison => {
+                    const dateAssignation = new Date(livraison.dateAssignation || livraison.date_assignation);
+                    const dateKey = dateAssignation.toLocaleDateString('fr-FR', { 
+                      year: 'numeric', 
+                      month: '2-digit', 
+                      day: '2-digit' 
+                    });
+                    
+                    if (!groupedByDate[dateKey]) {
+                      groupedByDate[dateKey] = [];
+                    }
+                    groupedByDate[dateKey].push(livraison);
+                  });
                   
-                  return (
-                    <div 
-                      key={livraison._id || livraison.id} 
-                      className={`relative border rounded-lg p-3 transition-all ${bgClass}`}
-                    >
-                      {/* Badges en coin */}
-                      <div className="absolute top-2 right-2 flex flex-col gap-1">
-                        {isReturned && (
-                          <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
-                            <RotateCcw size={10} strokeWidth={4} />
-                            <span>RETOURNÉ</span>
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-start justify-between gap-3">
-                        {/* Partie gauche - Infos commande */}
-                        <div className="flex-1 min-w-0">
-                          {/* Numéro et statut */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-black text-gray-900 text-sm">
-                              {livraison.commande?.numeroCommande || 'N/A'}
-                            </h4>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatutBadge(livraison.statut)}`}>
-                              {getStatutLabel(livraison.statut)}
-                            </span>
-                          </div>
-                          
-                          {/* Client avec contact */}
-                          <div className="bg-white/60 rounded-md p-2 mb-2">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold text-gray-500 uppercase">Client</span>
-                              <span className="text-xs font-black text-gray-900">{clientNom}</span>
+                  // Trier les groupes par date (plus récent en haut)
+                  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+                    const dateA = new Date(a.split('/').reverse().join('-'));
+                    const dateB = new Date(b.split('/').reverse().join('-'));
+                    return dateB - dateA;
+                  });
+                  
+                  return sortedDates.map(dateKey => {
+                    const livraisonsJour = groupedByDate[dateKey];
+                    const montantTotal = livraisonsJour.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+                    
+                    // Trier les livraisons du jour : refusées en bas
+                    const livraisonsTriees = livraisonsJour.sort((a, b) => {
+                      const aRefused = a.statut === 'refusee' ? 1 : 0;
+                      const bRefused = b.statut === 'refusee' ? 1 : 0;
+                      return aRefused - bRefused;
+                    });
+                    
+                    return (
+                      <div key={dateKey} className="border-2 border-gray-300 rounded-xl overflow-hidden">
+                        {/* Header du bloc journalier */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-white/20 p-2 rounded-lg">
+                              <Package className="text-white" size={20} />
                             </div>
-                            {clientContact && (
-                              <a
-                                href={`tel:${clientContact}`}
-                                className="flex items-center justify-end space-x-1 text-blue-600 hover:text-blue-800 font-semibold text-xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Phone size={11} />
-                                <span>{clientContact}</span>
-                              </a>
-                            )}
-                          </div>
-                          
-                          {/* Modèle et ville */}
-                          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                            <div className="bg-gray-50 rounded px-2 py-1">
-                              <span className="text-gray-500 font-semibold">Modèle:</span>
-                              <p className="font-bold text-gray-900 truncate">{modeleNom}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded px-2 py-1">
-                              <span className="text-gray-500 font-semibold">Ville:</span>
-                              <p className="font-bold text-gray-900 truncate">
-                                {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
+                            <div>
+                              <p className="text-white font-black text-lg">📅 {dateKey}</p>
+                              <p className="text-white/80 text-xs font-semibold">
+                                {livraisonsJour.length} colis assigné{livraisonsJour.length > 1 ? 's' : ''}
                               </p>
                             </div>
                           </div>
-                          
+                          <div className="text-right">
+                            <p className="text-white/80 text-xs font-semibold">Total du jour</p>
+                            <p className="text-white font-black text-xl">{montantTotal.toLocaleString('fr-FR')} F</p>
+                          </div>
                         </div>
                         
-                        {/* Partie droite - Montant et action */}
-                        <div className="flex flex-col items-end justify-between min-w-[120px]">
-                          {/* Montant */}
-                          <div className="text-right">
-                            <p className="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
-                            <p className="text-xl font-black text-emerald-600">
-                              {montant.toLocaleString('fr-FR')}
-                            </p>
-                            <p className="text-[10px] font-bold text-gray-500">FCFA</p>
-                          </div>
-                          
-                          {/* Bouton Retourné pour les colis refusés */}
-                          {isRefused && !isReturned && (
-                            <button
-                              onClick={() => handleMarquerRetourne(livraison._id || livraison.id, livraison.commande)}
-                              disabled={markingReturned === (livraison._id || livraison.id)}
-                              className="mt-2 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
-                            >
-                              <RotateCcw size={12} strokeWidth={4} />
-                              <span>{markingReturned === (livraison._id || livraison.id) ? 'EN COURS...' : 'RETOURNÉ'}</span>
-                            </button>
-                          )}
+                        {/* Liste des livraisons du jour */}
+                        <div className="p-4 space-y-2 bg-gray-50">
+                          {livraisonsTriees.map((livraison) => {
+                            const isRefused = livraison.statut === 'refusee';
+                            const isReturned = livraison.statut === 'retournee';
+                            const montant = livraison.commande?.prix || 0;
+                            const clientNom = typeof livraison.commande?.client === 'object' 
+                              ? livraison.commande.client.nom 
+                              : livraison.commande?.client || 'N/A';
+                            const clientContact = typeof livraison.commande?.client === 'object' 
+                              ? livraison.commande.client.contact 
+                              : '';
+                            const modeleNom = typeof livraison.commande?.modele === 'object' 
+                              ? livraison.commande.modele.nom 
+                              : livraison.commande?.modele || 'N/A';
+                            
+                            let bgClass = 'bg-white border-2 border-gray-200 hover:shadow-md hover:border-emerald-300';
+                            if (isRefused) bgClass = 'bg-gradient-to-r from-red-100 to-red-50 border-2 border-red-500';
+                            if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400';
+                            
+                            return (
+                              <div 
+                                key={livraison._id || livraison.id} 
+                                className={`relative border rounded-lg p-3 transition-all ${bgClass}`}
+                              >
+                                {/* Badges en coin */}
+                                <div className="absolute top-2 right-2 flex flex-col gap-1">
+                                  {isReturned && (
+                                    <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
+                                      <RotateCcw size={10} strokeWidth={4} />
+                                      <span>RETOURNÉ</span>
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-start justify-between gap-3">
+                                  {/* Partie gauche - Infos commande */}
+                                  <div className="flex-1 min-w-0">
+                                    {/* Numéro et statut */}
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <h4 className="font-black text-gray-900 text-sm">
+                                        {livraison.commande?.numeroCommande || 'N/A'}
+                                      </h4>
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatutBadge(livraison.statut)}`}>
+                                        {getStatutLabel(livraison.statut)}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Client avec contact */}
+                                    <div className="bg-white/60 rounded-md p-2 mb-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Client</span>
+                                        <span className="text-xs font-black text-gray-900">{clientNom}</span>
+                                      </div>
+                                      {clientContact && (
+                                        <a
+                                          href={`tel:${clientContact}`}
+                                          className="flex items-center justify-end space-x-1 text-blue-600 hover:text-blue-800 font-semibold text-xs"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Phone size={11} />
+                                          <span>{clientContact}</span>
+                                        </a>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Modèle et ville */}
+                                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                                      <div className="bg-gray-50 rounded px-2 py-1">
+                                        <span className="text-gray-500 font-semibold">Modèle:</span>
+                                        <p className="font-bold text-gray-900 truncate">{modeleNom}</p>
+                                      </div>
+                                      <div className="bg-gray-50 rounded px-2 py-1">
+                                        <span className="text-gray-500 font-semibold">Ville:</span>
+                                        <p className="font-bold text-gray-900 truncate">
+                                          {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    
+                                  </div>
+                                  
+                                  {/* Partie droite - Montant et action */}
+                                  <div className="flex flex-col items-end justify-between min-w-[120px]">
+                                    {/* Montant */}
+                                    <div className="text-right">
+                                      <p className="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
+                                      <p className="text-xl font-black text-emerald-600">
+                                        {montant.toLocaleString('fr-FR')}
+                                      </p>
+                                      <p className="text-[10px] font-bold text-gray-500">FCFA</p>
+                                    </div>
+                                    
+                                    {/* Bouton Retourné pour les colis refusés */}
+                                    {isRefused && !isReturned && (
+                                      <button
+                                        onClick={() => handleMarquerRetourne(livraison._id || livraison.id, livraison.commande)}
+                                        disabled={markingReturned === (livraison._id || livraison.id)}
+                                        className="mt-2 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
+                                      >
+                                        <RotateCcw size={12} strokeWidth={4} />
+                                        <span>{markingReturned === (livraison._id || livraison.id) ? 'EN COURS...' : 'RETOURNÉ'}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
