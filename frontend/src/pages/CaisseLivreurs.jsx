@@ -185,6 +185,22 @@ const CaisseLivreurs = () => {
             const livraisonsEnCours = livraisonsLivreur.filter(l => l.statut === 'en_cours');
             const montantTotal = getMontantTotal(livreur._id || livreur.id);
             
+            // Extraire les dates d'assignation uniques
+            const datesAssignation = [...new Set(
+              livraisonsLivreur.map(l => {
+                const date = new Date(l.dateAssignation || l.date_assignation);
+                return date.toLocaleDateString('fr-FR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                });
+              })
+            )].sort((a, b) => {
+              const dateA = new Date(a.split('/').reverse().join('-'));
+              const dateB = new Date(b.split('/').reverse().join('-'));
+              return dateB - dateA; // Plus récent en premier
+            });
+            
             return (
               <div 
                 key={livreur._id || livreur.id} 
@@ -200,6 +216,23 @@ const CaisseLivreurs = () => {
                     <p className="text-sm text-gray-600">{livreur.telephone}</p>
                   </div>
                 </div>
+                
+                {/* Dates d'assignation */}
+                {datesAssignation.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">📅 Dates d'assignation</p>
+                    <div className="flex flex-wrap gap-2">
+                      {datesAssignation.map((date, index) => (
+                        <span 
+                          key={index}
+                          className="px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold rounded-full shadow-sm"
+                        >
+                          {date}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Statistiques */}
                 <div className="space-y-3 mb-4">
