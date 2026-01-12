@@ -370,24 +370,6 @@ const Appel = () => {
             <div className="p-4 space-y-3">
               {/* Client avec Image du produit */}
               <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
-                {/* Image du produit */}
-                {selectedCommande.modele?.image ? (
-                  <div className="flex-shrink-0">
-                    <img 
-                      src={selectedCommande.modele.image} 
-                      alt={getModeleNom(selectedCommande.modele)}
-                      className="w-20 h-20 object-cover rounded-lg shadow-md"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
-                    <Package className="text-white" size={32} />
-                  </div>
-                )}
-                
                 {/* Infos Client */}
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -409,6 +391,24 @@ const Appel = () => {
                     <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
                   </div>
                 </div>
+                
+                {/* Image du produit - À DROITE */}
+                {(typeof selectedCommande.modele === 'object' && selectedCommande.modele?.image) ? (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={selectedCommande.modele.image} 
+                      alt={getModeleNom(selectedCommande.modele)}
+                      className="w-20 h-20 object-cover rounded-lg shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
+                    <Package className="text-white" size={32} />
+                  </div>
+                )}
               </div>
 
               {/* Détails Commande - Compact */}
