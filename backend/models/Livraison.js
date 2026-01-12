@@ -13,8 +13,8 @@ const livraisonSchema = new mongoose.Schema({
   },
   statut: {
     type: String,
-    enum: ['assignee', 'en_cours', 'livree', 'refusee', 'retournee'],
-    default: 'assignee'
+    enum: ['en_cours', 'livree', 'refusee', 'retournee'],
+    default: 'en_cours'
   },
   dateAssignation: {
     type: Date,

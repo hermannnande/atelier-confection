@@ -91,7 +91,7 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
       .insert({
         commande_id: commandeId,
         livreur_id: livreurId,
-        statut: 'assignee',
+        statut: 'en_cours',
         adresse_livraison: { ville: commande.client?.ville, details: '' },
         instructions: instructions || commande.note_appelant,
       })

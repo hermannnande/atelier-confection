@@ -139,7 +139,7 @@ router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'
       
       const livraisonsReussies = livraisons.filter(l => l.statut === 'livree');
       const livraisonsRefusees = livraisons.filter(l => l.statut === 'refusee');
-      const livraisonsEnCours = livraisons.filter(l => ['assignee', 'en_cours'].includes(l.statut));
+      const livraisonsEnCours = livraisons.filter(l => l.statut === 'en_cours');
 
       const tauxReussite = livraisons.length > 0
         ? ((livraisonsReussies.length / livraisons.length) * 100).toFixed(2)

@@ -106,7 +106,6 @@ const Livraisons = () => {
 
   const getStatutBadge = (statut) => {
     const badges = {
-      assignee: 'badge-info',
       en_cours: 'badge-primary',
       livree: 'badge-success',
       refusee: 'badge-danger',
@@ -117,7 +116,6 @@ const Livraisons = () => {
 
   const getStatutLabel = (statut) => {
     const labels = {
-      assignee: 'Assignée',
       en_cours: 'En cours',
       livree: 'Livrée',
       refusee: 'Refusée',
@@ -162,7 +160,7 @@ const Livraisons = () => {
         <div className="card">
           <p className="text-gray-600 mb-2">En cours</p>
           <p className="text-3xl font-bold text-yellow-600">
-            {livraisons.filter(l => ['assignee', 'en_cours'].includes(l.statut)).length}
+            {livraisons.filter(l => l.statut === 'en_cours').length}
           </p>
         </div>
         <div className="card">
@@ -204,14 +202,12 @@ const Livraisons = () => {
                       livraison.statut === 'livree' ? 'bg-green-100 text-green-800' :
                       livraison.statut === 'refusee' ? 'bg-red-100 text-red-800' :
                       livraison.statut === 'retournee' ? 'bg-gray-100 text-gray-800' :
-                      livraison.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      'bg-blue-100 text-blue-800'
                     }`}>
                       {livraison.statut === 'livree' && '✅ '}
                       {livraison.statut === 'refusee' && '❌ '}
                       {livraison.statut === 'retournee' && '↩️ '}
                       {livraison.statut === 'en_cours' && '🚚 '}
-                      {livraison.statut === 'assignee' && '📋 '}
                       {getStatutLabel(livraison.statut)}
                     </span>
                     {livraison.commande?.urgence && (
@@ -268,7 +264,7 @@ const Livraisons = () => {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  {user?.role === 'livreur' && ['assignee', 'en_cours'].includes(livraison.statut) && (
+                  {user?.role === 'livreur' && livraison.statut === 'en_cours' && (
                     <>
                       <button
                         onClick={() => handleLivree(livraison._id)}

@@ -193,7 +193,7 @@ router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'
       const list = livByLivreur.get(l.id) || [];
       const livraisonsReussies = list.filter((x) => x.statut === 'livree');
       const livraisonsRefusees = list.filter((x) => x.statut === 'refusee');
-      const livraisonsEnCours = list.filter((x) => ['assignee', 'en_cours'].includes(x.statut));
+      const livraisonsEnCours = list.filter((x) => x.statut === 'en_cours');
 
       const tauxReussite = list.length > 0 ? ((livraisonsReussies.length / list.length) * 100).toFixed(2) : 0;
       const chiffreAffaires = livraisonsReussies.reduce((sum, x) => sum + (prixByCommande.get(x.commande_id) || 0), 0);
