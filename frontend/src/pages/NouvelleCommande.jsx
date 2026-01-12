@@ -13,6 +13,10 @@ const NouvelleCommande = () => {
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Listes complètes des tailles et couleurs disponibles
+  const taillesDisponibles = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
+  const couleursDisponibles = ['Blanc', 'Noir', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Rose', 'Violet', 'Orange', 'Gris', 'Beige', 'Marron', 'Terracotta', 'Multicolore'];
+  
   const [formData, setFormData] = useState({
     client: {
       nom: '',
@@ -103,6 +107,34 @@ const NouvelleCommande = () => {
     }));
   };
 
+  const handleTailleChange = (taille) => {
+    setFormData(prev => ({
+      ...prev,
+      taille
+    }));
+    // Vérifier si une variation existe en stock pour cette combinaison
+    if (selectedModel && formData.couleur) {
+      const variation = getVariationStock(taille, formData.couleur);
+      if (variation) {
+        setFormData(prev => ({ ...prev, prix: variation.prix }));
+      }
+    }
+  };
+
+  const handleCouleurChange = (couleur) => {
+    setFormData(prev => ({
+      ...prev,
+      couleur
+    }));
+    // Vérifier si une variation existe en stock pour cette combinaison
+    if (selectedModel && formData.taille) {
+      const variation = getVariationStock(formData.taille, couleur);
+      if (variation) {
+        setFormData(prev => ({ ...prev, prix: variation.prix }));
+      }
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
@@ -126,13 +158,13 @@ const NouvelleCommande = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!selectedVariation) {
-      toast.error('Veuillez sélectionner une variation (taille + couleur)');
+    if (!formData.taille || !formData.couleur) {
+      toast.error('Veuillez sélectionner une taille et une couleur');
       return;
     }
 
-    if (selectedVariation.quantitePrincipale <= 0) {
-      toast.error('Cette variation n\'est pas en stock');
+    if (!formData.prix || formData.prix <= 0) {
+      toast.error('Veuillez saisir un prix valide');
       return;
     }
 
@@ -163,25 +195,10 @@ const NouvelleCommande = () => {
     }
   };
 
-  // Créer la matrice taille × couleur
-  const getVariationMatrix = () => {
-    if (!selectedModel) return null;
-
-    const tailles = Array.from(selectedModel.tailles).sort((a, b) => {
-      const order = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
-      return order.indexOf(a) - order.indexOf(b);
-    });
-    const couleurs = Array.from(selectedModel.couleurs);
-
-    return { tailles, couleurs };
-  };
-
   const getVariationStock = (taille, couleur) => {
     if (!selectedModel) return null;
     return selectedModel.variations.find(v => v.taille === taille && v.couleur === couleur);
   };
-
-  const matrix = getVariationMatrix();
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
@@ -347,107 +364,138 @@ const NouvelleCommande = () => {
           )}
         </div>
 
-        {/* Matrice Taille × Couleur */}
-        {selectedModel && matrix && (
+        {/* Sélection Taille & Couleur */}
+        {selectedModel && (
           <div className="stat-card animate-scale-in">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-3">
                 <div className="w-1 h-8 bg-gradient-to-b from-emerald-600 to-teal-600 rounded-full"></div>
                 <span>Sélectionner Taille & Couleur</span>
               </h2>
-              {selectedVariation && (
+              {formData.taille && formData.couleur && (
                 <span className="badge badge-success flex items-center space-x-2">
                   <Check size={14} />
-                  <span>{selectedVariation.taille} • {selectedVariation.couleur}</span>
+                  <span>{formData.taille} • {formData.couleur}</span>
                 </span>
               )}
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 z-10 bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase border-b-2 border-gray-200">
-                      Taille / Couleur
-                    </th>
-                    {matrix.couleurs.map((couleur, i) => (
-                      <th key={i} className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase border-b-2 border-gray-200">
-                        {couleur}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrix.tailles.map((taille, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-blue-50/30 transition-colors">
-                      <td className="sticky left-0 z-10 bg-white px-4 py-3 font-bold text-gray-900 text-sm">
-                        {taille}
-                      </td>
-                      {matrix.couleurs.map((couleur, j) => {
-                        const variation = getVariationStock(taille, couleur);
-                        const isSelected = selectedVariation?._id === variation?._id;
-                        const inStock = variation && variation.quantitePrincipale > 0;
-                        
-                        return (
-                          <td key={j} className="px-2 py-2">
-                            {variation ? (
-                              <button
-                                type="button"
-                                onClick={() => handleVariationSelect(variation)}
-                                disabled={!inStock}
-                                className={`
-                                  w-full px-3 py-2 rounded-xl text-sm font-bold transition-all duration-300
-                                  ${isSelected
-                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
-                                    : inStock
-                                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
-                                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  }
-                                `}
-                              >
-                                <div className="flex flex-col items-center space-y-1">
-                                  <span className="text-base">{variation.quantitePrincipale}</span>
-                                  <span className="text-xs opacity-80">{variation.prix.toLocaleString('fr-FR')} F</span>
-                                </div>
-                              </button>
-                            ) : (
-                              <div className="w-full px-3 py-2 rounded-xl bg-gray-50 text-center">
-                                <span className="text-gray-300 text-xs">—</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sélection de la taille */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">
+                  📏 Taille *
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {taillesDisponibles.map((taille) => {
+                    const variation = formData.couleur ? getVariationStock(taille, formData.couleur) : null;
+                    const inStock = variation && variation.quantitePrincipale > 0;
+                    
+                    return (
+                      <button
+                        key={taille}
+                        type="button"
+                        onClick={() => handleTailleChange(taille)}
+                        className={`
+                          px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300
+                          ${formData.taille === taille
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
+                            : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
+                          }
+                        `}
+                      >
+                        <div className="flex flex-col items-center">
+                          <span className="text-base">{taille}</span>
+                          {inStock && (
+                            <span className="text-xs opacity-80 mt-1">
+                              Stock: {variation.quantitePrincipale}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sélection de la couleur */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">
+                  🎨 Couleur *
+                </label>
+                <div className="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-2">
+                  {couleursDisponibles.map((couleur) => {
+                    const variation = formData.taille ? getVariationStock(formData.taille, couleur) : null;
+                    const inStock = variation && variation.quantitePrincipale > 0;
+                    
+                    return (
+                      <button
+                        key={couleur}
+                        type="button"
+                        onClick={() => handleCouleurChange(couleur)}
+                        className={`
+                          px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300 text-left
+                          ${formData.couleur === couleur
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
+                            : 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 hover:from-purple-100 hover:to-pink-100 hover:shadow-md'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{couleur}</span>
+                          {inStock && (
+                            <span className="text-xs opacity-80 bg-white/30 px-2 py-1 rounded">
+                              {variation.quantitePrincipale}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            {/* Légende */}
-            <div className="mt-6 flex items-center justify-center space-x-6 text-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded border border-blue-200"></div>
-                <span className="text-gray-600 font-medium">Disponible</span>
+            {/* Information sur le stock */}
+            {formData.taille && formData.couleur && (
+              <div className="mt-6">
+                {(() => {
+                  const variation = getVariationStock(formData.taille, formData.couleur);
+                  if (variation && variation.quantitePrincipale > 0) {
+                    return (
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                        <div className="flex items-center space-x-2">
+                          <Check className="text-green-600" size={20} />
+                          <p className="text-green-800 font-bold">
+                            ✅ En stock : {variation.quantitePrincipale} unité(s) disponible(s)
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
+                        <div className="flex items-center space-x-2">
+                          <AlertCircle className="text-amber-600" size={20} />
+                          <p className="text-amber-800 font-bold">
+                            ⚠️ Cette combinaison n'est pas en stock - Commande sur mesure
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded"></div>
-                <span className="text-gray-600 font-medium">Sélectionné</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-gray-100 rounded"></div>
-                <span className="text-gray-600 font-medium">Rupture</span>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* Résumé & Prix */}
-        {selectedVariation && (
+        {selectedModel && formData.taille && formData.couleur && (
           <div className="stat-card animate-scale-in" style={{ animationDelay: '0.1s' }}>
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
               <div className="w-1 h-8 bg-gradient-to-b from-amber-600 to-orange-600 rounded-full"></div>
-              <span>Résumé</span>
+              <span>Résumé & Prix</span>
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -457,20 +505,31 @@ const NouvelleCommande = () => {
               </div>
               <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200/60">
                 <p className="text-xs font-bold text-gray-500 uppercase mb-1">Taille & Couleur</p>
-                <p className="text-lg font-black text-gray-900">{selectedVariation.taille} • {selectedVariation.couleur}</p>
+                <p className="text-lg font-black text-gray-900">{formData.taille} • {formData.couleur}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200/60">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Prix</p>
-                <p className="text-2xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  {selectedVariation.prix.toLocaleString('fr-FR')} FCFA
-                </p>
+                <label htmlFor="prix" className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                  Prix *
+                </label>
+                <input
+                  type="number"
+                  id="prix"
+                  name="prix"
+                  value={formData.prix}
+                  onChange={handleChange}
+                  required
+                  min="0"
+                  className="w-full px-3 py-2 text-xl font-black bg-white border-2 border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  placeholder="10000"
+                />
+                <p className="text-xs text-gray-500 mt-1">FCFA</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Options & Notes */}
-        {selectedVariation && (
+        {selectedModel && formData.taille && formData.couleur && (
           <div className="stat-card animate-scale-in" style={{ animationDelay: '0.2s' }}>
             <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
               <div className="w-1 h-8 bg-gradient-to-b from-rose-600 to-pink-600 rounded-full"></div>
@@ -522,7 +581,7 @@ const NouvelleCommande = () => {
           </button>
           <button
             type="submit"
-            disabled={loading || !selectedVariation}
+            disabled={loading || !selectedModel || !formData.taille || !formData.couleur || !formData.prix}
             className="btn btn-primary flex items-center space-x-2"
           >
             <Save size={20} strokeWidth={2.5} />
