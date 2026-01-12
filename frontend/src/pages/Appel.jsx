@@ -368,25 +368,46 @@ const Appel = () => {
 
             {/* Contenu compact */}
             <div className="p-4 space-y-3">
-              {/* Client - Une seule ligne */}
-              <div className="bg-gray-50 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
-                  <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
-                  <a 
-                    href={`tel:${getClientContact(selectedCommande)}`}
-                    className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-                  >
-                    <Phone size={14} />
-                    <span>{getClientContact(selectedCommande)}</span>
-                  </a>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
-                  <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
+              {/* Client avec Image du produit */}
+              <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
+                {/* Image du produit */}
+                {selectedCommande.modele?.image ? (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={selectedCommande.modele.image} 
+                      alt={getModeleNom(selectedCommande.modele)}
+                      className="w-20 h-20 object-cover rounded-lg shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
+                    <Package className="text-white" size={32} />
+                  </div>
+                )}
+                
+                {/* Infos Client */}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
+                    <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
+                    <a 
+                      href={`tel:${getClientContact(selectedCommande)}`}
+                      className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                    >
+                      <Phone size={14} />
+                      <span>{getClientContact(selectedCommande)}</span>
+                    </a>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
+                    <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
+                  </div>
                 </div>
               </div>
 
