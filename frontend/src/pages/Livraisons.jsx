@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { Truck, CheckCircle, XCircle, AlertCircle, Package } from 'lucide-react';
+import { Truck, CheckCircle, XCircle, AlertCircle, Package, Phone } from 'lucide-react';
 
 const Livraisons = () => {
   const { user } = useAuthStore();
@@ -196,40 +196,63 @@ const Livraisons = () => {
             <div key={livraison._id} className="card hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-3">
+                  <div className="flex items-center space-x-3 mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">
                       {livraison.commande?.numeroCommande}
                     </h3>
-                    <span className={`badge ${getStatutBadge(livraison.statut)}`}>
+                    <span className={`px-3 py-1.5 rounded-lg font-bold text-sm ${
+                      livraison.statut === 'livree' ? 'bg-green-100 text-green-800' :
+                      livraison.statut === 'refusee' ? 'bg-red-100 text-red-800' :
+                      livraison.statut === 'retournee' ? 'bg-gray-100 text-gray-800' :
+                      livraison.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {livraison.statut === 'livree' && '✅ '}
+                      {livraison.statut === 'refusee' && '❌ '}
+                      {livraison.statut === 'retournee' && '↩️ '}
+                      {livraison.statut === 'en_cours' && '🚚 '}
+                      {livraison.statut === 'assignee' && '📋 '}
                       {getStatutLabel(livraison.statut)}
                     </span>
                     {livraison.commande?.urgence && (
-                      <span className="badge badge-danger">
-                        <AlertCircle size={12} className="mr-1" />
-                        Urgent
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold">
+                        <AlertCircle size={12} className="inline mr-1" />
+                        URGENT
                       </span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-4">
-                    <div>
-                      <p className="text-gray-500">Client</p>
-                      <p className="font-medium text-gray-900">{livraison.commande?.client.nom}</p>
-                      <p className="text-gray-600">{livraison.commande?.client.contact}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Client</p>
+                      <p className="font-bold text-gray-900 mb-1">{livraison.commande?.client.nom}</p>
+                      <a 
+                        href={`tel:${livraison.commande?.client.contact}`}
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium"
+                      >
+                        <Phone size={14} />
+                        <span>{livraison.commande?.client.contact}</span>
+                      </a>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Ville</p>
-                      <p className="font-medium text-gray-900">{livraison.adresseLivraison.ville}</p>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Ville</p>
+                      <p className="font-bold text-gray-900">📍 {livraison.adresseLivraison.ville}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Livreur</p>
-                      <p className="font-medium text-gray-900">{livraison.livreur?.nom}</p>
-                      <p className="text-gray-600">{livraison.livreur?.telephone}</p>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Livreur</p>
+                      <p className="font-bold text-gray-900 mb-1">{livraison.livreur?.nom}</p>
+                      <a 
+                        href={`tel:${livraison.livreur?.telephone}`}
+                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium"
+                      >
+                        <Phone size={14} />
+                        <span>{livraison.livreur?.telephone}</span>
+                      </a>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Prix</p>
-                      <p className="font-bold text-primary-600">
-                        {livraison.commande?.prix.toLocaleString('fr-FR')} FCFA
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-3">
+                      <p className="text-xs text-white uppercase font-semibold mb-2">Prix Total</p>
+                      <p className="text-2xl font-black text-white">
+                        {livraison.commande?.prix.toLocaleString('fr-FR')} <span className="text-sm">FCFA</span>
                       </p>
                     </div>
                   </div>
