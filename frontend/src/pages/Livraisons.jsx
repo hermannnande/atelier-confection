@@ -14,12 +14,15 @@ const Livraisons = () => {
   const [selectedCommande, setSelectedCommande] = useState('');
   const [selectedLivreur, setSelectedLivreur] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [filterLivreur, setFilterLivreur] = useState('');
+  const [filterDateDebut, setFilterDateDebut] = useState('');
+  const [filterDateFin, setFilterDateFin] = useState('');
 
   useEffect(() => {
     fetchLivraisons();
+    fetchLivreurs(); // Charger les livreurs pour le filtre
     if (['gestionnaire', 'administrateur'].includes(user?.role)) {
       fetchCommandesStock();
-      fetchLivreurs();
     }
   }, [user]);
 
@@ -124,6 +127,44 @@ const Livraisons = () => {
     };
     return labels[statut] || statut;
   };
+
+  // Fonction de filtrage combinée
+  const getFilteredLivraisons = () => {
+    let filtered = [...livraisons];
+
+    // Filtre par statut
+    if (filterStatut) {
+      filtered = filtered.filter(l => l.statut === filterStatut);
+    }
+
+    // Filtre par livreur
+    if (filterLivreur) {
+      filtered = filtered.filter(l => l.livreur?._id === filterLivreur);
+    }
+
+    // Filtre par date de début
+    if (filterDateDebut) {
+      filtered = filtered.filter(l => {
+        const dateAssignation = new Date(l.dateAssignation);
+        const dateDebut = new Date(filterDateDebut);
+        return dateAssignation >= dateDebut;
+      });
+    }
+
+    // Filtre par date de fin
+    if (filterDateFin) {
+      filtered = filtered.filter(l => {
+        const dateAssignation = new Date(l.dateAssignation);
+        const dateFin = new Date(filterDateFin);
+        dateFin.setHours(23, 59, 59, 999); // Inclure toute la journée
+        return dateAssignation <= dateFin;
+      });
+    }
+
+    return filtered;
+  };
+
+  const livraisonsFiltered = getFilteredLivraisons();
 
   if (loading) {
     return (
@@ -252,20 +293,88 @@ const Livraisons = () => {
         </button>
       </div>
 
+      {/* Filtres par livreur et date */}
+      <div className="card">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Filtre par livreur */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              👤 Filtrer par livreur
+            </label>
+            <select
+              value={filterLivreur}
+              onChange={(e) => setFilterLivreur(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="">Tous les livreurs</option>
+              {livreurs.map(livreur => (
+                <option key={livreur._id} value={livreur._id}>
+                  {livreur.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtre par date de début */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              📅 Date de début
+            </label>
+            <input
+              type="date"
+              value={filterDateDebut}
+              onChange={(e) => setFilterDateDebut(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Filtre par date de fin */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              📅 Date de fin
+            </label>
+            <input
+              type="date"
+              value={filterDateFin}
+              onChange={(e) => setFilterDateFin(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Bouton réinitialiser les filtres */}
+        {(filterLivreur || filterDateDebut || filterDateFin) && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                setFilterLivreur('');
+                setFilterDateDebut('');
+                setFilterDateFin('');
+              }}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold text-sm transition-all"
+            >
+              ✖️ Réinitialiser les filtres
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Liste des livraisons */}
-      {(filterStatut ? livraisons.filter(l => l.statut === filterStatut) : livraisons).length === 0 ? (
+      {livraisonsFiltered.length === 0 ? (
         <div className="card text-center py-12">
           <Truck className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {filterStatut ? `Aucune livraison ${getStatutLabel(filterStatut).toLowerCase()}` : 'Aucune livraison'}
+            Aucune livraison trouvée
           </h3>
           <p className="text-gray-600">
-            {filterStatut ? 'Aucune livraison ne correspond à ce filtre' : 'Les livraisons assignées apparaîtront ici'}
+            {(filterStatut || filterLivreur || filterDateDebut || filterDateFin)
+              ? 'Aucune livraison ne correspond aux filtres sélectionnés'
+              : 'Les livraisons assignées apparaîtront ici'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {(filterStatut ? livraisons.filter(l => l.statut === filterStatut) : livraisons).map((livraison) => (
+          {livraisonsFiltered.map((livraison) => (
             <div key={livraison._id} className="card hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
