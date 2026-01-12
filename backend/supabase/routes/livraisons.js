@@ -69,7 +69,9 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
 
     const { data: commande, error: e1 } = await supabase.from('commandes').select('*').eq('id', commandeId).single();
     if (e1 || !commande) return res.status(404).json({ message: 'Commande non trouvée' });
-    if (commande.statut !== 'en_stock') return res.status(400).json({ message: 'La commande doit être en stock pour être assignée' });
+    if (commande.statut !== 'en_stock') {
+      return res.status(400).json({ message: 'La commande doit être en stock pour être assignée à un livreur' });
+    }
 
     const { data: stockItem, error: e2 } = await supabase
       .from('stock')

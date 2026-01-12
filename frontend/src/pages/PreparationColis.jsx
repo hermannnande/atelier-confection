@@ -27,8 +27,7 @@ const PreparationColis = () => {
       const response = await api.get('/commandes');
       // Filtre les commandes en cours de traitement à l'atelier
       const filtered = response.data.commandes.filter(c => 
-        ['en_decoupe', 'en_couture', 'confectionnee'].includes(c.statut) || 
-        (c.statut === 'en_stock')
+        ['en_decoupe', 'en_couture', 'en_stock'].includes(c.statut)
       );
       setCommandes(filtered);
     } catch (error) {
@@ -56,12 +55,12 @@ const PreparationColis = () => {
 
     setAssigning(true);
     try {
-      await api.post(`/livraisons`, {
+      await api.post(`/livraisons/assigner`, {
         commandeId: selectedCommande._id,
         livreurId: selectedLivreur
       });
       
-      toast.success('Commande assignée au livreur ! 🚚');
+      toast.success('Commande assignée au livreur ! 🚚 Visible dans "Livraisons"');
       setShowModal(false);
       setSelectedCommande(null);
       setSelectedLivreur('');
@@ -95,18 +94,8 @@ const PreparationColis = () => {
         progress: 66,
         emoji: '🧵'
       },
-      confectionnee: {
-        label: 'Confection Terminée',
-        icon: CheckCircle,
-        color: 'bg-gradient-to-r from-green-500 to-emerald-600',
-        textColor: 'text-green-900',
-        bgLight: 'bg-green-50',
-        borderColor: 'border-green-200',
-        progress: 100,
-        emoji: '✅'
-      },
       en_stock: {
-        label: 'Confection Terminée',
+        label: 'En Stock - Prêt à livrer',
         icon: CheckCircle,
         color: 'bg-gradient-to-r from-green-500 to-emerald-600',
         textColor: 'text-green-900',
@@ -120,9 +109,7 @@ const PreparationColis = () => {
   };
 
   const filteredCommandes = filterStatut 
-    ? (filterStatut === 'confectionnee' 
-        ? commandes.filter(c => c.statut === 'confectionnee' || c.statut === 'en_stock')
-        : commandes.filter(c => c.statut === filterStatut))
+    ? commandes.filter(c => c.statut === filterStatut)
     : commandes;
 
   // Statistiques
@@ -130,7 +117,7 @@ const PreparationColis = () => {
     total: commandes.length,
     enDecoupe: commandes.filter(c => c.statut === 'en_decoupe').length,
     enCouture: commandes.filter(c => c.statut === 'en_couture').length,
-    terminees: commandes.filter(c => c.statut === 'confectionnee' || c.statut === 'en_stock').length,
+    enStock: commandes.filter(c => c.statut === 'en_stock').length,
   };
 
   if (loading) {
@@ -184,8 +171,8 @@ const PreparationColis = () => {
           <p className="text-2xl font-black text-orange-900">{stats.enCouture}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-green-600 uppercase">✅ Terminées</p>
-          <p className="text-2xl font-black text-green-900">{stats.terminees}</p>
+          <p className="text-xs font-semibold text-green-600 uppercase">✅ En Stock</p>
+          <p className="text-2xl font-black text-green-900">{stats.enStock}</p>
         </div>
       </div>
 
@@ -222,14 +209,14 @@ const PreparationColis = () => {
           🧵 Couture
         </button>
         <button
-          onClick={() => setFilterStatut('confectionnee')}
+          onClick={() => setFilterStatut('en_stock')}
           className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === 'confectionnee' 
+            filterStatut === 'en_stock' 
               ? 'bg-green-600 text-white shadow-lg' 
               : 'bg-white text-gray-700 hover:bg-gray-100'
           }`}
         >
-          ✅ Terminées
+          ✅ En Stock
         </button>
       </div>
 
@@ -321,8 +308,8 @@ const PreparationColis = () => {
 
                 {/* Boutons */}
                 <div className="space-y-2">
-                  {/* Bouton Assigner au livreur - visible seulement pour commandes terminées */}
-                  {(commande.statut === 'confectionnee' || commande.statut === 'en_stock') && (
+                  {/* Bouton Assigner au livreur - visible seulement pour commandes en stock */}
+                  {commande.statut === 'en_stock' && (
                     <button
                       onClick={() => {
                         setSelectedCommande(commande);
