@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check, Phone, RotateCcw } from 'lucide-react';
+import { Package, User, CheckCircle, Eye, XCircle, Wallet, Phone, RotateCcw } from 'lucide-react';
 
 const CaisseLivreurs = () => {
   const [livreurs, setLivreurs] = useState([]);
@@ -9,7 +9,6 @@ const CaisseLivreurs = () => {
   const [loading, setLoading] = useState(true);
   const [selectedLivreur, setSelectedLivreur] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [markingPaid, setMarkingPaid] = useState(null);
   const [markingReturned, setMarkingReturned] = useState(null);
 
   useEffect(() => {
@@ -45,19 +44,8 @@ const CaisseLivreurs = () => {
 
   const getMontantTotal = (livreurId) => {
     const livraisonsLivrees = getLivraisonsLivrees(livreurId);
-    // Ne compter que les montants non encore payés
+    // Calculer le montant total de toutes les livraisons livrées
     return livraisonsLivrees.reduce((total, livraison) => {
-      if (livraison.paiement_recu) return total; // Déjà payé, ne pas compter
-      const prix = livraison.commande?.prix || 0;
-      return total + prix;
-    }, 0);
-  };
-
-  const getMontantPaye = (livreurId) => {
-    const livraisonsLivrees = getLivraisonsLivrees(livreurId);
-    // Compter les montants déjà payés
-    return livraisonsLivrees.reduce((total, livraison) => {
-      if (!livraison.paiement_recu) return total; // Pas encore payé
       const prix = livraison.commande?.prix || 0;
       return total + prix;
     }, 0);
@@ -68,64 +56,6 @@ const CaisseLivreurs = () => {
     setShowDetailsModal(true);
   };
 
-  const handleMarquerPaye = async (livraisonId, montant) => {
-    if (!window.confirm(`Confirmer la réception de ${montant.toLocaleString('fr-FR')} FCFA pour cette livraison ?`)) {
-      return;
-    }
-
-    setMarkingPaid(livraisonId);
-    try {
-      const response = await api.put(`/livraisons/${livraisonId}`, {
-        paiement_recu: true,
-        date_paiement: new Date().toISOString()
-      });
-      
-      toast.success('💰 Paiement confirmé !');
-      await fetchData(); // Rafraîchir les données
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Erreur lors de la confirmation';
-      toast.error(errorMsg);
-      console.error('Erreur complète:', error.response || error);
-    } finally {
-      setMarkingPaid(null);
-    }
-  };
-
-  const handleMarquerToutPaye = async (livreurId) => {
-    const livraisonsLivrees = getLivraisonsLivrees(livreurId).filter(l => !l.paiement_recu);
-    
-    if (livraisonsLivrees.length === 0) {
-      toast.error('Toutes les livraisons sont déjà marquées comme payées');
-      return;
-    }
-
-    const montantTotal = livraisonsLivrees.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
-    
-    if (!window.confirm(`Confirmer la réception de ${montantTotal.toLocaleString('fr-FR')} FCFA pour ${livraisonsLivrees.length} livraison(s) ?`)) {
-      return;
-    }
-
-    setMarkingPaid('all');
-    try {
-      // Marquer toutes les livraisons comme payées
-      await Promise.all(
-        livraisonsLivrees.map(livraison =>
-          api.put(`/livraisons/${livraison._id || livraison.id}`, {
-            paiement_recu: true,
-            date_paiement: new Date().toISOString()
-          })
-        )
-      );
-      
-      toast.success(`💰 ${livraisonsLivrees.length} paiement(s) confirmé(s) !`);
-      await fetchData(); // Rafraîchir les données
-    } catch (error) {
-      toast.error('Erreur lors de la confirmation');
-      console.error(error);
-    } finally {
-      setMarkingPaid(null);
-    }
-  };
 
   const handleMarquerRetourne = async (livraisonId, commande) => {
     const modele = typeof commande?.modele === 'object' ? commande.modele.nom : commande?.modele;
@@ -184,7 +114,6 @@ const CaisseLivreurs = () => {
   }
 
   const totalGeneral = livreurs.reduce((sum, livreur) => sum + getMontantTotal(livreur._id || livreur.id), 0);
-  const totalPaye = livreurs.reduce((sum, livreur) => sum + getMontantPaye(livreur._id || livreur.id), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -212,7 +141,7 @@ const CaisseLivreurs = () => {
       </div>
 
       {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Livreurs Actifs</p>
           <p className="text-3xl font-black text-gray-900">{livreurs.length}</p>
@@ -229,16 +158,10 @@ const CaisseLivreurs = () => {
             {livraisons.filter(l => l.statut === 'livree').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">À Remettre</p>
-          <p className="text-2xl font-black text-emerald-900">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-white uppercase mb-1">💰 À Remettre</p>
+          <p className="text-3xl font-black text-white">
             {totalGeneral.toLocaleString('fr-FR')} F
-          </p>
-        </div>
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-white uppercase mb-1">✅ Déjà Reçu</p>
-          <p className="text-2xl font-black text-white">
-            {totalPaye.toLocaleString('fr-FR')} F
           </p>
         </div>
       </div>
@@ -261,8 +184,6 @@ const CaisseLivreurs = () => {
             const livraisonsLivrees = getLivraisonsLivrees(livreur._id || livreur.id);
             const livraisonsEnCours = livraisonsLivreur.filter(l => l.statut === 'en_cours');
             const montantTotal = getMontantTotal(livreur._id || livreur.id);
-            const montantPaye = getMontantPaye(livreur._id || livreur.id);
-            const hasUnpaidDeliveries = livraisonsLivrees.some(l => !l.paiement_recu);
             
             return (
               <div 
@@ -318,32 +239,10 @@ const CaisseLivreurs = () => {
                       {montantTotal.toLocaleString('fr-FR')} FCFA
                     </p>
                   </div>
-                  
-                  {/* Déjà reçu */}
-                  {montantPaye > 0 && (
-                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-3">
-                      <p className="text-white text-xs font-semibold mb-1 opacity-90">✅ Déjà Reçu</p>
-                      <p className="text-white text-xl font-black">
-                        {montantPaye.toLocaleString('fr-FR')} FCFA
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Boutons d'action */}
                 <div className="space-y-2">
-                  {/* Bouton Confirmer Tout */}
-                  {hasUnpaidDeliveries && (
-                    <button
-                      onClick={() => handleMarquerToutPaye(livreur._id || livreur.id)}
-                      disabled={markingPaid === 'all'}
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center space-x-2 hover:shadow-lg transition-all disabled:opacity-50"
-                    >
-                      <Check size={18} strokeWidth={3} />
-                      <span>{markingPaid === 'all' ? 'Confirmation...' : 'Confirmer Réception Complète'}</span>
-                    </button>
-                  )}
-                  
                   {/* Bouton Voir Détails */}
                   <button
                     onClick={() => handleVoirDetails(livreur)}
@@ -419,7 +318,6 @@ const CaisseLivreurs = () => {
               
               <div className="space-y-2">
                 {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => {
-                  const isPaid = livraison.paiement_recu;
                   const isRefused = livraison.statut === 'refusee';
                   const isReturned = livraison.statut === 'retournee';
                   const montant = livraison.commande?.prix || 0;
@@ -434,7 +332,6 @@ const CaisseLivreurs = () => {
                     : livraison.commande?.modele || 'N/A';
                   
                   let bgClass = 'bg-white border-gray-200 hover:shadow-md hover:border-emerald-300';
-                  if (isPaid) bgClass = 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300';
                   if (isRefused) bgClass = 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300';
                   if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-400';
                   
@@ -445,12 +342,6 @@ const CaisseLivreurs = () => {
                     >
                       {/* Badges en coin */}
                       <div className="absolute top-2 right-2 flex flex-col gap-1">
-                        {isPaid && (
-                          <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-green-600 text-white flex items-center space-x-1 shadow-md">
-                            <Check size={10} strokeWidth={4} />
-                            <span>PAYÉ</span>
-                          </span>
-                        )}
                         {isReturned && (
                           <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
                             <RotateCcw size={10} strokeWidth={4} />
@@ -504,16 +395,6 @@ const CaisseLivreurs = () => {
                             </div>
                           </div>
                           
-                          {/* Date de paiement si payé */}
-                          {isPaid && livraison.date_paiement && (
-                            <p className="text-[10px] text-green-700 font-bold mt-1.5">
-                              ✅ Reçu le {new Date(livraison.date_paiement).toLocaleDateString('fr-FR', { 
-                                day: '2-digit', 
-                                month: '2-digit', 
-                                year: 'numeric' 
-                              })}
-                            </p>
-                          )}
                         </div>
                         
                         {/* Partie droite - Montant et action */}
@@ -521,23 +402,11 @@ const CaisseLivreurs = () => {
                           {/* Montant */}
                           <div className="text-right">
                             <p className="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
-                            <p className={`text-xl font-black ${isPaid ? 'text-green-600' : 'text-emerald-600'}`}>
+                            <p className="text-xl font-black text-emerald-600">
                               {montant.toLocaleString('fr-FR')}
                             </p>
                             <p className="text-[10px] font-bold text-gray-500">FCFA</p>
                           </div>
-                          
-                          {/* Boutons d'action */}
-                          {livraison.statut === 'livree' && !isPaid && (
-                            <button
-                              onClick={() => handleMarquerPaye(livraison._id || livraison.id, montant)}
-                              disabled={markingPaid === (livraison._id || livraison.id)}
-                              className="mt-2 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
-                            >
-                              <Check size={12} strokeWidth={4} />
-                              <span>{markingPaid === (livraison._id || livraison.id) ? 'EN COURS...' : 'CONFIRMER'}</span>
-                            </button>
-                          )}
                           
                           {/* Bouton Retourné pour les colis refusés */}
                           {isRefused && !isReturned && (
