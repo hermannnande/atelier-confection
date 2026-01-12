@@ -118,10 +118,29 @@ const AtelierStyliste = () => {
 
               {/* Détails du modèle */}
               <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 mb-2">
-                <p className="text-xs font-bold text-white/80 mb-1">MODÈLE</p>
-                <p className="text-sm font-black text-white line-clamp-1 mb-2">
-                  {commande.modele.nom}
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-white/80 mb-1">MODÈLE</p>
+                    <p className="text-sm font-black text-white line-clamp-1">
+                      {commande.modele.nom}
+                    </p>
+                  </div>
+                  {/* Image du produit - Petite à droite */}
+                  {(typeof commande.modele === 'object' && commande.modele?.image) ? (
+                    <img 
+                      src={commande.modele.image} 
+                      alt={commande.modele.nom}
+                      className="w-12 h-12 object-cover rounded-lg shadow-md ml-2"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-white/30 rounded-lg shadow-md flex items-center justify-center ml-2">
+                      <Package className="text-white" size={20} />
+                    </div>
+                  )}
+                </div>
                 
                 {/* Taille & Couleur */}
                 <div className="grid grid-cols-2 gap-1">
