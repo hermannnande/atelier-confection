@@ -10,6 +10,7 @@ const CaisseLivreurs = () => {
   const [selectedLivreur, setSelectedLivreur] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [markingReturned, setMarkingReturned] = useState(null);
+  const [filterDate, setFilterDate] = useState(''); // Filtre par date d'assignation
 
   useEffect(() => {
     fetchData();
@@ -115,6 +116,38 @@ const CaisseLivreurs = () => {
 
   const totalGeneral = livreurs.reduce((sum, livreur) => sum + getMontantTotal(livreur._id || livreur.id), 0);
 
+  // Extraire toutes les dates d'assignation uniques
+  const toutesLesDates = [...new Set(
+    livraisons.map(l => {
+      const date = new Date(l.dateAssignation || l.date_assignation);
+      return date.toLocaleDateString('fr-FR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+    })
+  )].sort((a, b) => {
+    const dateA = new Date(a.split('/').reverse().join('-'));
+    const dateB = new Date(b.split('/').reverse().join('-'));
+    return dateB - dateA; // Plus récent en premier
+  });
+
+  // Filtrer les livreurs selon la date sélectionnée
+  const livreursAffiches = filterDate 
+    ? livreurs.filter(livreur => {
+        const livraisonsLivreur = getLivraisonsLivreur(livreur._id || livreur.id);
+        return livraisonsLivreur.some(l => {
+          const date = new Date(l.dateAssignation || l.date_assignation);
+          const dateStr = date.toLocaleDateString('fr-FR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric' 
+          });
+          return dateStr === filterDate;
+        });
+      })
+    : livreurs;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* En-tête */}
@@ -143,8 +176,10 @@ const CaisseLivreurs = () => {
       {/* Statistiques globales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Livreurs Actifs</p>
-          <p className="text-3xl font-black text-gray-900">{livreurs.length}</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+            {filterDate ? `Livreurs (${filterDate})` : 'Livreurs Actifs'}
+          </p>
+          <p className="text-3xl font-black text-gray-900">{livreursAffiches.length}</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-blue-600 uppercase mb-1">En Cours</p>
@@ -166,20 +201,82 @@ const CaisseLivreurs = () => {
         </div>
       </div>
 
+      {/* Filtre par date d'assignation */}
+      {toutesLesDates.length > 0 && (
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <Package className="text-indigo-600" size={20} />
+              <h3 className="text-sm font-bold text-gray-900 uppercase">Filtrer par Date d'Assignation</h3>
+            </div>
+            {filterDate && (
+              <button
+                onClick={() => setFilterDate('')}
+                className="text-xs font-semibold text-red-600 hover:text-red-800 hover:underline"
+              >
+                ✕ Réinitialiser
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setFilterDate('')}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                filterDate === '' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📅 Toutes les dates ({livreurs.length})
+            </button>
+            {toutesLesDates.map((date) => {
+              const livreursDate = livreurs.filter(livreur => {
+                const livraisonsLivreur = getLivraisonsLivreur(livreur._id || livreur.id);
+                return livraisonsLivreur.some(l => {
+                  const d = new Date(l.dateAssignation || l.date_assignation);
+                  const dateStr = d.toLocaleDateString('fr-FR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                  });
+                  return dateStr === date;
+                });
+              });
+              
+              return (
+                <button
+                  key={date}
+                  onClick={() => setFilterDate(date)}
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                    filterDate === date 
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {date} ({livreursDate.length})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Liste des livreurs */}
-      {livreurs.length === 0 ? (
+      {livreursAffiches.length === 0 ? (
         <div className="card text-center py-12">
           <User className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Aucun livreur actif
+            {filterDate ? 'Aucun livreur pour cette date' : 'Aucun livreur actif'}
           </h3>
           <p className="text-gray-600">
-            Les livreurs actifs apparaîtront ici
+            {filterDate 
+              ? `Aucun livreur n'a de colis assigné le ${filterDate}` 
+              : 'Les livreurs actifs apparaîtront ici'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {livreurs.map((livreur) => {
+          {livreursAffiches.map((livreur) => {
             const livraisonsLivreur = getLivraisonsLivreur(livreur._id || livreur.id);
             const livraisonsLivrees = getLivraisonsLivrees(livreur._id || livreur.id);
             const livraisonsEnCours = livraisonsLivreur.filter(l => l.statut === 'en_cours');
