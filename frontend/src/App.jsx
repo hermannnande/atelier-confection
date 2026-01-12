@@ -16,6 +16,7 @@ import AtelierCouturier from './pages/AtelierCouturier';
 import Stock from './pages/Stock';
 import Modeles from './pages/Modeles';
 import Livraisons from './pages/Livraisons';
+import CaisseLivreurs from './pages/CaisseLivreurs';
 import Performances from './pages/Performances';
 import Utilisateurs from './pages/Utilisateurs';
 import Layout from './components/Layout';
@@ -139,6 +140,13 @@ function App() {
           <Route path="livraisons" element={
             <ProtectedRoute allowedRoles={['livreur', 'gestionnaire', 'administrateur']}>
               <Livraisons />
+            </ProtectedRoute>
+          } />
+          
+          {/* Caisse Livreurs */}
+          <Route path="caisse-livreurs" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <CaisseLivreurs />
             </ProtectedRoute>
           } />
           

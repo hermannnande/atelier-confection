@@ -17,7 +17,8 @@ import {
   Settings,
   Palette,
   PhoneCall,
-  History
+  History,
+  Wallet
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -37,6 +38,7 @@ const Layout = () => {
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier'], gradient: 'from-rose-500 to-red-500' },
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
+    { name: 'Caisse Livreurs', href: '/caisse-livreurs', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur', 'gestionnaire'], gradient: 'from-violet-500 to-purple-500' },
     { name: 'Utilisateurs', href: '/utilisateurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-cyan-500 to-blue-500' },
   ];
