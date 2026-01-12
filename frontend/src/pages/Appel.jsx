@@ -18,6 +18,15 @@ const Appel = () => {
     fetchCommandesAppel();
   }, []);
 
+  // Charger la note existante quand la modal s'ouvre
+  useEffect(() => {
+    if (selectedCommande) {
+      // Si la commande a une note existante, la charger
+      // Sinon, laisser le champ vide
+      setNoteAppelant(selectedCommande.noteAppelant || '');
+    }
+  }, [selectedCommande]);
+
   // Auto-refresh toutes les 10 secondes
   useEffect(() => {
     if (isAutoRefreshing) {
@@ -94,10 +103,9 @@ const Appel = () => {
         payload.urgence = true;
       }
       
-      // Ajouter la note de l'appelant si elle existe
-      if (noteAppelant.trim()) {
-        payload.noteAppelant = noteAppelant.trim();
-      }
+      // Toujours envoyer la note de l'appelant (même si vide)
+      // Si vide, cela efface la note automatique générée par le système
+      payload.noteAppelant = noteAppelant.trim();
 
       await api.put(`/commandes/${commandeId}`, payload);
       
