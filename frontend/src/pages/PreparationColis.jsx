@@ -112,6 +112,23 @@ const PreparationColis = () => {
     ? commandes.filter(c => c.statut === filterStatut)
     : commandes;
 
+  // Tri : Les commandes "en_stock" en premier, puis par date de mise à jour
+  const commandesTriees = [...filteredCommandes].sort((a, b) => {
+    // Priorité 1 : Les commandes "en_stock" avant tout le reste
+    const prioriteA = a.statut === 'en_stock' ? 0 : (a.statut === 'en_couture' ? 1 : 2);
+    const prioriteB = b.statut === 'en_stock' ? 0 : (b.statut === 'en_couture' ? 1 : 2);
+
+    if (prioriteA !== prioriteB) {
+      return prioriteA - prioriteB; // Les "en_stock" (0) avant "en_couture" (1) avant "en_decoupe" (2)
+    }
+
+    // Priorité 2 : Au sein du même groupe de statut, tri par date de mise à jour
+    // Les plus récentes en premier (ordre décroissant)
+    const dateA = new Date(a.updated_at || a.created_at);
+    const dateB = new Date(b.updated_at || b.created_at);
+    return dateB - dateA; // dateB > dateA = dateB en premier
+  });
+
   // Statistiques
   const stats = {
     total: commandes.length,
@@ -221,7 +238,7 @@ const PreparationColis = () => {
       </div>
 
       {/* Liste des commandes */}
-      {filteredCommandes.length === 0 ? (
+      {commandesTriees.length === 0 ? (
         <div className="card text-center py-12">
           <Package className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -233,7 +250,7 @@ const PreparationColis = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredCommandes.map((commande) => {
+          {commandesTriees.map((commande) => {
             const statutInfo = getStatutInfo(commande.statut);
             const StatutIcon = statutInfo.icon;
             
