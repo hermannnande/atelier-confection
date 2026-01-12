@@ -251,7 +251,7 @@ const HistoriqueCommandes = () => {
 
                   {(commande.noteAppelant || commande.note) && (
                     <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-gray-700 break-words overflow-hidden">
                         <span className="font-medium">Note: </span>
                         {commande.noteAppelant || commande.note}
                       </p>

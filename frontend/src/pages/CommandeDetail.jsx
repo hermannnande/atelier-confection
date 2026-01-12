@@ -223,7 +223,7 @@ const CommandeDetail = () => {
           {commande.noteAppelant && (
             <div className="card bg-yellow-50 border-yellow-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">Note pour l'atelier</h2>
-              <p className="text-gray-700">{commande.noteAppelant}</p>
+              <p className="text-gray-700 break-words overflow-hidden">{commande.noteAppelant}</p>
             </div>
           )}
 

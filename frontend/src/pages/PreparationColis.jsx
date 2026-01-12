@@ -319,7 +319,7 @@ const PreparationColis = () => {
                 {commande.noteAppelant && (
                   <div className="bg-yellow-50 rounded-lg p-2 mb-3">
                     <p className="text-xs font-semibold text-yellow-800 mb-1">📝 Instructions</p>
-                    <p className="text-xs text-gray-700 line-clamp-2">{commande.noteAppelant}</p>
+                    <p className="text-xs text-gray-700 line-clamp-2 break-words">{commande.noteAppelant}</p>
                   </div>
                 )}
 
