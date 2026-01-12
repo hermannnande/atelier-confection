@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { Truck, CheckCircle, XCircle, AlertCircle, Eye, Package } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Truck, CheckCircle, XCircle, AlertCircle, Package } from 'lucide-react';
 
 const Livraisons = () => {
   const { user } = useAuthStore();
@@ -235,15 +234,6 @@ const Livraisons = () => {
                     </div>
                   </div>
 
-                  {livraison.instructions && (
-                    <div className="p-3 bg-blue-50 rounded-lg mb-3">
-                      <p className="text-sm text-gray-700">
-                        <span className="font-medium">Instructions: </span>
-                        {livraison.instructions}
-                      </p>
-                    </div>
-                  )}
-
                   {livraison.motifRefus && (
                     <div className="p-3 bg-red-50 rounded-lg">
                       <p className="text-sm text-red-700">
@@ -255,13 +245,6 @@ const Livraisons = () => {
                 </div>
 
                 <div className="flex items-center space-x-2 ml-4">
-                  <Link
-                    to={`/commandes/${livraison.commande?._id}`}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    <Eye size={16} />
-                  </Link>
-                  
                   {user?.role === 'livreur' && ['assignee', 'en_cours'].includes(livraison.statut) && (
                     <>
                       <button

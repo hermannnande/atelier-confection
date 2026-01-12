@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Scissors, Shirt, CheckCircle, Clock, AlertCircle, Truck, X } from 'lucide-react';
+import { Package, Eye, Scissors, Shirt, CheckCircle, Clock, AlertCircle, Truck, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const PreparationColis = () => {
   const [commandes, setCommandes] = useState([]);
@@ -297,19 +298,38 @@ const PreparationColis = () => {
                   </span>
                 </div>
 
-                {/* Boutons */}
-                {commande.statut === 'en_stock' && (
-                  <button
-                    onClick={() => {
-                      setSelectedCommande(commande);
-                      setShowModal(true);
-                    }}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
-                  >
-                    <Truck size={16} />
-                    <span>Assigner au livreur</span>
-                  </button>
+                {/* Note */}
+                {commande.noteAppelant && (
+                  <div className="bg-yellow-50 rounded-lg p-2 mb-3">
+                    <p className="text-xs font-semibold text-yellow-800 mb-1">📝 Instructions</p>
+                    <p className="text-xs text-gray-700 line-clamp-2">{commande.noteAppelant}</p>
+                  </div>
                 )}
+
+                {/* Boutons */}
+                <div className="space-y-2">
+                  {/* Bouton Assigner au livreur - visible seulement pour commandes en stock */}
+                  {commande.statut === 'en_stock' && (
+                    <button
+                      onClick={() => {
+                        setSelectedCommande(commande);
+                        setShowModal(true);
+                      }}
+                      className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
+                    >
+                      <Truck size={16} />
+                      <span>Assigner au livreur</span>
+                    </button>
+                  )}
+                  
+                  <Link
+                    to={`/commandes/${commande._id}`}
+                    className="btn btn-primary w-full flex items-center justify-center space-x-2 text-sm"
+                  >
+                    <Eye size={16} />
+                    <span>Voir les détails</span>
+                  </Link>
+                </div>
               </div>
             );
           })}
