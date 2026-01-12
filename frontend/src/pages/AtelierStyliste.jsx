@@ -157,9 +157,9 @@ const AtelierStyliste = () => {
 
               {/* Note */}
               {commande.noteAppelant && (
-                <div className="bg-white/90 rounded-lg p-2 mb-2">
+                <div className="bg-white/90 rounded-lg p-2 mb-2 overflow-hidden">
                   <p className="text-[10px] font-bold text-gray-700 mb-0.5">📝</p>
-                  <p className="text-[11px] text-gray-800 line-clamp-2 break-words">{commande.noteAppelant}</p>
+                  <p className="text-[11px] text-gray-800 line-clamp-2 break-all">{commande.noteAppelant}</p>
                 </div>
               )}
 
