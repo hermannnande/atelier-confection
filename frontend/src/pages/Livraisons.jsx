@@ -13,6 +13,7 @@ const Livraisons = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState('');
   const [selectedLivreur, setSelectedLivreur] = useState('');
+  const [filterStatut, setFilterStatut] = useState('');
 
   useEffect(() => {
     fetchLivraisons();
@@ -151,46 +152,120 @@ const Livraisons = () => {
         )}
       </div>
 
-      {/* Statistiques */}
+      {/* Statistiques - Cliquables pour filtrer */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card">
+        <button
+          onClick={() => setFilterStatut('')}
+          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
+            filterStatut === '' ? 'ring-2 ring-primary-600 bg-primary-50' : ''
+          }`}
+        >
           <p className="text-gray-600 mb-2">Total</p>
           <p className="text-3xl font-bold text-primary-600">{livraisons.length}</p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 mb-2">En cours</p>
-          <p className="text-3xl font-bold text-yellow-600">
+        </button>
+        <button
+          onClick={() => setFilterStatut('en_cours')}
+          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
+            filterStatut === 'en_cours' ? 'ring-2 ring-blue-600 bg-blue-50' : ''
+          }`}
+        >
+          <p className="text-gray-600 mb-2">🚚 En cours</p>
+          <p className="text-3xl font-bold text-blue-600">
             {livraisons.filter(l => l.statut === 'en_cours').length}
           </p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 mb-2">Livrées</p>
+        </button>
+        <button
+          onClick={() => setFilterStatut('livree')}
+          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
+            filterStatut === 'livree' ? 'ring-2 ring-green-600 bg-green-50' : ''
+          }`}
+        >
+          <p className="text-gray-600 mb-2">✅ Livrées</p>
           <p className="text-3xl font-bold text-green-600">
             {livraisons.filter(l => l.statut === 'livree').length}
           </p>
-        </div>
-        <div className="card">
-          <p className="text-gray-600 mb-2">Refusées</p>
+        </button>
+        <button
+          onClick={() => setFilterStatut('refusee')}
+          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
+            filterStatut === 'refusee' ? 'ring-2 ring-red-600 bg-red-50' : ''
+          }`}
+        >
+          <p className="text-gray-600 mb-2">❌ Refusées</p>
           <p className="text-3xl font-bold text-red-600">
             {livraisons.filter(l => l.statut === 'refusee').length}
           </p>
-        </div>
+        </button>
+      </div>
+
+      {/* Filtres par statut */}
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <button
+          onClick={() => setFilterStatut('')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === '' 
+              ? 'bg-primary-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Tous
+        </button>
+        <button
+          onClick={() => setFilterStatut('en_cours')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'en_cours' 
+              ? 'bg-blue-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          🚚 En cours
+        </button>
+        <button
+          onClick={() => setFilterStatut('livree')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'livree' 
+              ? 'bg-green-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          ✅ Livrées
+        </button>
+        <button
+          onClick={() => setFilterStatut('refusee')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'refusee' 
+              ? 'bg-red-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          ❌ Refusées
+        </button>
+        <button
+          onClick={() => setFilterStatut('retournee')}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            filterStatut === 'retournee' 
+              ? 'bg-gray-600 text-white shadow-lg' 
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          ↩️ Retournées
+        </button>
       </div>
 
       {/* Liste des livraisons */}
-      {livraisons.length === 0 ? (
+      {(filterStatut ? livraisons.filter(l => l.statut === filterStatut) : livraisons).length === 0 ? (
         <div className="card text-center py-12">
           <Truck className="mx-auto text-gray-400 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Aucune livraison
+            {filterStatut ? `Aucune livraison ${getStatutLabel(filterStatut).toLowerCase()}` : 'Aucune livraison'}
           </h3>
           <p className="text-gray-600">
-            Les livraisons assignées apparaîtront ici
+            {filterStatut ? 'Aucune livraison ne correspond à ce filtre' : 'Les livraisons assignées apparaîtront ici'}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {livraisons.map((livraison) => (
+          {(filterStatut ? livraisons.filter(l => l.statut === filterStatut) : livraisons).map((livraison) => (
             <div key={livraison._id} className="card hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
