@@ -75,7 +75,7 @@ const CaisseLivreurs = () => {
 
     setMarkingPaid(livraisonId);
     try {
-      await api.put(`/livraisons/${livraisonId}`, {
+      const response = await api.put(`/livraisons/${livraisonId}`, {
         paiement_recu: true,
         date_paiement: new Date().toISOString()
       });
@@ -83,8 +83,9 @@ const CaisseLivreurs = () => {
       toast.success('💰 Paiement confirmé !');
       await fetchData(); // Rafraîchir les données
     } catch (error) {
-      toast.error('Erreur lors de la confirmation');
-      console.error(error);
+      const errorMsg = error.response?.data?.message || error.message || 'Erreur lors de la confirmation';
+      toast.error(errorMsg);
+      console.error('Erreur complète:', error.response || error);
     } finally {
       setMarkingPaid(null);
     }

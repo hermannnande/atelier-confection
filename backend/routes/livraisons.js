@@ -107,22 +107,30 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
     const livraison = await Livraison.findById(req.params.id);
     
     if (!livraison) {
+      console.error('Livraison non trouvée:', req.params.id);
       return res.status(404).json({ message: 'Livraison non trouvée' });
     }
 
     // Autoriser la mise à jour de certains champs seulement
     const allowedUpdates = ['paiement_recu', 'date_paiement', 'commentaireGestionnaire', 'verifieParGestionnaire'];
     
+    let updated = false;
     Object.keys(req.body).forEach(key => {
       if (allowedUpdates.includes(key)) {
         livraison[key] = req.body[key];
+        updated = true;
       }
     });
+
+    if (!updated) {
+      return res.status(400).json({ message: 'Aucun champ valide à mettre à jour' });
+    }
 
     await livraison.save();
 
     res.json({ message: 'Livraison mise à jour', livraison });
   } catch (error) {
+    console.error('Erreur lors de la mise à jour:', error);
     res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
   }
 });

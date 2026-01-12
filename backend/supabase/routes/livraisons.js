@@ -149,8 +149,13 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
     const supabase = getSupabaseAdmin();
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     
-    if (e1 || !livraison) {
-      return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (e1) {
+      console.error('Erreur recherche livraison:', e1);
+      return res.status(404).json({ message: 'Livraison non trouvée', error: e1.message });
+    }
+    
+    if (!livraison) {
+      return res.status(404).json({ message: 'Livraison non trouvée - aucune donnée' });
     }
 
     // Autoriser la mise à jour de certains champs seulement
@@ -163,14 +168,20 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
       }
     });
 
-    const { error: e2 } = await supabase.from('livraisons').update(updates).eq('id', req.params.id);
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'Aucun champ valide à mettre à jour' });
+    }
+
+    const { data: updated, error: e2 } = await supabase.from('livraisons').update(updates).eq('id', req.params.id).select().single();
     
     if (e2) {
+      console.error('Erreur mise à jour:', e2);
       return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: e2.message });
     }
 
-    return res.json({ message: 'Livraison mise à jour' });
+    return res.json({ message: 'Livraison mise à jour', livraison: mapLivraison(updated) });
   } catch (error) {
+    console.error('Erreur serveur:', error);
     return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
   }
 });
