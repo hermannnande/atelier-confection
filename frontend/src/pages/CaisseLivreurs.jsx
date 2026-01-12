@@ -317,7 +317,14 @@ const CaisseLivreurs = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Détails des Livraisons</h3>
               
               <div className="space-y-2">
-                {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => {
+                {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id)
+                  .sort((a, b) => {
+                    // Tri : les colis refusés en bas
+                    const aRefused = a.statut === 'refusee' ? 1 : 0;
+                    const bRefused = b.statut === 'refusee' ? 1 : 0;
+                    return aRefused - bRefused;
+                  })
+                  .map((livraison) => {
                   const isRefused = livraison.statut === 'refusee';
                   const isReturned = livraison.statut === 'retournee';
                   const montant = livraison.commande?.prix || 0;
@@ -331,9 +338,9 @@ const CaisseLivreurs = () => {
                     ? livraison.commande.modele.nom 
                     : livraison.commande?.modele || 'N/A';
                   
-                  let bgClass = 'bg-white border-gray-200 hover:shadow-md hover:border-emerald-300';
-                  if (isRefused) bgClass = 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300';
-                  if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-400';
+                  let bgClass = 'bg-white border-2 border-gray-200 hover:shadow-md hover:border-emerald-300';
+                  if (isRefused) bgClass = 'bg-gradient-to-r from-red-100 to-red-50 border-2 border-red-500';
+                  if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400';
                   
                   return (
                     <div 
