@@ -32,11 +32,20 @@ const Commandes = () => {
         !['en_attente_validation', 'en_attente_paiement', 'annulee'].includes(cmd.statut)
       );
       
-      // Trier par date de mise à jour (les plus récentes en haut)
+      // Trier avec priorité : nouvellement validées en premier, puis par date
       const commandesTriees = commandesConfirmees.sort((a, b) => {
+        // Priorité 1 : Les commandes "validee" en premier
+        const prioriteA = a.statut === 'validee' ? 0 : 1;
+        const prioriteB = b.statut === 'validee' ? 0 : 1;
+        
+        if (prioriteA !== prioriteB) {
+          return prioriteA - prioriteB;
+        }
+        
+        // Priorité 2 : Par date de mise à jour (plus récente en premier)
         const dateA = new Date(a.updated_at || a.created_at);
         const dateB = new Date(b.updated_at || b.created_at);
-        return dateB - dateA; // Ordre décroissant (plus récent en premier)
+        return dateB - dateA; // Ordre décroissant
       });
       
       setCommandes(commandesTriees);
