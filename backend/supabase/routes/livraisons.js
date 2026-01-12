@@ -143,6 +143,38 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
   }
 });
 
+// Mettre à jour une livraison (pour paiement, etc.)
+router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
+    
+    if (e1 || !livraison) {
+      return res.status(404).json({ message: 'Livraison non trouvée' });
+    }
+
+    // Autoriser la mise à jour de certains champs seulement
+    const updates = {};
+    const allowedUpdates = ['paiement_recu', 'date_paiement', 'commentaire_gestionnaire', 'verifie_par_gestionnaire'];
+    
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+
+    const { error: e2 } = await supabase.from('livraisons').update(updates).eq('id', req.params.id);
+    
+    if (e2) {
+      return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: e2.message });
+    }
+
+    return res.json({ message: 'Livraison mise à jour' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
+  }
+});
+
 router.post('/:id/livree', authenticate, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();

@@ -101,6 +101,32 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
   }
 });
 
+// Mettre à jour une livraison (pour paiement, etc.)
+router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const livraison = await Livraison.findById(req.params.id);
+    
+    if (!livraison) {
+      return res.status(404).json({ message: 'Livraison non trouvée' });
+    }
+
+    // Autoriser la mise à jour de certains champs seulement
+    const allowedUpdates = ['paiement_recu', 'date_paiement', 'commentaireGestionnaire', 'verifieParGestionnaire'];
+    
+    Object.keys(req.body).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        livraison[key] = req.body[key];
+      }
+    });
+
+    await livraison.save();
+
+    res.json({ message: 'Livraison mise à jour', livraison });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
+  }
+});
+
 // Marquer livraison comme livrée (livreur)
 router.post('/:id/livree', authenticate, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {

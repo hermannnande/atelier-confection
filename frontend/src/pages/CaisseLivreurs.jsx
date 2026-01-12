@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet } from 'lucide-react';
+import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check } from 'lucide-react';
 
 const CaisseLivreurs = () => {
   const [livreurs, setLivreurs] = useState([]);
@@ -9,6 +9,7 @@ const CaisseLivreurs = () => {
   const [loading, setLoading] = useState(true);
   const [selectedLivreur, setSelectedLivreur] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -43,7 +44,19 @@ const CaisseLivreurs = () => {
 
   const getMontantTotal = (livreurId) => {
     const livraisonsLivrees = getLivraisonsLivrees(livreurId);
+    // Ne compter que les montants non encore payés
     return livraisonsLivrees.reduce((total, livraison) => {
+      if (livraison.paiement_recu) return total; // Déjà payé, ne pas compter
+      const prix = livraison.commande?.prix || 0;
+      return total + prix;
+    }, 0);
+  };
+
+  const getMontantPaye = (livreurId) => {
+    const livraisonsLivrees = getLivraisonsLivrees(livreurId);
+    // Compter les montants déjà payés
+    return livraisonsLivrees.reduce((total, livraison) => {
+      if (!livraison.paiement_recu) return total; // Pas encore payé
       const prix = livraison.commande?.prix || 0;
       return total + prix;
     }, 0);
@@ -52,6 +65,64 @@ const CaisseLivreurs = () => {
   const handleVoirDetails = (livreur) => {
     setSelectedLivreur(livreur);
     setShowDetailsModal(true);
+  };
+
+  const handleMarquerPaye = async (livraisonId, montant) => {
+    if (!window.confirm(`Confirmer la réception de ${montant.toLocaleString('fr-FR')} FCFA pour cette livraison ?`)) {
+      return;
+    }
+
+    setMarkingPaid(livraisonId);
+    try {
+      await api.put(`/livraisons/${livraisonId}`, {
+        paiement_recu: true,
+        date_paiement: new Date().toISOString()
+      });
+      
+      toast.success('💰 Paiement confirmé !');
+      await fetchData(); // Rafraîchir les données
+    } catch (error) {
+      toast.error('Erreur lors de la confirmation');
+      console.error(error);
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
+  const handleMarquerToutPaye = async (livreurId) => {
+    const livraisonsLivrees = getLivraisonsLivrees(livreurId).filter(l => !l.paiement_recu);
+    
+    if (livraisonsLivrees.length === 0) {
+      toast.error('Toutes les livraisons sont déjà marquées comme payées');
+      return;
+    }
+
+    const montantTotal = livraisonsLivrees.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+    
+    if (!window.confirm(`Confirmer la réception de ${montantTotal.toLocaleString('fr-FR')} FCFA pour ${livraisonsLivrees.length} livraison(s) ?`)) {
+      return;
+    }
+
+    setMarkingPaid('all');
+    try {
+      // Marquer toutes les livraisons comme payées
+      await Promise.all(
+        livraisonsLivrees.map(livraison =>
+          api.put(`/livraisons/${livraison._id || livraison.id}`, {
+            paiement_recu: true,
+            date_paiement: new Date().toISOString()
+          })
+        )
+      );
+      
+      toast.success(`💰 ${livraisonsLivrees.length} paiement(s) confirmé(s) !`);
+      await fetchData(); // Rafraîchir les données
+    } catch (error) {
+      toast.error('Erreur lors de la confirmation');
+      console.error(error);
+    } finally {
+      setMarkingPaid(null);
+    }
   };
 
   const getStatutBadge = (statut) => {
@@ -86,6 +157,7 @@ const CaisseLivreurs = () => {
   }
 
   const totalGeneral = livreurs.reduce((sum, livreur) => sum + getMontantTotal(livreur._id || livreur.id), 0);
+  const totalPaye = livreurs.reduce((sum, livreur) => sum + getMontantPaye(livreur._id || livreur.id), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -113,7 +185,7 @@ const CaisseLivreurs = () => {
       </div>
 
       {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Livreurs Actifs</p>
           <p className="text-3xl font-black text-gray-900">{livreurs.length}</p>
@@ -131,9 +203,15 @@ const CaisseLivreurs = () => {
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">Total Collecté</p>
+          <p className="text-xs font-semibold text-emerald-600 uppercase mb-1">À Remettre</p>
           <p className="text-2xl font-black text-emerald-900">
             {totalGeneral.toLocaleString('fr-FR')} F
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-white uppercase mb-1">✅ Déjà Reçu</p>
+          <p className="text-2xl font-black text-white">
+            {totalPaye.toLocaleString('fr-FR')} F
           </p>
         </div>
       </div>
@@ -156,6 +234,8 @@ const CaisseLivreurs = () => {
             const livraisonsLivrees = getLivraisonsLivrees(livreur._id || livreur.id);
             const livraisonsEnCours = livraisonsLivreur.filter(l => l.statut === 'en_cours');
             const montantTotal = getMontantTotal(livreur._id || livreur.id);
+            const montantPaye = getMontantPaye(livreur._id || livreur.id);
+            const hasUnpaidDeliveries = livraisonsLivrees.some(l => !l.paiement_recu);
             
             return (
               <div 
@@ -192,23 +272,51 @@ const CaisseLivreurs = () => {
                   </div>
                 </div>
 
-                {/* Montant à remettre */}
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 mb-4">
-                  <p className="text-white text-sm font-semibold mb-1 opacity-90">À Remettre</p>
-                  <p className="text-white text-3xl font-black">
-                    {montantTotal.toLocaleString('fr-FR')} FCFA
-                  </p>
+                {/* Montants */}
+                <div className="space-y-2 mb-4">
+                  {/* À remettre */}
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-3">
+                    <p className="text-white text-xs font-semibold mb-1 opacity-90">💰 À Remettre</p>
+                    <p className="text-white text-2xl font-black">
+                      {montantTotal.toLocaleString('fr-FR')} FCFA
+                    </p>
+                  </div>
+                  
+                  {/* Déjà reçu */}
+                  {montantPaye > 0 && (
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl p-3">
+                      <p className="text-white text-xs font-semibold mb-1 opacity-90">✅ Déjà Reçu</p>
+                      <p className="text-white text-xl font-black">
+                        {montantPaye.toLocaleString('fr-FR')} FCFA
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Bouton Détails */}
-                <button
-                  onClick={() => handleVoirDetails(livreur)}
-                  className="w-full btn btn-secondary flex items-center justify-center space-x-2"
-                  disabled={livraisonsLivreur.length === 0}
-                >
-                  <Eye size={16} />
-                  <span>Voir Détails ({livraisonsLivreur.length})</span>
-                </button>
+                {/* Boutons d'action */}
+                <div className="space-y-2">
+                  {/* Bouton Confirmer Tout */}
+                  {hasUnpaidDeliveries && (
+                    <button
+                      onClick={() => handleMarquerToutPaye(livreur._id || livreur.id)}
+                      disabled={markingPaid === 'all'}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-lg font-bold flex items-center justify-center space-x-2 hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                      <Check size={18} strokeWidth={3} />
+                      <span>{markingPaid === 'all' ? 'Confirmation...' : 'Confirmer Réception Complète'}</span>
+                    </button>
+                  )}
+                  
+                  {/* Bouton Voir Détails */}
+                  <button
+                    onClick={() => handleVoirDetails(livreur)}
+                    className="w-full btn btn-secondary flex items-center justify-center space-x-2"
+                    disabled={livraisonsLivreur.length === 0}
+                  >
+                    <Eye size={16} />
+                    <span>Voir Détails ({livraisonsLivreur.length})</span>
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -267,56 +375,83 @@ const CaisseLivreurs = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Détails des Livraisons</h3>
               
               <div className="space-y-3">
-                {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => (
-                  <div 
-                    key={livraison._id || livraison.id} 
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h4 className="font-bold text-gray-900">
-                            {livraison.commande?.numeroCommande || 'N/A'}
-                          </h4>
-                          <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getStatutBadge(livraison.statut)}`}>
-                            {getStatutLabel(livraison.statut)}
-                          </span>
+                {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => {
+                  const isPaid = livraison.paiement_recu;
+                  const montant = livraison.commande?.prix || 0;
+                  
+                  return (
+                    <div 
+                      key={livraison._id || livraison.id} 
+                      className={`border rounded-lg p-4 transition-all ${
+                        isPaid 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-white hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h4 className="font-bold text-gray-900">
+                              {livraison.commande?.numeroCommande || 'N/A'}
+                            </h4>
+                            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getStatutBadge(livraison.statut)}`}>
+                              {getStatutLabel(livraison.statut)}
+                            </span>
+                            {isPaid && (
+                              <span className="px-2 py-1 rounded-lg text-xs font-bold bg-green-600 text-white flex items-center space-x-1">
+                                <Check size={12} strokeWidth={3} />
+                                <span>Payé</span>
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p>
+                              <span className="font-semibold">Client:</span>{' '}
+                              {typeof livraison.commande?.client === 'object' 
+                                ? livraison.commande.client.nom 
+                                : livraison.commande?.client || 'N/A'}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Modèle:</span>{' '}
+                              {typeof livraison.commande?.modele === 'object' 
+                                ? livraison.commande.modele.nom 
+                                : livraison.commande?.modele || 'N/A'}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Ville:</span>{' '}
+                              {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
+                            </p>
+                            {isPaid && livraison.date_paiement && (
+                              <p className="text-xs text-green-700 font-semibold">
+                                ✅ Reçu le {new Date(livraison.date_paiement).toLocaleDateString('fr-FR')}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <p>
-                            <span className="font-semibold">Client:</span>{' '}
-                            {typeof livraison.commande?.client === 'object' 
-                              ? livraison.commande.client.nom 
-                              : livraison.commande?.client || 'N/A'}
+                        <div className="text-right ml-4">
+                          <p className="text-xs text-gray-500 mb-1">Montant</p>
+                          <p className={`text-2xl font-black ${isPaid ? 'text-green-600' : 'text-emerald-600'}`}>
+                            {montant.toLocaleString('fr-FR')} F
                           </p>
-                          <p>
-                            <span className="font-semibold">Modèle:</span>{' '}
-                            {typeof livraison.commande?.modele === 'object' 
-                              ? livraison.commande.modele.nom 
-                              : livraison.commande?.modele || 'N/A'}
-                          </p>
-                          <p>
-                            <span className="font-semibold">Ville:</span>{' '}
-                            {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
-                          </p>
+                          
+                          {/* Bouton de confirmation individuel */}
+                          {livraison.statut === 'livree' && !isPaid && (
+                            <button
+                              onClick={() => handleMarquerPaye(livraison._id || livraison.id, montant)}
+                              disabled={markingPaid === (livraison._id || livraison.id)}
+                              className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-1 transition-all disabled:opacity-50"
+                            >
+                              <Check size={14} strokeWidth={3} />
+                              <span>{markingPaid === (livraison._id || livraison.id) ? 'Confirmation...' : 'Confirmer Réception'}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
-                      
-                      <div className="text-right ml-4">
-                        <p className="text-xs text-gray-500 mb-1">Montant</p>
-                        <p className="text-2xl font-black text-emerald-600">
-                          {(livraison.commande?.prix || 0).toLocaleString('fr-FR')} F
-                        </p>
-                        {livraison.statut === 'livree' && (
-                          <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded">
-                            💰 À collecter
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

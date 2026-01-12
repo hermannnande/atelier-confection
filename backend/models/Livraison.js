@@ -40,7 +40,13 @@ const livraisonSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  commentaireGestionnaire: String
+  commentaireGestionnaire: String,
+  // Suivi des paiements
+  paiement_recu: {
+    type: Boolean,
+    default: false
+  },
+  date_paiement: Date
 }, {
   timestamps: true
 });
