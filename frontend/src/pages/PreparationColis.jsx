@@ -60,13 +60,22 @@ const PreparationColis = () => {
         livreurId: selectedLivreur
       });
       
+      // Retirer immédiatement la commande de la liste pour un feedback instantané
+      setCommandes(prevCommandes => 
+        prevCommandes.filter(c => c._id !== selectedCommande._id)
+      );
+      
       toast.success('Commande assignée au livreur ! 🚚 Visible dans "Livraisons"');
       setShowModal(false);
       setSelectedCommande(null);
       setSelectedLivreur('');
-      fetchCommandes(); // Recharger pour retirer de la liste
+      
+      // Rafraîchir pour synchroniser avec le serveur
+      setTimeout(() => fetchCommandes(), 500);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de l\'assignation');
+      // En cas d'erreur, recharger la liste pour remettre l'état correct
+      fetchCommandes();
     } finally {
       setAssigning(false);
     }
