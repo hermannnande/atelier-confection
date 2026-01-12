@@ -268,6 +268,20 @@ const Appel = () => {
                 </span>
               </div>
 
+              {/* Image du produit - En haut */}
+              {(typeof commande.modele === 'object' && commande.modele?.image) && (
+                <div className="mb-3">
+                  <img 
+                    src={commande.modele.image} 
+                    alt={getModeleNom(commande.modele)}
+                    className="w-full h-32 object-cover rounded-lg shadow-md"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Client */}
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3">
                 <div className="flex items-center space-x-2 mb-2">
