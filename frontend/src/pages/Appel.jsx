@@ -268,38 +268,45 @@ const Appel = () => {
                 </span>
               </div>
 
-              {/* Image du produit - En haut */}
-              {(typeof commande.modele === 'object' && commande.modele?.image) && (
-                <div className="mb-3">
-                  <img 
-                    src={commande.modele.image} 
-                    alt={getModeleNom(commande.modele)}
-                    className="w-full h-32 object-cover rounded-lg shadow-md"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
+              {/* Client avec image */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3 flex items-start space-x-3">
+                {/* Infos Client */}
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <User className="text-blue-600" size={16} />
+                    <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
+                  </div>
+                  <a 
+                    href={`tel:${getClientContact(commande)}`}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Phone size={12} />
+                    <span>{getClientContact(commande)}</span>
+                  </a>
+                  <div className="flex items-center space-x-1 mt-1">
+                    <MapPin className="text-emerald-600" size={14} />
+                    <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
+                  </div>
                 </div>
-              )}
-
-              {/* Client */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3">
-                <div className="flex items-center space-x-2 mb-2">
-                  <User className="text-blue-600" size={16} />
-                  <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
-                </div>
-                <a 
-                  href={`tel:${getClientContact(commande)}`}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Phone size={12} />
-                  <span>{getClientContact(commande)}</span>
-                </a>
-                <div className="flex items-center space-x-1 mt-1">
-                  <MapPin className="text-emerald-600" size={14} />
-                  <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
-                </div>
+                
+                {/* Image du produit - Petite à droite */}
+                {(typeof commande.modele === 'object' && commande.modele?.image) ? (
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={commande.modele.image} 
+                      alt={getModeleNom(commande.modele)}
+                      className="w-16 h-16 object-cover rounded-lg shadow-md"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
+                    <Package className="text-white" size={24} />
+                  </div>
+                )}
               </div>
 
               {/* Détails */}
