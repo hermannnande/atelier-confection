@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check } from 'lucide-react';
+import { DollarSign, Package, User, CheckCircle, Eye, XCircle, Wallet, Check, Phone } from 'lucide-react';
 
 const CaisseLivreurs = () => {
   const [livreurs, setLivreurs] = useState([]);
@@ -374,77 +374,116 @@ const CaisseLivreurs = () => {
             <div className="p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Détails des Livraisons</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).map((livraison) => {
                   const isPaid = livraison.paiement_recu;
                   const montant = livraison.commande?.prix || 0;
+                  const clientNom = typeof livraison.commande?.client === 'object' 
+                    ? livraison.commande.client.nom 
+                    : livraison.commande?.client || 'N/A';
+                  const clientContact = typeof livraison.commande?.client === 'object' 
+                    ? livraison.commande.client.contact 
+                    : '';
+                  const modeleNom = typeof livraison.commande?.modele === 'object' 
+                    ? livraison.commande.modele.nom 
+                    : livraison.commande?.modele || 'N/A';
                   
                   return (
                     <div 
                       key={livraison._id || livraison.id} 
-                      className={`border rounded-lg p-4 transition-all ${
+                      className={`relative border rounded-lg p-3 transition-all ${
                         isPaid 
-                          ? 'bg-green-50 border-green-200' 
-                          : 'bg-white hover:shadow-md'
+                          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' 
+                          : 'bg-white border-gray-200 hover:shadow-md hover:border-emerald-300'
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="font-bold text-gray-900">
+                      {/* Badge Payé en coin */}
+                      {isPaid && (
+                        <div className="absolute top-2 right-2">
+                          <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-green-600 text-white flex items-center space-x-1 shadow-md">
+                            <Check size={10} strokeWidth={4} />
+                            <span>PAYÉ</span>
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Partie gauche - Infos commande */}
+                        <div className="flex-1 min-w-0">
+                          {/* Numéro et statut */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-black text-gray-900 text-sm">
                               {livraison.commande?.numeroCommande || 'N/A'}
                             </h4>
-                            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getStatutBadge(livraison.statut)}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatutBadge(livraison.statut)}`}>
                               {getStatutLabel(livraison.statut)}
                             </span>
-                            {isPaid && (
-                              <span className="px-2 py-1 rounded-lg text-xs font-bold bg-green-600 text-white flex items-center space-x-1">
-                                <Check size={12} strokeWidth={3} />
-                                <span>Payé</span>
-                              </span>
+                          </div>
+                          
+                          {/* Client avec contact */}
+                          <div className="bg-white/60 rounded-md p-2 mb-2">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold text-gray-500 uppercase">Client</span>
+                              <span className="text-xs font-black text-gray-900">{clientNom}</span>
+                            </div>
+                            {clientContact && (
+                              <a
+                                href={`tel:${clientContact}`}
+                                className="flex items-center justify-end space-x-1 text-blue-600 hover:text-blue-800 font-semibold text-xs"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Phone size={11} />
+                                <span>{clientContact}</span>
+                              </a>
                             )}
                           </div>
                           
-                          <div className="text-sm text-gray-600 space-y-1">
-                            <p>
-                              <span className="font-semibold">Client:</span>{' '}
-                              {typeof livraison.commande?.client === 'object' 
-                                ? livraison.commande.client.nom 
-                                : livraison.commande?.client || 'N/A'}
-                            </p>
-                            <p>
-                              <span className="font-semibold">Modèle:</span>{' '}
-                              {typeof livraison.commande?.modele === 'object' 
-                                ? livraison.commande.modele.nom 
-                                : livraison.commande?.modele || 'N/A'}
-                            </p>
-                            <p>
-                              <span className="font-semibold">Ville:</span>{' '}
-                              {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
-                            </p>
-                            {isPaid && livraison.date_paiement && (
-                              <p className="text-xs text-green-700 font-semibold">
-                                ✅ Reçu le {new Date(livraison.date_paiement).toLocaleDateString('fr-FR')}
+                          {/* Modèle et ville */}
+                          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                            <div className="bg-gray-50 rounded px-2 py-1">
+                              <span className="text-gray-500 font-semibold">Modèle:</span>
+                              <p className="font-bold text-gray-900 truncate">{modeleNom}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded px-2 py-1">
+                              <span className="text-gray-500 font-semibold">Ville:</span>
+                              <p className="font-bold text-gray-900 truncate">
+                                {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
                               </p>
-                            )}
+                            </div>
                           </div>
+                          
+                          {/* Date de paiement si payé */}
+                          {isPaid && livraison.date_paiement && (
+                            <p className="text-[10px] text-green-700 font-bold mt-1.5">
+                              ✅ Reçu le {new Date(livraison.date_paiement).toLocaleDateString('fr-FR', { 
+                                day: '2-digit', 
+                                month: '2-digit', 
+                                year: 'numeric' 
+                              })}
+                            </p>
+                          )}
                         </div>
                         
-                        <div className="text-right ml-4">
-                          <p className="text-xs text-gray-500 mb-1">Montant</p>
-                          <p className={`text-2xl font-black ${isPaid ? 'text-green-600' : 'text-emerald-600'}`}>
-                            {montant.toLocaleString('fr-FR')} F
-                          </p>
+                        {/* Partie droite - Montant et action */}
+                        <div className="flex flex-col items-end justify-between min-w-[120px]">
+                          {/* Montant */}
+                          <div className="text-right">
+                            <p className="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
+                            <p className={`text-xl font-black ${isPaid ? 'text-green-600' : 'text-emerald-600'}`}>
+                              {montant.toLocaleString('fr-FR')}
+                            </p>
+                            <p className="text-[10px] font-bold text-gray-500">FCFA</p>
+                          </div>
                           
-                          {/* Bouton de confirmation individuel */}
+                          {/* Bouton de confirmation */}
                           {livraison.statut === 'livree' && !isPaid && (
                             <button
                               onClick={() => handleMarquerPaye(livraison._id || livraison.id, montant)}
                               disabled={markingPaid === (livraison._id || livraison.id)}
-                              className="mt-2 w-full bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center space-x-1 transition-all disabled:opacity-50"
+                              className="mt-2 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
                             >
-                              <Check size={14} strokeWidth={3} />
-                              <span>{markingPaid === (livraison._id || livraison.id) ? 'Confirmation...' : 'Confirmer Réception'}</span>
+                              <Check size={12} strokeWidth={4} />
+                              <span>{markingPaid === (livraison._id || livraison.id) ? 'EN COURS...' : 'CONFIRMER'}</span>
                             </button>
                           )}
                         </div>
