@@ -91,72 +91,66 @@ const AtelierStyliste = () => {
           <p className="text-gray-600">Toutes les commandes sont traitées</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {commandesEnDecoupe.map((commande) => (
             <div 
               key={commande._id} 
-              className={`relative overflow-hidden rounded-2xl p-5 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 ${
+              className={`relative overflow-hidden rounded-xl p-3 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
                 commande.urgence 
-                  ? 'bg-gradient-to-br from-red-500 to-pink-600 ring-4 ring-red-300 animate-pulse' 
+                  ? 'bg-gradient-to-br from-red-500 to-pink-600 ring-2 ring-red-300 animate-pulse' 
                   : 'bg-gradient-to-br from-amber-400 to-orange-500'
               }`}
             >
               {/* Badge URGENT en haut */}
               {commande.urgence && (
-                <div className="absolute top-0 right-0 bg-red-600 text-white px-4 py-1 rounded-bl-xl font-black text-xs flex items-center space-x-1">
-                  <AlertCircle size={14} />
-                  <span>🔥 URGENT</span>
+                <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-0.5 rounded-bl-lg font-black text-[10px] flex items-center space-x-0.5">
+                  <AlertCircle size={10} />
+                  <span>URGENT</span>
                 </div>
               )}
 
               {/* Numéro de commande */}
-              <div className="mb-4">
-                <div className="inline-block bg-white/30 backdrop-blur-sm px-3 py-1 rounded-lg">
-                  <p className="text-xs font-bold text-white/80 uppercase">Commande</p>
-                </div>
-                <h3 className="text-2xl font-black text-white mt-2">
+              <div className="mb-2">
+                <h3 className="text-lg font-black text-white">
                   {commande.numeroCommande}
                 </h3>
               </div>
 
               {/* Détails du modèle */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 mb-4">
-                <div className="flex items-center space-x-2 mb-3">
-                  <Package size={18} className="text-white" />
-                  <p className="text-sm font-bold text-white uppercase">Modèle</p>
-                </div>
-                <p className="text-xl font-black text-white mb-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 mb-2">
+                <p className="text-xs font-bold text-white/80 mb-1">MODÈLE</p>
+                <p className="text-sm font-black text-white line-clamp-1 mb-2">
                   {commande.modele.nom}
                 </p>
                 
                 {/* Taille & Couleur */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-white/30 rounded-lg p-2 text-center">
-                    <p className="text-xs text-white/80 font-bold">TAILLE</p>
-                    <p className="text-2xl font-black text-white">{commande.taille}</p>
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="bg-white/30 rounded-md p-1 text-center">
+                    <p className="text-[10px] text-white/80 font-bold">TAILLE</p>
+                    <p className="text-lg font-black text-white">{commande.taille}</p>
                   </div>
-                  <div className="bg-white/30 rounded-lg p-2 text-center">
-                    <p className="text-xs text-white/80 font-bold">COULEUR</p>
-                    <p className="text-sm font-black text-white truncate">{commande.couleur}</p>
+                  <div className="bg-white/30 rounded-md p-1 text-center">
+                    <p className="text-[10px] text-white/80 font-bold">COULEUR</p>
+                    <p className="text-xs font-black text-white truncate">{commande.couleur}</p>
                   </div>
                 </div>
               </div>
 
               {/* Note */}
               {commande.noteAppelant && (
-                <div className="bg-white/90 rounded-xl p-3 mb-4">
-                  <p className="text-xs font-bold text-gray-700 mb-1">📝 Instructions</p>
-                  <p className="text-sm text-gray-800 line-clamp-2">{commande.noteAppelant}</p>
+                <div className="bg-white/90 rounded-lg p-2 mb-2">
+                  <p className="text-[10px] font-bold text-gray-700 mb-0.5">📝</p>
+                  <p className="text-[11px] text-gray-800 line-clamp-2">{commande.noteAppelant}</p>
                 </div>
               )}
 
               {/* Bouton d'action */}
               <button
                 onClick={() => handleEnvoyerCouture(commande._id)}
-                className="w-full bg-white hover:bg-gray-50 text-gray-900 font-black py-4 rounded-xl transition-all transform hover:scale-105 shadow-xl flex items-center justify-center space-x-2"
+                className="w-full bg-white hover:bg-gray-50 text-gray-900 font-black py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center justify-center space-x-1 text-xs"
               >
-                <CheckCircle size={20} strokeWidth={3} />
-                <span>TERMINER & ENVOYER</span>
+                <CheckCircle size={14} strokeWidth={3} />
+                <span>TERMINER</span>
               </button>
             </div>
           ))}
