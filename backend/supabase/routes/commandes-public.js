@@ -65,7 +65,7 @@ router.post('/public', async (req, res) => {
       statut: 'en_attente_validation', // ✅ Statut pour la page APPEL
       urgence: false,
       appelant_id: null, // Commande web, pas d'appelant
-      note_appelant: `Commande web reçue le ${new Date().toLocaleString('fr-FR')}. Source: ${source || 'site web'}${modeleExistant ? ' (Modèle: ' + modeleExistant.nom + ')' : ''}`,
+      note_appelant: '', // Pas de note automatique - l'appelant ajoutera ses propres notes si nécessaire
       historique: [
         {
           action: 'Commande reçue depuis le site web',
