@@ -215,7 +215,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Performance globale */}
+      {/* Performance globale - Visible uniquement pour Admin et Gestionnaire */}
+      {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && (
       <div className="animate-slide-up max-w-full" style={{ animationDelay: '0.2s' }}>
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-2 sm:space-x-3">
           <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-purple-600 to-pink-600 rounded-full flex-shrink-0"></div>
@@ -245,8 +246,10 @@ const Dashboard = () => {
           })}
         </div>
       </div>
+      )}
 
-      {/* Équipe active */}
+      {/* Équipe active - Visible uniquement pour Admin et Gestionnaire */}
+      {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && (
       <div className="stat-card animate-slide-up max-w-full overflow-hidden" style={{ animationDelay: '0.3s' }}>
         <div className="flex items-center space-x-2 sm:space-x-3 mb-6 sm:mb-8">
           <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl flex-shrink-0">
@@ -272,6 +275,7 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
+      )}
 
       {/* Accès rapides premium */}
       <div className="animate-slide-up max-w-full" style={{ animationDelay: '0.4s' }}>
