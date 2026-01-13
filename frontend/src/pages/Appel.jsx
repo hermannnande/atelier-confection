@@ -276,10 +276,14 @@ const Appel = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {commandesAffichees.map((commande, index) => (
+            {commandesAffichees.map((commande, index) => {
+              const isEnAttente = commande.statut === 'en_attente_paiement';
+              return (
             <div
               key={commande._id || commande.id}
-              className="stat-card hover:scale-105 transition-transform cursor-pointer group max-w-full"
+              className={`stat-card hover:scale-105 transition-transform cursor-pointer group max-w-full ${
+                isEnAttente ? 'border-2 border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50' : ''
+              }`}
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
@@ -293,13 +297,15 @@ const Appel = () => {
                     {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <span className="badge badge-warning text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 flex-shrink-0">
-                  📞 Appel
+                <span className={`badge ${isEnAttente ? 'bg-orange-500 text-white' : 'badge-warning'} text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 flex-shrink-0`}>
+                  {isEnAttente ? '⏳ Attente' : '📞 Appel'}
                 </span>
               </div>
 
               {/* Client avec image */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 flex items-start space-x-2 sm:space-x-3 max-w-full">
+              <div className={`rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 flex items-start space-x-2 sm:space-x-3 max-w-full ${
+                isEnAttente ? 'bg-gradient-to-r from-orange-100 to-amber-100' : 'bg-gradient-to-r from-gray-50 to-blue-50'
+              }`}>
                 {/* Infos Client */}
                 <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-1 sm:space-x-2 mb-1.5 sm:mb-2">
@@ -359,9 +365,13 @@ const Appel = () => {
               </div>
 
               {/* Prix */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 max-w-full">
+              <div className={`rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 max-w-full ${
+                isEnAttente ? 'bg-gradient-to-r from-orange-500 to-amber-600' : 'bg-gradient-to-r from-emerald-500 to-teal-600'
+              }`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-white text-[10px] sm:text-xs font-semibold">Prix Total</span>
+                  <span className="text-white text-[10px] sm:text-xs font-semibold">
+                    {isEnAttente ? '⏳ En Attente' : 'Prix Total'}
+                  </span>
                   <span className="text-white text-lg sm:text-xl font-black">
                     {commande.prix?.toLocaleString('fr-FR')} F
                   </span>
@@ -379,7 +389,8 @@ const Appel = () => {
                 Traiter la commande
               </button>
             </div>
-          ))}
+          );
+            })}
         </div>
 
         {/* Contrôles de pagination */}
