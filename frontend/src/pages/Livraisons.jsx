@@ -175,138 +175,126 @@ const Livraisons = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Livraisons</h1>
-          <p className="text-gray-600 mt-1">Suivez les livraisons en cours</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
+            <Truck className="text-white" size={32} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Livraisons
+            </h1>
+            <p className="text-gray-600 font-medium">Suivi des colis en cours</p>
+          </div>
         </div>
         {['gestionnaire', 'administrateur'].includes(user?.role) && (
           <button
             onClick={() => setShowModal(true)}
-            className="btn btn-primary inline-flex items-center space-x-2"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
           >
-            <Truck size={20} />
-            <span>Assigner Livraison</span>
+            <Truck size={20} strokeWidth={2.5} />
+            <span>ASSIGNER</span>
           </button>
         )}
       </div>
 
-      {/* Statistiques - Cliquables pour filtrer */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <button
-          onClick={() => setFilterStatut('')}
-          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
-            filterStatut === '' ? 'ring-2 ring-primary-600 bg-primary-50' : ''
-          }`}
-        >
-          <p className="text-gray-600 mb-2">Total</p>
-          <p className="text-3xl font-bold text-primary-600">{livraisons.length}</p>
-        </button>
-        <button
-          onClick={() => setFilterStatut('en_cours')}
-          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
-            filterStatut === 'en_cours' ? 'ring-2 ring-blue-600 bg-blue-50' : ''
-          }`}
-        >
-          <p className="text-gray-600 mb-2">🚚 En cours</p>
-          <p className="text-3xl font-bold text-blue-600">
+      {/* Statistiques */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl p-3 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total</p>
+          <p className="text-2xl font-black text-gray-900">{livraisons.length}</p>
+        </div>
+        <div className="bg-white rounded-xl p-3 shadow-sm">
+          <p className="text-xs font-semibold text-blue-600 uppercase mb-1">🚚 En cours</p>
+          <p className="text-2xl font-black text-blue-900">
             {livraisons.filter(l => l.statut === 'en_cours').length}
           </p>
-        </button>
-        <button
-          onClick={() => setFilterStatut('livree')}
-          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
-            filterStatut === 'livree' ? 'ring-2 ring-green-600 bg-green-50' : ''
-          }`}
-        >
-          <p className="text-gray-600 mb-2">✅ Livrées</p>
-          <p className="text-3xl font-bold text-green-600">
+        </div>
+        <div className="bg-white rounded-xl p-3 shadow-sm">
+          <p className="text-xs font-semibold text-green-600 uppercase mb-1">✅ Livrées</p>
+          <p className="text-2xl font-black text-green-900">
             {livraisons.filter(l => l.statut === 'livree').length}
           </p>
-        </button>
-        <button
-          onClick={() => setFilterStatut('refusee')}
-          className={`card text-left hover:shadow-lg transition-all cursor-pointer ${
-            filterStatut === 'refusee' ? 'ring-2 ring-red-600 bg-red-50' : ''
-          }`}
-        >
-          <p className="text-gray-600 mb-2">❌ Refusées</p>
-          <p className="text-3xl font-bold text-red-600">
+        </div>
+        <div className="bg-white rounded-xl p-3 shadow-sm">
+          <p className="text-xs font-semibold text-red-600 uppercase mb-1">❌ Refusées</p>
+          <p className="text-2xl font-black text-red-900">
             {livraisons.filter(l => l.statut === 'refusee').length}
           </p>
-        </button>
+        </div>
       </div>
 
-      {/* Filtres par statut */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <button
-          onClick={() => setFilterStatut('')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === '' 
-              ? 'bg-primary-600 text-white shadow-lg' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          Tous
-        </button>
-        <button
-          onClick={() => setFilterStatut('en_cours')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === 'en_cours' 
-              ? 'bg-blue-600 text-white shadow-lg' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          🚚 En cours
-        </button>
-        <button
-          onClick={() => setFilterStatut('livree')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === 'livree' 
-              ? 'bg-green-600 text-white shadow-lg' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          ✅ Livrées
-        </button>
-        <button
-          onClick={() => setFilterStatut('refusee')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === 'refusee' 
-              ? 'bg-red-600 text-white shadow-lg' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          ❌ Refusées
-        </button>
-        <button
-          onClick={() => setFilterStatut('retournee')}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-            filterStatut === 'retournee' 
-              ? 'bg-gray-600 text-white shadow-lg' 
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          ↩️ Retournées
-        </button>
-      </div>
+      {/* Filtres */}
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        {/* Filtres par statut */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            onClick={() => setFilterStatut('')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === '' 
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            📦 Tous ({livraisons.length})
+          </button>
+          <button
+            onClick={() => setFilterStatut('en_cours')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === 'en_cours' 
+                ? 'bg-blue-600 text-white shadow-lg' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            🚚 En cours ({livraisons.filter(l => l.statut === 'en_cours').length})
+          </button>
+          <button
+            onClick={() => setFilterStatut('livree')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === 'livree' 
+                ? 'bg-green-600 text-white shadow-lg' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ✅ Livrées ({livraisons.filter(l => l.statut === 'livree').length})
+          </button>
+          <button
+            onClick={() => setFilterStatut('refusee')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === 'refusee' 
+                ? 'bg-red-600 text-white shadow-lg' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ❌ Refusées ({livraisons.filter(l => l.statut === 'refusee').length})
+          </button>
+          <button
+            onClick={() => setFilterStatut('retournee')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === 'retournee' 
+                ? 'bg-gray-600 text-white shadow-lg' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ↩️ Retournées ({livraisons.filter(l => l.statut === 'retournee').length})
+          </button>
+        </div>
 
-      {/* Filtres par livreur et date */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Filtres avancés */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Filtre par livreur */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              👤 Filtrer par livreur
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              👤 LIVREUR
             </label>
             <select
               value={filterLivreur}
               onChange={(e) => setFilterLivreur(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">Tous les livreurs</option>
+              <option value="">Tous</option>
               {livreurs.map(livreur => (
                 <option key={livreur._id} value={livreur._id}>
                   {livreur.nom}
@@ -317,49 +305,50 @@ const Livraisons = () => {
 
           {/* Filtre par date de début */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              📅 Date de début
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              📅 DATE DÉBUT
             </label>
             <input
               type="date"
               value={filterDateDebut}
               onChange={(e) => setFilterDateDebut(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           {/* Filtre par date de fin */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              📅 Date de fin
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              📅 DATE FIN
             </label>
             <input
               type="date"
               value={filterDateFin}
               onChange={(e) => setFilterDateFin(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
 
-        {/* Bouton réinitialiser les filtres */}
-        {(filterLivreur || filterDateDebut || filterDateFin) && (
-          <div className="mt-4 flex justify-end">
+        {/* Bouton réinitialiser */}
+        {(filterStatut || filterLivreur || filterDateDebut || filterDateFin) && (
+          <div className="mt-3">
             <button
               onClick={() => {
+                setFilterStatut('');
                 setFilterLivreur('');
                 setFilterDateDebut('');
                 setFilterDateFin('');
               }}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold text-sm transition-all"
+              className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
             >
-              ✖️ Réinitialiser les filtres
+              ✕ Réinitialiser tous les filtres
             </button>
           </div>
         )}
       </div>
 
-      {/* Liste des livraisons */}
+      {/* Liste des livraisons en grille */}
       {livraisonsFiltered.length === 0 ? (
         <div className="card text-center py-12">
           <Truck className="mx-auto text-gray-400 mb-4" size={48} />
@@ -373,115 +362,156 @@ const Livraisons = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {livraisonsFiltered.map((livraison) => (
-            <div key={livraison._id} className="card hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {livraison.commande?.numeroCommande}
-                    </h3>
-                    <span className={`px-3 py-1.5 rounded-lg font-bold text-sm ${
-                      livraison.statut === 'livree' ? 'bg-green-100 text-green-800' :
-                      livraison.statut === 'refusee' ? 'bg-red-100 text-red-800' :
-                      livraison.statut === 'retournee' ? 'bg-gray-100 text-gray-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {livraison.statut === 'livree' && '✅ '}
-                      {livraison.statut === 'refusee' && '❌ '}
-                      {livraison.statut === 'retournee' && '↩️ '}
-                      {livraison.statut === 'en_cours' && '🚚 '}
-                      {getStatutLabel(livraison.statut)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {livraisonsFiltered.map((livraison) => {
+            const imageUrl = livraison.commande?.modele?.imageUrl;
+            
+            return (
+              <div 
+                key={livraison._id} 
+                className={`relative bg-white rounded-lg shadow-sm hover:shadow-lg transition-all p-3 border-2 ${
+                  livraison.commande?.urgence 
+                    ? 'border-red-500 animate-pulse' 
+                    : livraison.statut === 'livree' 
+                      ? 'border-green-200' 
+                      : livraison.statut === 'refusee' 
+                        ? 'border-red-200' 
+                        : 'border-gray-200'
+                }`}
+              >
+                {/* Badge urgent en haut à droite */}
+                {livraison.commande?.urgence && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <span className="px-2 py-1 bg-red-600 text-white rounded text-xs font-black shadow-lg">
+                      ⚡ URGENT
                     </span>
-                    {livraison.commande?.urgence && (
-                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold">
-                        <AlertCircle size={12} className="inline mr-1" />
-                        URGENT
-                      </span>
-                    )}
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Client</p>
-                      <p className="font-bold text-gray-900 mb-1">{livraison.commande?.client.nom}</p>
-                      <a 
-                        href={`tel:${livraison.commande?.client.contact}`}
-                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium"
-                      >
-                        <Phone size={14} />
-                        <span>{livraison.commande?.client.contact}</span>
-                      </a>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Ville</p>
-                      <p className="font-bold text-gray-900">📍 {livraison.adresseLivraison.ville}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 uppercase font-semibold mb-2">Livreur</p>
-                      <p className="font-bold text-gray-900 mb-1">{livraison.livreur?.nom}</p>
-                      <a 
-                        href={`tel:${livraison.livreur?.telephone}`}
-                        className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors font-medium"
-                      >
-                        <Phone size={14} />
-                        <span>{livraison.livreur?.telephone}</span>
-                      </a>
-                    </div>
-                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-3">
-                      <p className="text-xs text-white uppercase font-semibold mb-2">Prix Total</p>
-                      <p className="text-2xl font-black text-white">
-                        {livraison.commande?.prix.toLocaleString('fr-FR')} <span className="text-sm">FCFA</span>
-                      </p>
+                {/* Image produit */}
+                {imageUrl ? (
+                  <div className="w-full h-24 mb-2 rounded-lg overflow-hidden bg-gray-100">
+                    <img 
+                      src={imageUrl} 
+                      alt={livraison.commande?.modele?.nom}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full hidden items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                      <Package className="text-gray-400" size={32} />
                     </div>
                   </div>
+                ) : (
+                  <div className="w-full h-24 mb-2 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <Package className="text-gray-400" size={32} />
+                  </div>
+                )}
 
-                  {livraison.motifRefus && (
-                    <div className="p-3 bg-red-50 rounded-lg">
-                      <p className="text-sm text-red-700">
-                        <span className="font-medium">Motif du refus: </span>
-                        {livraison.motifRefus}
-                      </p>
-                    </div>
-                  )}
+                {/* Numéro de commande */}
+                <div className="mb-2">
+                  <h3 className="text-sm font-black text-gray-900 truncate">
+                    {livraison.commande?.numeroCommande}
+                  </h3>
+                  <p className="text-xs text-gray-600 truncate">
+                    {livraison.commande?.modele?.nom}
+                  </p>
                 </div>
 
-                <div className="flex items-center space-x-2 ml-4">
-                  {user?.role === 'livreur' && livraison.statut === 'en_cours' && (
-                    <>
-                      <button
-                        onClick={() => handleLivree(livraison._id)}
-                        className="btn btn-success btn-sm"
-                      >
-                        <CheckCircle size={16} className="mr-1" />
-                        Livrée
-                      </button>
-                      <button
-                        onClick={() => handleRefusee(livraison._id)}
-                        className="btn btn-danger btn-sm"
-                      >
-                        <XCircle size={16} className="mr-1" />
-                        Refusée
-                      </button>
-                    </>
-                  )}
+                {/* Badge statut */}
+                <div className="mb-2">
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                    livraison.statut === 'livree' ? 'bg-green-100 text-green-800' :
+                    livraison.statut === 'refusee' ? 'bg-red-100 text-red-800' :
+                    livraison.statut === 'retournee' ? 'bg-gray-100 text-gray-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {livraison.statut === 'livree' && '✅ '}
+                    {livraison.statut === 'refusee' && '❌ '}
+                    {livraison.statut === 'retournee' && '↩️ '}
+                    {livraison.statut === 'en_cours' && '🚚 '}
+                    {getStatutLabel(livraison.statut)}
+                  </span>
+                </div>
 
-                  {['gestionnaire', 'administrateur'].includes(user?.role) && 
-                   livraison.statut === 'refusee' && 
-                   !livraison.verifieParGestionnaire && (
-                    <button
-                      onClick={() => handleConfirmerRetour(livraison._id)}
-                      className="btn btn-primary btn-sm"
+                {/* Informations client */}
+                <div className="space-y-2 mb-3">
+                  <div className="bg-gray-50 rounded p-2">
+                    <p className="text-xs text-gray-500 font-semibold mb-1">👤 CLIENT</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {livraison.commande?.client.nom}
+                    </p>
+                    <a 
+                      href={`tel:${livraison.commande?.client.contact}`}
+                      className="text-xs text-blue-600 hover:underline flex items-center space-x-1 mt-1"
                     >
-                      <Package size={16} className="mr-1" />
-                      Confirmer Retour
-                    </button>
-                  )}
+                      <Phone size={12} />
+                      <span className="truncate">{livraison.commande?.client.contact}</span>
+                    </a>
+                  </div>
+
+                  <div className="bg-gray-50 rounded p-2">
+                    <p className="text-xs text-gray-500 font-semibold mb-1">📍 VILLE</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {livraison.adresseLivraison.ville}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Prix */}
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-2 mb-3">
+                  <p className="text-xs text-white font-semibold mb-1">💰 PRIX</p>
+                  <p className="text-lg font-black text-white">
+                    {livraison.commande?.prix.toLocaleString('fr-FR')} F
+                  </p>
+                </div>
+
+                {/* Motif de refus si applicable */}
+                {livraison.motifRefus && (
+                  <div className="p-2 bg-red-50 rounded mb-3">
+                    <p className="text-xs text-red-700">
+                      <span className="font-bold">Refus: </span>
+                      <span className="line-clamp-2">{livraison.motifRefus}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Boutons d'action */}
+                {user?.role === 'livreur' && livraison.statut === 'en_cours' && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleLivree(livraison._id)}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+                    >
+                      <CheckCircle size={14} />
+                      <span>LIVRÉE</span>
+                    </button>
+                    <button
+                      onClick={() => handleRefusee(livraison._id)}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+                    >
+                      <XCircle size={14} />
+                      <span>REFUSÉE</span>
+                    </button>
+                  </div>
+                )}
+
+                {['gestionnaire', 'administrateur'].includes(user?.role) && 
+                 livraison.statut === 'refusee' && 
+                 !livraison.verifieParGestionnaire && (
+                  <button
+                    onClick={() => handleConfirmerRetour(livraison._id)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <Package size={14} />
+                    <span>RETOUR</span>
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
