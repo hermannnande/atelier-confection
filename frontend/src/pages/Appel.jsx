@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus, Search } from 'lucide-react';
 
 const Appel = () => {
   const [commandesAppel, setCommandesAppel] = useState([]);
@@ -14,6 +14,7 @@ const Appel = () => {
   const [noteAppelant, setNoteAppelant] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(100);
+  const [searchTerm, setSearchTerm] = useState('');
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -196,11 +197,29 @@ const Appel = () => {
     );
   }
 
+  // Filtrer les commandes par recherche
+  const commandesFiltrees = commandesAppel.filter(commande => {
+    if (!searchTerm) return true;
+    
+    const search = searchTerm.toLowerCase();
+    const numeroCommande = (commande.numeroCommande || (commande._id || commande.id).slice(-6)).toLowerCase();
+    const clientNom = getClientNom(commande).toLowerCase();
+    const clientContact = getClientContact(commande).toLowerCase();
+    const ville = getVille(commande).toLowerCase();
+    const modele = (typeof commande.modele === 'object' ? commande.modele.nom : commande.modele || '').toLowerCase();
+    
+    return numeroCommande.includes(search) ||
+           clientNom.includes(search) ||
+           clientContact.includes(search) ||
+           ville.includes(search) ||
+           modele.includes(search);
+  });
+
   // Calcul de la pagination
-  const totalPages = Math.ceil(commandesAppel.length / itemsPerPage);
+  const totalPages = Math.ceil(commandesFiltrees.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const commandesAffichees = commandesAppel.slice(startIndex, endIndex);
+  const commandesAffichees = commandesFiltrees.slice(startIndex, endIndex);
 
   const goToPage = (page) => {
     setCurrentPage(page);
@@ -274,11 +293,46 @@ const Appel = () => {
         </div>
       </div>
 
-      {/* Info pagination */}
+      {/* Barre de recherche */}
       {commandesAppel.length > 0 && (
+        <div className="card max-w-full">
+          <div className="relative">
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 flex-shrink-0" size={18} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Réinitialiser à la page 1 lors de la recherche
+              }}
+              placeholder="Rechercher par numéro, client, téléphone, ville, modèle..."
+              className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-gray-200 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+          {searchTerm && (
+            <p className="mt-2 text-xs sm:text-sm text-gray-600">
+              <span className="font-bold text-blue-600">{commandesFiltrees.length}</span> résultat{commandesFiltrees.length > 1 ? 's' : ''} trouvé{commandesFiltrees.length > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Info pagination */}
+      {commandesFiltrees.length > 0 && (
         <div className="bg-white rounded-lg p-2 sm:p-3 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0">
           <p className="text-xs sm:text-sm font-semibold text-gray-700">
-            {startIndex + 1}-{Math.min(endIndex, commandesAppel.length)} / {commandesAppel.length}
+            {startIndex + 1}-{Math.min(endIndex, commandesFiltrees.length)} / {commandesFiltrees.length}
           </p>
           <p className="text-[10px] sm:text-xs text-gray-500">
             Page {currentPage} / {totalPages}
@@ -294,6 +348,20 @@ const Appel = () => {
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Aucun appel</h3>
           <p className="text-sm sm:text-base text-gray-600">Toutes les commandes traitées ! 🎉</p>
+        </div>
+      ) : commandesFiltrees.length === 0 ? (
+        <div className="stat-card text-center py-12 sm:py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-full mb-4">
+            <Search className="text-gray-400" size={32} />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Aucun résultat</h3>
+          <p className="text-sm sm:text-base text-gray-600">Aucune commande ne correspond à votre recherche</p>
+          <button
+            onClick={() => setSearchTerm('')}
+            className="mt-4 btn bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-lg"
+          >
+            Effacer la recherche
+          </button>
         </div>
       ) : (
         <>
