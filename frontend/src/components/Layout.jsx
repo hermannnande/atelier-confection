@@ -33,13 +33,13 @@ const Layout = () => {
     { name: 'Commandes', href: '/commandes', icon: ShoppingBag, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-pink-500' },
     { name: 'Préparation Colis', href: '/preparation-colis', icon: Package, roles: ['administrateur', 'gestionnaire'], gradient: 'from-purple-500 to-indigo-500' },
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
-    { name: 'Bibliothèque Modèles', href: '/modeles', icon: Palette, roles: ['administrateur', 'gestionnaire'], gradient: 'from-fuchsia-500 to-pink-500' },
-    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
-    { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
-    { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier'], gradient: 'from-rose-500 to-red-500' },
+    { name: 'Bibliothèque Modèles', href: '/modeles', icon: Palette, roles: ['administrateur'], gradient: 'from-fuchsia-500 to-pink-500' },
+    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur'], gradient: 'from-emerald-500 to-teal-500' },
+    { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
+    { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'couturier'], gradient: 'from-rose-500 to-red-500' },
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
     { name: 'Caisse Livreurs', href: '/caisse-livreurs', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
-    { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur', 'gestionnaire'], gradient: 'from-violet-500 to-purple-500' },
+    { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur'], gradient: 'from-violet-500 to-purple-500' },
     { name: 'Utilisateurs', href: '/utilisateurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-cyan-500 to-blue-500' },
   ];
 

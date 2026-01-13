@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Users, UserPlus, Edit, Trash2 } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 const Utilisateurs = () => {
+  const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -221,12 +223,18 @@ const Utilisateurs = () => {
                   className="input"
                 >
                   <option value="">Sélectionner</option>
-                  <option value="administrateur">Administrateur</option>
-                  <option value="gestionnaire">Gestionnaire</option>
-                  <option value="appelant">Appelant</option>
-                  <option value="styliste">Styliste</option>
-                  <option value="couturier">Couturier</option>
-                  <option value="livreur">Livreur</option>
+                  {currentUser?.role === 'gestionnaire' ? (
+                    <option value="livreur">Livreur</option>
+                  ) : (
+                    <>
+                      <option value="administrateur">Administrateur</option>
+                      <option value="gestionnaire">Gestionnaire</option>
+                      <option value="appelant">Appelant</option>
+                      <option value="styliste">Styliste</option>
+                      <option value="couturier">Couturier</option>
+                      <option value="livreur">Livreur</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>

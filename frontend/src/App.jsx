@@ -110,28 +110,28 @@ function App() {
           
           {/* Atelier - Stylistes */}
           <Route path="atelier/styliste" element={
-            <ProtectedRoute allowedRoles={['styliste', 'gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['styliste', 'administrateur']}>
               <AtelierStyliste />
             </ProtectedRoute>
           } />
           
           {/* Atelier - Couturiers */}
           <Route path="atelier/couturier" element={
-            <ProtectedRoute allowedRoles={['couturier', 'gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['couturier', 'administrateur']}>
               <AtelierCouturier />
             </ProtectedRoute>
           } />
           
           {/* Stock */}
           <Route path="stock" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['administrateur']}>
               <Stock />
             </ProtectedRoute>
           } />
           
           {/* Modèles */}
           <Route path="modeles" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['administrateur']}>
               <Modeles />
             </ProtectedRoute>
           } />
@@ -152,7 +152,7 @@ function App() {
           
           {/* Performances */}
           <Route path="performances" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['administrateur']}>
               <Performances />
             </ProtectedRoute>
           } />
