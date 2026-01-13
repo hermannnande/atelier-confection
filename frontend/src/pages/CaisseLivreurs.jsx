@@ -44,7 +44,7 @@ const CaisseLivreurs = () => {
   };
 
   const getLivraisonsLivreesNonPayees = (livreurId) => {
-    return getLivraisonsLivreur(livreurId).filter(l => l.statut === 'livree' && !l.paiement_recu);
+    return getLivraisonsLivreur(livreurId).filter(l => l.statut === 'livree' && !l.paiement_recu && !l.paiementRecu);
   };
 
   const getMontantTotal = (livreurId) => {

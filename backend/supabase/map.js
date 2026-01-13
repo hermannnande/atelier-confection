@@ -69,6 +69,8 @@ export function mapLivraison(row) {
       dateRetour: row.date_retour,
       verifieParGestionnaire: row.verifie_par_gestionnaire,
       commentaireGestionnaire: row.commentaire_gestionnaire,
+      paiementRecu: row.paiement_recu,
+      datePaiement: row.date_paiement,
     })
   );
 }
