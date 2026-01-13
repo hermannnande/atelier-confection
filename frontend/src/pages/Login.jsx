@@ -59,13 +59,6 @@ const Login = () => {
     });
   };
 
-  const demoAccounts = [
-    { role: 'Admin', email: 'admin@atelier.com', gradient: 'from-blue-600 to-indigo-600' },
-    { role: 'Appelant', email: 'appelant@atelier.com', gradient: 'from-purple-600 to-pink-600' },
-    { role: 'Styliste', email: 'styliste@atelier.com', gradient: 'from-orange-600 to-red-600' },
-    { role: 'Livreur', email: 'livreur@atelier.com', gradient: 'from-teal-600 to-green-600' },
-  ];
-
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
       {/* Background animé */}
@@ -209,36 +202,6 @@ const Login = () => {
                 </span>
               </button>
             </form>
-
-            {/* Comptes de démonstration */}
-            <div className="space-y-4 pt-6 border-t border-gray-200/60">
-              <p className="text-xs font-bold text-gray-500 text-center uppercase tracking-wider">
-                Comptes de démonstration
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {demoAccounts.map((account, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setFormData({ email: account.email, password: 'admin123' })}
-                    className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-50 p-4 rounded-xl border border-gray-200/60 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-                    disabled={loading}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${account.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
-                    <div className="relative z-10 space-y-1">
-                      <p className={`font-bold text-sm bg-gradient-to-r ${account.gradient} bg-clip-text text-transparent`}>
-                        {account.role}
-                      </p>
-                      <p className="text-xs text-gray-500 font-medium truncate">
-                        {account.email}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-center text-gray-400 font-medium">
-                Mot de passe : <span className="font-bold text-gray-600">admin123</span>
-              </p>
-            </div>
           </div>
 
           {/* Footer */}
