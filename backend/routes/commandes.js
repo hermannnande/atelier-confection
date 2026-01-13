@@ -125,10 +125,8 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
       return res.status(404).json({ message: 'Commande non trouvée' });
     }
 
-    // Les appelants peuvent seulement modifier leurs propres commandes
-    if (req.user.role === 'appelant' && commande.appelant.toString() !== req.userId.toString()) {
-      return res.status(403).json({ message: 'Accès non autorisé' });
-    }
+    // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
+    // Ne pas restreindre par appelant_id
 
     const { client, modele, taille, couleur, prix, urgence, urgent, noteAppelant, note, statut } = req.body;
     

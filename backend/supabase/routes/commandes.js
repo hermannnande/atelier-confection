@@ -176,9 +176,8 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
 
-    if (req.user.role === 'appelant' && existing.appelant_id !== req.userId) {
-      return res.status(403).json({ message: 'Accès non autorisé' });
-    }
+    // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
+    // Ne pas restreindre par appelant_id
 
     const update = {};
     if (req.body.client) update.client = { ...existing.client, ...req.body.client };
