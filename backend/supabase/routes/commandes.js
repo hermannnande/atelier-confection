@@ -56,7 +56,8 @@ router.get('/', authenticate, async (req, res) => {
 
     // Filtres selon rôle
     if (req.user.role === 'appelant') {
-      q = q.eq('appelant_id', req.userId);
+      // Les appelants voient toutes les commandes en attente (pour traiter les appels)
+      // Ne pas filtrer par appelant_id
     } else if (req.user.role === 'styliste') {
       q = q.in('statut', ['validee', 'en_decoupe']);
     } else if (req.user.role === 'couturier') {

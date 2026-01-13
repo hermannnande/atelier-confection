@@ -13,7 +13,8 @@ router.get('/', authenticate, async (req, res) => {
 
     // Filtrer selon le rôle
     if (req.user.role === 'appelant') {
-      query.appelant = req.userId;
+      // Les appelants voient toutes les commandes en attente (pour traiter les appels)
+      // Ne pas filtrer par appelant_id
     } else if (req.user.role === 'styliste') {
       query.statut = { $in: ['validee', 'en_decoupe'] };
     } else if (req.user.role === 'couturier') {
