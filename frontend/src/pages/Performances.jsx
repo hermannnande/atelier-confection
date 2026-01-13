@@ -52,33 +52,33 @@ const Performances = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* En-tête */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center space-x-4">
-          <BarChart3 size={40} />
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Tableau de Bord des Performances</h1>
-            <p className="text-purple-100">Suivez les performances de votre équipe</p>
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 sm:p-6 lg:p-8 text-white max-w-full overflow-hidden">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <BarChart3 size={28} className="flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">Tableau de Bord des Performances</h1>
+            <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">Suivez les performances de votre équipe</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="card">
-        <div className="flex space-x-2 border-b border-gray-200">
+      <div className="card max-w-full overflow-hidden">
+        <div className="flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 font-medium transition-colors relative ${
+              className={`px-3 sm:px-4 py-2 sm:py-3 font-medium transition-colors relative text-xs sm:text-sm lg:text-base whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               {tab.name}
-              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
+              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs rounded-full bg-gray-100">
                 {tab.count}
               </span>
             </button>
@@ -88,28 +88,28 @@ const Performances = () => {
 
       {/* Contenu - Appelants */}
       {activeTab === 'appelants' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Performances des Appelants</h2>
-          <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">Performances des Appelants</h2>
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
             {appelants.map((perf, index) => (
-              <div key={perf.appelant.id} className="card hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4">
+              <div key={perf.appelant.id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
+                <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
+                  <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                     {index < 3 && (
-                      <Award className={`${
+                      <Award className={`flex-shrink-0 ${
                         index === 0 ? 'text-yellow-500' :
                         index === 1 ? 'text-gray-400' :
                         'text-orange-600'
-                      }`} size={24} />
+                      }`} size={20} />
                     )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{perf.appelant.nom}</h3>
-                      <p className="text-sm text-gray-600">{perf.appelant.email}</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{perf.appelant.nom}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">{perf.appelant.email}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary-600">{perf.totalCommandes}</p>
-                    <p className="text-sm text-gray-600">commandes</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl sm:text-2xl font-bold text-primary-600">{perf.totalCommandes}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">commandes</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
