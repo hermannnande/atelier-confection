@@ -149,3 +149,4 @@ Si après toutes ces étapes le problème persiste :
 La page "Caisse Livreurs" et toutes les fonctionnalités existent et sont correctement configurées. Le problème vient probablement du cache du navigateur ou du serveur qui n'a pas redémarré.
 
 
+

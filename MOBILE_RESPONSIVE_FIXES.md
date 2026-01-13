@@ -151,3 +151,4 @@ Les corrections sont automatiquement déployées sur Vercel à chaque push sur `
 - ✅ Boutons et icônes adaptés
 - ✅ Images et contenus contenus
 
+
