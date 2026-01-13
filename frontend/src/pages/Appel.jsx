@@ -51,7 +51,26 @@ const Appel = () => {
   const fetchCommandesAppel = async (silent = false) => {
     try {
       const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement');
-      const newCommandes = response.data.commandes || [];
+      let newCommandes = response.data.commandes || [];
+      
+      // Trier pour mettre les commandes renvoyées en haut
+      newCommandes = newCommandes.sort((a, b) => {
+        // Les commandes renvoyées en premier
+        if (a.renvoyee && !b.renvoyee) return -1;
+        if (!a.renvoyee && b.renvoyee) return 1;
+        
+        // Si les deux sont renvoyées, trier par date de renvoi (plus récente en premier)
+        if (a.renvoyee && b.renvoyee) {
+          const dateA = new Date(a.dateRenvoi || a.createdAt);
+          const dateB = new Date(b.dateRenvoi || b.createdAt);
+          return dateB - dateA;
+        }
+        
+        // Sinon, trier par date de création (plus récente en premier)
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB - dateA;
+      });
       
       // Vérifier s'il y a de nouvelles commandes
       if (silent && newCommandes.length > commandesAppel.length) {
@@ -100,7 +119,10 @@ const Appel = () => {
           break;
       }
 
-      const payload = { statut: newStatut };
+      const payload = { 
+        statut: newStatut,
+        renvoyee: false // Réinitialiser le statut de renvoi lors du traitement
+      };
       if (action === 'urgent') {
         payload.urgence = true;
       }
@@ -278,15 +300,28 @@ const Appel = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {commandesAffichees.map((commande, index) => {
               const isEnAttente = commande.statut === 'en_attente_paiement';
+              const isRenvoyee = commande.renvoyee === true;
               return (
             <div
               key={commande._id || commande.id}
               className={`stat-card hover:scale-105 transition-transform cursor-pointer group max-w-full ${
-                isEnAttente ? 'border-2 border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50' : ''
+                isRenvoyee 
+                  ? 'border-2 border-red-500 bg-gradient-to-br from-red-50 to-pink-50 shadow-lg shadow-red-200' 
+                  : isEnAttente 
+                    ? 'border-2 border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50' 
+                    : ''
               }`}
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
+              {/* Badge RENVOYÉE si applicable */}
+              {isRenvoyee && (
+                <div className="mb-2 bg-gradient-to-r from-red-600 to-rose-600 text-white px-2 sm:px-3 py-1 rounded-lg flex items-center gap-1 sm:gap-2 shadow-md animate-pulse">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wide">⚠️ RENVOYÉE</span>
+                </div>
+              )}
+              
               {/* Header */}
               <div className="flex items-start justify-between mb-2 sm:mb-3 gap-2">
                 <div className="min-w-0 flex-1">
@@ -297,8 +332,14 @@ const Appel = () => {
                     {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <span className={`badge ${isEnAttente ? 'bg-orange-500 text-white' : 'badge-warning'} text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 flex-shrink-0`}>
-                  {isEnAttente ? '⏳ Attente' : '📞 Appel'}
+                <span className={`badge ${
+                  isRenvoyee 
+                    ? 'bg-red-600 text-white' 
+                    : isEnAttente 
+                      ? 'bg-orange-500 text-white' 
+                      : 'badge-warning'
+                } text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 flex-shrink-0`}>
+                  {isRenvoyee ? '🔄 Renvoi' : isEnAttente ? '⏳ Attente' : '📞 Appel'}
                 </span>
               </div>
 

@@ -55,6 +55,14 @@ const commandeSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Indicateur de renvoi (depuis Gestion Avancée)
+  renvoyee: {
+    type: Boolean,
+    default: false
+  },
+  dateRenvoi: {
+    type: Date
+  },
   // Workflow
   appelant: {
     type: mongoose.Schema.Types.ObjectId,

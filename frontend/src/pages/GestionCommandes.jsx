@@ -68,7 +68,9 @@ const GestionCommandes = () => {
       await api.put(`/commandes/${commandeId}`, { 
         statut: 'en_attente_validation',
         urgence: false,
-        noteAppelant: 'Commande renvoyée en attente de traitement par un administrateur'
+        renvoyee: true,
+        dateRenvoi: new Date().toISOString(),
+        noteAppelant: '⚠️ RENVOYÉE - Commande renvoyée en attente de traitement par un administrateur'
       });
       toast.success('Commande renvoyée en attente de traitement !');
       fetchCommandes();
