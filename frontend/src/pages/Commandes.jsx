@@ -13,6 +13,7 @@ const Commandes = () => {
   const [filterUrgence, setFilterUrgence] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
+  const [stockDisponible, setStockDisponible] = useState({});
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -58,11 +59,45 @@ const Commandes = () => {
       });
       
       setCommandes(commandesTriees);
+      // Vérifier la disponibilité en stock
+      verifierStockPourCommandes(commandesTriees);
     } catch (error) {
       toast.error('Erreur lors du chargement des commandes');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifierStockPourCommandes = async (commandes) => {
+    try {
+      const response = await api.get('/stock');
+      const stock = response.data.stock || response.data;
+      
+      const disponibilite = {};
+      
+      commandes.forEach((commande) => {
+        // Vérifier si une variation existe en stock pour ce modèle + taille + couleur
+        const modeleId = typeof commande.modele === 'object' ? commande.modele._id || commande.modele.id : commande.modele;
+        const variationEnStock = stock.find(item => {
+          const itemModeleId = typeof item.modele === 'object' ? item.modele._id || item.modele.id : item.modele;
+          return itemModeleId === modeleId && 
+                 item.taille === commande.taille && 
+                 item.couleur === commande.couleur &&
+                 item.quantite > 0;
+        });
+        
+        if (variationEnStock) {
+          disponibilite[commande._id || commande.id] = {
+            disponible: true,
+            quantite: variationEnStock.quantite
+          };
+        }
+      });
+      
+      setStockDisponible(disponibilite);
+    } catch (error) {
+      console.error('Erreur lors de la vérification du stock:', error);
     }
   };
 
@@ -266,9 +301,17 @@ const Commandes = () => {
                     <div className="min-w-0">
                       <p className="text-gray-500 text-xs">Modèle</p>
                       <p className="font-medium text-gray-900 truncate">{commande.modele.nom}</p>
-                      <p className="text-gray-600 truncate">
-                        {commande.taille} - {commande.couleur}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-gray-600 truncate">
+                          {commande.taille} - {commande.couleur}
+                        </p>
+                        {stockDisponible[commande._id] && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                            <Package size={10} className="mr-1" />
+                            En Stock ({stockDisponible[commande._id].quantite})
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="min-w-0">
                       <p className="text-gray-500 text-xs">Ville</p>
