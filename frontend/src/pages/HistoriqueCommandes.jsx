@@ -93,68 +93,68 @@ const HistoriqueCommandes = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-xl">
-              <History className="text-white" size={28} />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-2.5 sm:p-3 rounded-lg sm:rounded-xl flex-shrink-0">
+              <History className="text-white" size={24} />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Historique Complet</h1>
-              <p className="text-gray-600 mt-1">Toutes les commandes avec tous les statuts</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">Historique Complet</h1>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1 truncate">Toutes les commandes</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="stat-card bg-gradient-to-br from-blue-50 to-blue-100">
-          <p className="text-sm font-semibold text-blue-600 uppercase">Total</p>
-          <p className="text-3xl font-black text-blue-900">{stats.total}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 max-w-full">
+        <div className="stat-card bg-gradient-to-br from-blue-50 to-blue-100 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-blue-600 uppercase truncate">Total</p>
+          <p className="text-2xl sm:text-3xl font-black text-blue-900">{stats.total}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-yellow-50 to-yellow-100">
-          <p className="text-sm font-semibold text-yellow-600 uppercase">En Attente</p>
-          <p className="text-3xl font-black text-yellow-900">{stats.enAttente}</p>
+        <div className="stat-card bg-gradient-to-br from-yellow-50 to-yellow-100 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-yellow-600 uppercase truncate">En Attente</p>
+          <p className="text-2xl sm:text-3xl font-black text-yellow-900">{stats.enAttente}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-indigo-50 to-indigo-100">
-          <p className="text-sm font-semibold text-indigo-600 uppercase">En Cours</p>
-          <p className="text-3xl font-black text-indigo-900">{stats.enCours}</p>
+        <div className="stat-card bg-gradient-to-br from-indigo-50 to-indigo-100 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-indigo-600 uppercase truncate">En Cours</p>
+          <p className="text-2xl sm:text-3xl font-black text-indigo-900">{stats.enCours}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-green-50 to-green-100">
-          <p className="text-sm font-semibold text-green-600 uppercase">Livrées</p>
-          <p className="text-3xl font-black text-green-900">{stats.terminees}</p>
+        <div className="stat-card bg-gradient-to-br from-green-50 to-green-100 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-green-600 uppercase truncate">Livrées</p>
+          <p className="text-2xl sm:text-3xl font-black text-green-900">{stats.terminees}</p>
         </div>
-        <div className="stat-card bg-gradient-to-br from-red-50 to-red-100">
-          <p className="text-sm font-semibold text-red-600 uppercase">Annulées</p>
-          <p className="text-3xl font-black text-red-900">{stats.annulees}</p>
+        <div className="stat-card bg-gradient-to-br from-red-50 to-red-100 min-w-0">
+          <p className="text-xs sm:text-sm font-semibold text-red-600 uppercase truncate">Annulées</p>
+          <p className="text-2xl sm:text-3xl font-black text-red-900">{stats.annulees}</p>
         </div>
       </div>
 
       {/* Filtres et recherche */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
+      <div className="card max-w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="max-w-full">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher par numéro, client ou modèle..."
+                placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
+                className="input pl-8 sm:pl-10 text-sm sm:text-base truncate"
               />
             </div>
           </div>
-          <div>
+          <div className="max-w-full">
             <select
               value={filterStatut}
               onChange={(e) => setFilterStatut(e.target.value)}
-              className="input"
+              className="input text-sm sm:text-base"
             >
-              <option value="">Tous les statuts</option>
+              <option value="">Tous statuts</option>
               <option value="en_attente_validation">📞 Attente Validation</option>
               <option value="en_attente_paiement">⏳ Attente Paiement</option>
               <option value="validee">✅ Validée</option>
@@ -168,13 +168,13 @@ const HistoriqueCommandes = () => {
               <option value="annulee">🚫 Annulée</option>
             </select>
           </div>
-          <div>
+          <div className="max-w-full">
             <select
               value={filterUrgence}
               onChange={(e) => setFilterUrgence(e.target.value)}
-              className="input"
+              className="input text-sm sm:text-base"
             >
-              <option value="">Toutes les urgences</option>
+              <option value="">Toutes</option>
               <option value="true">🔥 Urgentes</option>
               <option value="false">Normal</option>
             </select>
@@ -184,74 +184,74 @@ const HistoriqueCommandes = () => {
 
       {/* Liste des commandes */}
       {filteredCommandes.length === 0 ? (
-        <div className="card text-center py-12">
-          <AlertCircle className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <div className="card text-center py-8 sm:py-12">
+          <AlertCircle className="mx-auto text-gray-400 mb-3 sm:mb-4" size={40} />
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-1.5 sm:mb-2">
             Aucune commande trouvée
           </h3>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             {searchTerm || filterStatut || filterUrgence
               ? 'Essayez de modifier vos filtres'
               : 'Aucune commande dans le système'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
           {filteredCommandes.map((commande) => (
-            <div key={commande._id} className="card hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900">
+            <div key={commande._id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
+              <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate flex-shrink-0">
                       {commande.numeroCommande}
                     </h3>
-                    <span className={`badge ${getStatutBadge(commande.statut)}`}>
+                    <span className={`badge ${getStatutBadge(commande.statut)} text-xs flex-shrink-0`}>
                       {getStatutLabel(commande.statut)}
                     </span>
                     {commande.urgence && (
-                      <span className="badge badge-danger">
-                        <AlertCircle size={12} className="mr-1" />
+                      <span className="badge badge-danger text-xs flex-shrink-0">
+                        <AlertCircle size={11} className="mr-0.5" />
                         Urgent
                       </span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Client</p>
-                      <p className="font-medium text-gray-900">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm max-w-full">
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Client</p>
+                      <p className="font-medium text-gray-900 truncate">
                         {typeof commande.client === 'object' ? commande.client.nom : commande.client}
                       </p>
-                      <p className="text-gray-600">
+                      <p className="text-gray-600 truncate">
                         {typeof commande.client === 'object' ? commande.client.contact : ''}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Modèle</p>
-                      <p className="font-medium text-gray-900">
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Modèle</p>
+                      <p className="font-medium text-gray-900 truncate">
                         {typeof commande.modele === 'object' ? commande.modele.nom : commande.modele}
                       </p>
-                      <p className="text-gray-600">
+                      <p className="text-gray-600 truncate">
                         {commande.taille} - {commande.couleur}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Ville</p>
-                      <p className="font-medium text-gray-900">
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Ville</p>
+                      <p className="font-medium text-gray-900 truncate">
                         {typeof commande.client === 'object' ? commande.client.ville : ''}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Prix</p>
-                      <p className="font-bold text-primary-600 text-lg">
-                        {commande.prix.toLocaleString('fr-FR')} FCFA
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Prix</p>
+                      <p className="font-bold text-primary-600 text-base sm:text-lg">
+                        {commande.prix.toLocaleString('fr-FR')} F
                       </p>
                     </div>
                   </div>
 
                   {(commande.noteAppelant || commande.note) && (
-                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg overflow-hidden">
-                      <p className="text-sm text-gray-700 break-all max-w-full">
+                    <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 rounded-lg overflow-hidden max-w-full">
+                      <p className="text-xs sm:text-sm text-gray-700 break-all overflow-wrap-anywhere">
                         <span className="font-medium">Note: </span>
                         {commande.noteAppelant || commande.note}
                       </p>
@@ -259,12 +259,12 @@ const HistoriqueCommandes = () => {
                   )}
                 </div>
 
-                <div className="flex items-center space-x-2 ml-4">
+                <div className="flex items-center w-full lg:w-auto lg:ml-4 flex-shrink-0">
                   <Link
                     to={`/commandes/${commande._id}`}
-                    className="btn btn-secondary btn-sm inline-flex items-center space-x-1"
+                    className="btn btn-secondary btn-sm inline-flex items-center justify-center space-x-1 text-xs sm:text-sm w-full lg:w-auto"
                   >
-                    <Eye size={16} />
+                    <Eye size={14} className="flex-shrink-0" />
                     <span>Voir</span>
                   </Link>
                 </div>
