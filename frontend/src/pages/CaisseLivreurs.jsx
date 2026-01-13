@@ -149,53 +149,53 @@ const CaisseLivreurs = () => {
     : livreurs;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl shadow-lg">
-              <Wallet className="text-white" size={32} strokeWidth={2.5} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2 sm:p-3 lg:p-4 rounded-2xl shadow-lg flex-shrink-0">
+              <Wallet className="text-white" size={24} strokeWidth={2.5} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent truncate">
                 Caisse Livreurs
               </h1>
-              <p className="text-gray-600 font-medium">Suivi des encaissements et livraisons</p>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium truncate">Suivi des encaissements et livraisons</p>
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500 uppercase">Total à Remettre</p>
-          <p className="text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-            {totalGeneral.toLocaleString('fr-FR')} FCFA
+        <div className="text-right flex-shrink-0">
+          <p className="text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-500 uppercase">Total à Remettre</p>
+          <p className="text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            {totalGeneral.toLocaleString('fr-FR')} <span className="hidden sm:inline">FCFA</span><span className="sm:hidden">F</span>
           </p>
         </div>
       </div>
 
       {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 max-w-full">
+        <div className="bg-white rounded-xl p-2 sm:p-3 lg:p-4 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase mb-0.5 sm:mb-1 truncate">
             {filterDate ? `Livreurs (${filterDate})` : 'Livreurs Actifs'}
           </p>
-          <p className="text-3xl font-black text-gray-900">{livreursAffiches.length}</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900">{livreursAffiches.length}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-blue-600 uppercase mb-1">En Cours</p>
-          <p className="text-3xl font-black text-blue-900">
+        <div className="bg-white rounded-xl p-2 sm:p-3 lg:p-4 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-blue-600 uppercase mb-0.5 sm:mb-1 truncate">En Cours</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-black text-blue-900">
             {livraisons.filter(l => l.statut === 'en_cours').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-green-600 uppercase mb-1">Livrées</p>
-          <p className="text-3xl font-black text-green-900">
+        <div className="bg-white rounded-xl p-2 sm:p-3 lg:p-4 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-green-600 uppercase mb-0.5 sm:mb-1 truncate">Livrées</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-black text-green-900">
             {livraisons.filter(l => l.statut === 'livree').length}
           </p>
         </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 shadow-sm">
-          <p className="text-xs font-semibold text-white uppercase mb-1">💰 À Remettre</p>
-          <p className="text-3xl font-black text-white">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-2 sm:p-3 lg:p-4 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-white uppercase mb-0.5 sm:mb-1 truncate">💰 À Remettre</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-black text-white">
             {totalGeneral.toLocaleString('fr-FR')} F
           </p>
         </div>
@@ -203,11 +203,11 @@ const CaisseLivreurs = () => {
 
       {/* Filtre par date d'assignation */}
       {toutesLesDates.length > 0 && (
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Package className="text-indigo-600" size={20} />
-              <h3 className="text-sm font-bold text-gray-900 uppercase">Filtrer par Date d'Assignation</h3>
+        <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm max-w-full overflow-hidden">
+          <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Package className="text-indigo-600 flex-shrink-0" size={18} />
+              <h3 className="text-xs sm:text-sm font-bold text-gray-900 uppercase truncate">Filtrer par Date d'Assignation</h3>
             </div>
             {filterDate && (
               <button
