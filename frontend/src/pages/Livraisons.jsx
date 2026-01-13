@@ -175,80 +175,82 @@ const Livraisons = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-            <Truck className="text-white" size={32} strokeWidth={2.5} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 sm:p-3 lg:p-4 rounded-2xl shadow-lg flex-shrink-0">
+            <Truck className="text-white" size={24} strokeWidth={2.5} />
           </div>
-          <div>
-            <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent truncate">
               Livraisons
             </h1>
-            <p className="text-gray-600 font-medium">Suivi des colis en cours</p>
+            <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium truncate">Suivi des colis en cours</p>
           </div>
         </div>
         {['gestionnaire', 'administrateur'].includes(user?.role) && (
           <button
             onClick={() => setShowModal(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
           >
-            <Truck size={20} strokeWidth={2.5} />
+            <Truck size={18} strokeWidth={2.5} className="flex-shrink-0" />
             <span>ASSIGNER</span>
           </button>
         )}
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl p-3 shadow-sm">
-          <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Total</p>
-          <p className="text-2xl font-black text-gray-900">{livraisons.length}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 max-w-full">
+        <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase mb-0.5 sm:mb-1 truncate">Total</p>
+          <p className="text-xl sm:text-2xl font-black text-gray-900">{livraisons.length}</p>
         </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm">
-          <p className="text-xs font-semibold text-blue-600 uppercase mb-1">🚚 En cours</p>
-          <p className="text-2xl font-black text-blue-900">
+        <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-blue-600 uppercase mb-0.5 sm:mb-1 truncate">🚚 En cours</p>
+          <p className="text-xl sm:text-2xl font-black text-blue-900">
             {livraisons.filter(l => l.statut === 'en_cours').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm">
-          <p className="text-xs font-semibold text-green-600 uppercase mb-1">✅ Livrées</p>
-          <p className="text-2xl font-black text-green-900">
+        <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-green-600 uppercase mb-0.5 sm:mb-1 truncate">✅ Livrées</p>
+          <p className="text-xl sm:text-2xl font-black text-green-900">
             {livraisons.filter(l => l.statut === 'livree').length}
           </p>
         </div>
-        <div className="bg-white rounded-xl p-3 shadow-sm">
-          <p className="text-xs font-semibold text-red-600 uppercase mb-1">❌ Refusées</p>
-          <p className="text-2xl font-black text-red-900">
+        <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-red-600 uppercase mb-0.5 sm:mb-1 truncate">❌ Refusées</p>
+          <p className="text-xl sm:text-2xl font-black text-red-900">
             {livraisons.filter(l => l.statut === 'refusee').length}
           </p>
         </div>
       </div>
 
       {/* Filtres */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
+      <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm max-w-full overflow-hidden">
         {/* Filtres par statut */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
           <button
             onClick={() => setFilterStatut('')}
-            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[10px] sm:text-xs transition-all ${
               filterStatut === '' 
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            📦 Tous ({livraisons.length})
+            <span className="hidden sm:inline">📦 Tous ({livraisons.length})</span>
+            <span className="sm:hidden">📦 {livraisons.length}</span>
           </button>
           <button
             onClick={() => setFilterStatut('en_cours')}
-            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg font-bold text-[10px] sm:text-xs transition-all ${
               filterStatut === 'en_cours' 
                 ? 'bg-blue-600 text-white shadow-lg' 
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            🚚 En cours ({livraisons.filter(l => l.statut === 'en_cours').length})
+            <span className="hidden sm:inline">🚚 En cours ({livraisons.filter(l => l.statut === 'en_cours').length})</span>
+            <span className="sm:hidden">🚚 {livraisons.filter(l => l.statut === 'en_cours').length}</span>
           </button>
           <button
             onClick={() => setFilterStatut('livree')}
