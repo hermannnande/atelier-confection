@@ -95,28 +95,28 @@ const Utilisateurs = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
-          <p className="text-gray-600 mt-1">Gérez les comptes de votre équipe</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">Gestion des Utilisateurs</h1>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1 truncate">Gérez les comptes de votre équipe</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="btn btn-primary inline-flex items-center space-x-2"
+          className="btn btn-primary inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
         >
-          <UserPlus size={20} />
-          <span>Nouvel Utilisateur</span>
+          <UserPlus size={18} className="flex-shrink-0" />
+          <span className="truncate">Nouvel Utilisateur</span>
         </button>
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 max-w-full">
         {['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'].map((role) => (
-          <div key={role} className="card text-center">
-            <p className="text-gray-600 text-sm mb-1">{getRoleLabel(role)}</p>
-            <p className="text-2xl font-bold text-primary-600">
+          <div key={role} className="card text-center max-w-full overflow-hidden">
+            <p className="text-gray-600 text-[10px] sm:text-xs lg:text-sm mb-0.5 sm:mb-1 truncate">{getRoleLabel(role)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-600">
               {users.filter(u => u.role === role && u.actif).length}
             </p>
           </div>
@@ -124,9 +124,9 @@ const Utilisateurs = () => {
       </div>
 
       {/* Liste des utilisateurs */}
-      <div className="card">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="card max-w-full overflow-hidden">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Nom</th>
