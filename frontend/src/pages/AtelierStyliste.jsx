@@ -21,7 +21,20 @@ const AtelierStyliste = () => {
       const filtered = response.data.commandes.filter(c => 
         c.statut === 'en_decoupe'
       );
-      setCommandes(filtered);
+      
+      // Trier: urgentes en haut, puis par ordre d'arrivée (plus récent en premier)
+      const sorted = filtered.sort((a, b) => {
+        // 1. Les urgentes avant les normales
+        if (a.urgence && !b.urgence) return -1;
+        if (!a.urgence && b.urgence) return 1;
+        
+        // 2. À urgence égale, trier par ordre d'arrivée (updated_at)
+        const dateA = new Date(a.updated_at || a.created_at);
+        const dateB = new Date(b.updated_at || b.created_at);
+        return dateA - dateB; // Plus ancien en premier (ordre d'arrivée)
+      });
+      
+      setCommandes(sorted);
     } catch (error) {
       toast.error('Erreur lors du chargement');
       console.error(error);
