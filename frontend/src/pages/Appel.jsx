@@ -184,64 +184,66 @@ const Appel = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-              <Phone className="text-white" size={32} strokeWidth={2.5} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg flex-shrink-0">
+              <Phone className="text-white" size={24} strokeWidth={2.5} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Appels à Traiter
               </h1>
-              <p className="text-gray-600 font-medium">Nouvelles commandes en attente de validation</p>
+              <p className="text-sm sm:text-base text-gray-600 font-medium truncate">Nouvelles commandes en attente</p>
               
               {/* Indicateur de rafraîchissement auto */}
-              <div className="flex items-center space-x-3 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <button
                   onClick={() => setIsAutoRefreshing(!isAutoRefreshing)}
-                  className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-semibold transition-all ${
                     isAutoRefreshing 
                       ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
                   <RefreshCw 
-                    size={14} 
+                    size={12} 
                     className={isAutoRefreshing ? 'animate-spin' : ''} 
                   />
-                  <span>{isAutoRefreshing ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</span>
+                  <span className="hidden sm:inline">{isAutoRefreshing ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</span>
+                  <span className="sm:hidden">{isAutoRefreshing ? 'ON' : 'OFF'}</span>
                 </button>
                 
-                <span className="text-xs text-gray-500">
-                  Dernière mise à jour: {lastRefresh.toLocaleTimeString('fr-FR')}
+                <span className="text-[10px] sm:text-xs text-gray-500 truncate">
+                  {lastRefresh.toLocaleTimeString('fr-FR')}
                 </span>
                 
                 <button
                   onClick={() => fetchCommandesAppel()}
-                  className="flex items-center space-x-1 px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
+                  className="flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
                 >
-                  <RefreshCw size={14} />
-                  <span>Actualiser</span>
+                  <RefreshCw size={12} />
+                  <span className="hidden sm:inline">Actualiser</span>
+                  <span className="sm:hidden">↻</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end space-y-4">
+        <div className="flex flex-col sm:items-end space-y-3 sm:space-y-4 w-full sm:w-auto">
           <Link
             to="/commandes/nouvelle"
-            className="btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+            className="btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 text-sm sm:text-base"
           >
-            <Plus size={20} strokeWidth={2.5} />
+            <Plus size={18} strokeWidth={2.5} />
             <span>Nouvelle Commande</span>
           </Link>
           
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
-          <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+        <div className="text-center sm:text-right">
+          <p className="text-xs sm:text-sm font-semibold text-gray-500 uppercase">En attente</p>
+          <p className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
             {commandesAppel.length}
           </p>
           </div>
@@ -250,11 +252,11 @@ const Appel = () => {
 
       {/* Info pagination */}
       {commandesAppel.length > 0 && (
-        <div className="bg-white rounded-lg p-3 shadow-sm flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-700">
-            Affichage {startIndex + 1} - {Math.min(endIndex, commandesAppel.length)} sur {commandesAppel.length} commandes
+        <div className="bg-white rounded-lg p-2 sm:p-3 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0">
+          <p className="text-xs sm:text-sm font-semibold text-gray-700">
+            {startIndex + 1}-{Math.min(endIndex, commandesAppel.length)} / {commandesAppel.length}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-[10px] sm:text-xs text-gray-500">
             Page {currentPage} / {totalPages}
           </p>
         </div>
@@ -262,57 +264,57 @@ const Appel = () => {
 
       {/* Grille des commandes */}
       {commandesAppel.length === 0 ? (
-        <div className="stat-card text-center py-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
-            <CheckCircle className="text-green-600" size={40} />
+        <div className="stat-card text-center py-12 sm:py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
+            <CheckCircle className="text-green-600" size={32} />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun appel en attente</h3>
-          <p className="text-gray-600">Toutes les commandes ont été traitées ! 🎉</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Aucun appel</h3>
+          <p className="text-sm sm:text-base text-gray-600">Toutes les commandes traitées ! 🎉</p>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {commandesAffichees.map((commande, index) => (
             <div
               key={commande._id || commande.id}
-              className="stat-card hover:scale-105 transition-transform cursor-pointer group"
+              className="stat-card hover:scale-105 transition-transform cursor-pointer group max-w-full"
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
               {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-lg font-black text-gray-900">
+              <div className="flex items-start justify-between mb-2 sm:mb-3 gap-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm sm:text-lg font-black text-gray-900 truncate">
                     #{commande.numeroCommande || (commande._id || commande.id).slice(-6).toUpperCase()}
                   </h3>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[10px] sm:text-xs text-gray-500">
                     {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <span className="badge badge-warning text-xs px-2 py-1">
+                <span className="badge badge-warning text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 flex-shrink-0">
                   📞 Appel
                 </span>
               </div>
 
               {/* Client avec image */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3 flex items-start space-x-3">
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 flex items-start space-x-2 sm:space-x-3 max-w-full">
                 {/* Infos Client */}
-                <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <User className="text-blue-600" size={16} />
-                  <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
+                <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-1 sm:space-x-2 mb-1.5 sm:mb-2">
+                  <User className="text-blue-600 flex-shrink-0" size={14} />
+                  <p className="font-bold text-gray-900 text-xs sm:text-sm truncate">{getClientNom(commande)}</p>
                 </div>
                 <a 
                   href={`tel:${getClientContact(commande)}`}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
+                  className="text-[10px] sm:text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1 truncate"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <Phone size={12} />
-                  <span>{getClientContact(commande)}</span>
+                  <Phone size={11} className="flex-shrink-0" />
+                  <span className="truncate">{getClientContact(commande)}</span>
                 </a>
                 <div className="flex items-center space-x-1 mt-1">
-                  <MapPin className="text-emerald-600" size={14} />
-                  <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
+                  <MapPin className="text-emerald-600 flex-shrink-0" size={12} />
+                  <p className="text-[10px] sm:text-xs text-gray-700 font-medium truncate">{getVille(commande)}</p>
                 </div>
                 </div>
                 
@@ -336,37 +338,37 @@ const Appel = () => {
               </div>
 
               {/* Détails */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500 flex items-center space-x-1">
-                    <Package size={14} />
+              <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 max-w-full">
+                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-gray-500 flex items-center space-x-1 flex-shrink-0">
+                    <Package size={12} className="sm:w-3.5 sm:h-3.5" />
                     <span>Modèle</span>
                   </span>
-                  <span className="font-bold text-gray-900">{getModeleNom(commande.modele)}</span>
+                  <span className="font-bold text-gray-900 truncate">{getModeleNom(commande.modele)}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Taille</span>
+                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-gray-500 flex-shrink-0">Taille</span>
                   <span className="font-bold text-gray-900">{commande.taille}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Couleur</span>
-                  <span className="font-bold text-gray-900">{commande.couleur}</span>
+                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                  <span className="text-gray-500 flex-shrink-0">Couleur</span>
+                  <span className="font-bold text-gray-900 truncate">{commande.couleur}</span>
                 </div>
               </div>
 
               {/* Prix */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 mb-3">
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-2 sm:p-3 mb-2 sm:mb-3 max-w-full">
                 <div className="flex items-center justify-between">
-                  <span className="text-white text-xs font-semibold">Prix Total</span>
-                  <span className="text-white text-xl font-black">
-                    {commande.prix?.toLocaleString('fr-FR')} FCFA
+                  <span className="text-white text-[10px] sm:text-xs font-semibold">Prix Total</span>
+                  <span className="text-white text-lg sm:text-xl font-black">
+                    {commande.prix?.toLocaleString('fr-FR')} F
                   </span>
                 </div>
               </div>
 
               {/* Bouton Traiter */}
               <button
-                className="w-full btn btn-primary py-3 font-bold group-hover:shadow-xl transition-shadow"
+                className="w-full btn btn-primary py-2 sm:py-3 text-sm sm:text-base font-bold group-hover:shadow-xl transition-shadow"
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedCommande(commande);
@@ -380,23 +382,24 @@ const Appel = () => {
 
         {/* Contrôles de pagination */}
         {totalPages > 1 && (
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg p-2 sm:p-4 shadow-sm max-w-full overflow-x-hidden">
+            <div className="flex items-center justify-between gap-1 sm:gap-2">
               {/* Bouton Précédent */}
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
                   currentPage === 1
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                 }`}
               >
-                ← Précédent
+                <span className="hidden sm:inline">← Précédent</span>
+                <span className="sm:hidden">←</span>
               </button>
 
               {/* Numéros de pages */}
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 sm:space-x-2 flex-1 justify-center">
                 {[...Array(totalPages)].map((_, index) => {
                   const pageNum = index + 1;
                   // Afficher seulement certaines pages pour éviter trop de boutons
@@ -409,7 +412,7 @@ const Appel = () => {
                       <button
                         key={pageNum}
                         onClick={() => goToPage(pageNum)}
-                        className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                        className={`px-2 sm:px-3 py-1 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
                           currentPage === pageNum
                             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -422,7 +425,7 @@ const Appel = () => {
                     pageNum === currentPage - 3 ||
                     pageNum === currentPage + 3
                   ) {
-                    return <span key={pageNum} className="text-gray-400">...</span>;
+                    return <span key={pageNum} className="text-gray-400 text-xs">...</span>;
                   }
                   return null;
                 })}
@@ -432,13 +435,14 @@ const Appel = () => {
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-xs sm:text-sm transition-all ${
                   currentPage === totalPages
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                 }`}
               >
-                Suivant →
+                <span className="hidden sm:inline">Suivant →</span>
+                <span className="sm:hidden">→</span>
               </button>
             </div>
           </div>
@@ -458,7 +462,7 @@ const Appel = () => {
           }}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl max-w-[95vw] sm:max-w-lg w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
