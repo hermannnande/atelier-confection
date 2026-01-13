@@ -258,35 +258,35 @@ const Stock = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent truncate">
             Gestion du Stock
           </h1>
-          <p className="text-gray-600 font-medium mt-1">Suivez l'inventaire de l'atelier</p>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium mt-1 truncate">Suivez l'inventaire de l'atelier</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="btn btn-primary flex items-center space-x-2"
+          className="btn btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
         >
-          <Plus size={20} strokeWidth={2.5} />
-          <span>Ajouter au Stock</span>
+          <Plus size={18} strokeWidth={2.5} className="flex-shrink-0" />
+          <span className="truncate">Ajouter au Stock</span>
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 max-w-full">
         {[
           { name: 'Modèles', value: stockGroupe.length, gradient: 'from-blue-500 to-cyan-500' },
           { name: 'Stock Principal', value: stock.reduce((sum, item) => sum + (item.quantitePrincipale || item.quantite || 0), 0), gradient: 'from-emerald-500 to-teal-500' },
           { name: 'En Livraison', value: stock.reduce((sum, item) => sum + (item.quantiteEnLivraison || 0), 0), gradient: 'from-amber-500 to-orange-500' },
           { name: 'Valeur Totale', value: `${stock.reduce((sum, item) => sum + ((item.quantitePrincipale || item.quantite || 0) * item.prix), 0).toLocaleString('fr-FR')} F`, gradient: 'from-purple-500 to-pink-500' }
         ].map((stat, i) => (
-          <div key={i} className="stat-card">
-            <p className="text-sm font-semibold text-gray-500 uppercase mb-2">{stat.name}</p>
-            <p className={`text-4xl font-black bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
+          <div key={i} className="stat-card max-w-full overflow-hidden">
+            <p className="text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-500 uppercase mb-1 sm:mb-2 truncate">{stat.name}</p>
+            <p className={`text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent truncate`}>
               {stat.value}
             </p>
           </div>
@@ -295,12 +295,12 @@ const Stock = () => {
 
       {/* Alertes */}
       {stock.filter(item => (item.quantitePrincipale || item.quantite || 0) <= 2).length > 0 && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
-          <div className="flex items-center space-x-3">
-            <AlertTriangle className="text-amber-600" size={24} />
-            <div>
-              <p className="font-bold text-gray-900">Alertes de Stock</p>
-              <p className="text-sm text-gray-600">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3 sm:p-4 lg:p-6 max-w-full overflow-hidden">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <AlertTriangle className="text-amber-600 flex-shrink-0" size={20} />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-sm sm:text-base text-gray-900 truncate">Alertes de Stock</p>
+              <p className="text-xs sm:text-sm text-gray-600 break-words">
                 {stock.filter(item => (item.quantitePrincipale || item.quantite || 0) <= 2).length} variation(s) en faible stock
               </p>
             </div>
@@ -309,21 +309,21 @@ const Stock = () => {
       )}
 
       {/* Recherche */}
-      <div className="stat-card">
+      <div className="stat-card max-w-full overflow-hidden">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 flex-shrink-0" size={18} />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-12"
+            className="input pl-10 sm:pl-12 text-sm sm:text-base"
             placeholder="Rechercher un modèle..."
           />
         </div>
       </div>
 
       {/* Grille de modèles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 max-w-full">
         {stockGroupe.map((item, index) => (
           <div
             key={item.modele}
