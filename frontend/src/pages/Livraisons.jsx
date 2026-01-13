@@ -437,10 +437,9 @@ const Livraisons = () => {
                 </div>
 
                 {/* Prix */}
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg p-2 mb-3">
-                  <p className="text-xs text-white font-semibold mb-1">💰 PRIX</p>
-                  <p className="text-lg font-black text-white">
-                    {livraison.commande?.prix.toLocaleString('fr-FR')} F
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded p-1.5 mb-3">
+                  <p className="text-xs font-bold text-white">
+                    💰 {livraison.commande?.prix.toLocaleString('fr-FR')} F
                   </p>
                 </div>
 
