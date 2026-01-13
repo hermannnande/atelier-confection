@@ -420,6 +420,25 @@ router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 
   }
 });
 
+// Supprimer une commande (Admin uniquement)
+router.delete('/:id', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
+    if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+
+    const { error } = await supabase
+      .from('commandes')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) return res.status(500).json({ message: 'Erreur lors de la suppression', error: error.message });
+    return res.json({ message: 'Commande supprimée avec succès' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 export default router;
 
 

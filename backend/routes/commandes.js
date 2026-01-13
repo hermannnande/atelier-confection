@@ -326,6 +326,23 @@ router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 
   }
 });
 
+// Supprimer une commande (Admin uniquement)
+router.delete('/:id', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const commande = await Commande.findById(req.params.id);
+    
+    if (!commande) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+
+    await Commande.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Commande supprimée avec succès' });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la suppression', error: error.message });
+  }
+});
+
 export default router;
 
 

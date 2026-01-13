@@ -19,6 +19,7 @@ import Livraisons from './pages/Livraisons';
 import CaisseLivreurs from './pages/CaisseLivreurs';
 import Performances from './pages/Performances';
 import Utilisateurs from './pages/Utilisateurs';
+import GestionCommandes from './pages/GestionCommandes';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -161,6 +162,13 @@ function App() {
           <Route path="utilisateurs" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <Utilisateurs />
+            </ProtectedRoute>
+          } />
+          
+          {/* Gestion Avancée Commandes - Admin et Gestionnaire */}
+          <Route path="gestion-commandes" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <GestionCommandes />
             </ProtectedRoute>
           } />
         </Route>
