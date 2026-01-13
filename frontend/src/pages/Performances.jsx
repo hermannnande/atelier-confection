@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 import { BarChart3, TrendingUp, Users, Award } from 'lucide-react';
 
 const Performances = () => {
+  const { user } = useAuthStore();
   const [appelants, setAppelants] = useState([]);
   const [couturiers, setCouturiers] = useState([]);
   const [stylistes, setStylistes] = useState([]);
   const [livreurs, setLivreurs] = useState([]);
-  const [activeTab, setActiveTab] = useState('appelants');
+  
+  // Définir l'onglet actif par défaut selon le rôle
+  const getDefaultTab = () => {
+    if (user?.role === 'administrateur' || user?.role === 'gestionnaire') return 'appelants';
+    if (user?.role === 'appelant') return 'appelants';
+    if (user?.role === 'styliste') return 'stylistes';
+    if (user?.role === 'couturier') return 'couturiers';
+    if (user?.role === 'livreur') return 'livreurs';
+    return 'appelants';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,10 +37,21 @@ const Performances = () => {
         api.get('/performances/livreurs')
       ]);
 
-      setAppelants(appelRes.data.performances);
-      setCouturiers(coutRes.data.performances);
-      setStylistes(stylRes.data.performances);
-      setLivreurs(livrRes.data.performances);
+      // Filtrer les performances selon le rôle de l'utilisateur
+      const isAdmin = user?.role === 'administrateur' || user?.role === 'gestionnaire';
+      const userId = user?._id || user?.id;
+
+      setAppelants(isAdmin ? appelRes.data.performances : 
+        appelRes.data.performances.filter(p => (p.appelant._id || p.appelant.id) === userId));
+      
+      setCouturiers(isAdmin ? coutRes.data.performances : 
+        coutRes.data.performances.filter(p => (p.couturier._id || p.couturier.id) === userId));
+      
+      setStylistes(isAdmin ? stylRes.data.performances : 
+        stylRes.data.performances.filter(p => (p.styliste._id || p.styliste.id) === userId));
+      
+      setLivreurs(isAdmin ? livrRes.data.performances : 
+        livrRes.data.performances.filter(p => (p.livreur._id || p.livreur.id) === userId));
     } catch (error) {
       toast.error('Erreur lors du chargement');
       console.error(error);
@@ -44,12 +68,25 @@ const Performances = () => {
     );
   }
 
-  const tabs = [
-    { id: 'appelants', name: 'Appelants', count: appelants.length },
-    { id: 'stylistes', name: 'Stylistes', count: stylistes.length },
-    { id: 'couturiers', name: 'Couturiers', count: couturiers.length },
-    { id: 'livreurs', name: 'Livreurs', count: livreurs.length },
-  ];
+  // Filtrer les onglets selon le rôle de l'utilisateur
+  const getAllTabs = () => {
+    const allTabs = [
+      { id: 'appelants', name: 'Appelants', count: appelants.length, roles: ['administrateur', 'gestionnaire', 'appelant'] },
+      { id: 'stylistes', name: 'Stylistes', count: stylistes.length, roles: ['administrateur', 'gestionnaire', 'styliste'] },
+      { id: 'couturiers', name: 'Couturiers', count: couturiers.length, roles: ['administrateur', 'gestionnaire', 'couturier'] },
+      { id: 'livreurs', name: 'Livreurs', count: livreurs.length, roles: ['administrateur', 'gestionnaire', 'livreur'] },
+    ];
+    
+    // Si admin ou gestionnaire, afficher tous les onglets
+    if (user?.role === 'administrateur' || user?.role === 'gestionnaire') {
+      return allTabs;
+    }
+    
+    // Sinon, afficher uniquement l'onglet correspondant au rôle
+    return allTabs.filter(tab => tab.roles.includes(user?.role));
+  };
+  
+  const tabs = getAllTabs();
 
   return (
     <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full px-2 sm:px-4">
@@ -58,8 +95,16 @@ const Performances = () => {
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <BarChart3 size={28} className="flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">Tableau de Bord des Performances</h1>
-            <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">Suivez les performances de votre équipe</p>
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">
+              {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+                ? 'Tableau de Bord des Performances' 
+                : 'Mes Performances'}
+            </h1>
+            <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">
+              {user?.role === 'administrateur' || user?.role === 'gestionnaire'
+                ? 'Suivez les performances de votre équipe'
+                : 'Consultez vos statistiques personnelles'}
+            </p>
           </div>
         </div>
       </div>
@@ -89,13 +134,26 @@ const Performances = () => {
       {/* Contenu - Appelants */}
       {activeTab === 'appelants' && (
         <div className="space-y-3 sm:space-y-4">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">Performances des Appelants</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
+            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+              ? 'Performances des Appelants' 
+              : 'Mes Performances'}
+          </h2>
+          {appelants.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="text-gray-600">
+                {user?.role === 'administrateur' || user?.role === 'gestionnaire'
+                  ? 'Aucune performance disponible'
+                  : 'Vous n\'avez pas encore de statistiques'}
+              </p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
             {appelants.map((perf, index) => (
               <div key={perf.appelant.id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
                 <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
                   <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-                    {index < 3 && (
+                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
                       <Award className={`flex-shrink-0 ${
                         index === 0 ? 'text-yellow-500' :
                         index === 1 ? 'text-gray-400' :
@@ -139,19 +197,24 @@ const Performances = () => {
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
       {/* Contenu - Stylistes */}
       {activeTab === 'stylistes' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Performances des Stylistes</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+              ? 'Performances des Stylistes' 
+              : 'Mes Performances'}
+          </h2>
           <div className="grid grid-cols-1 gap-4">
             {stylistes.map((perf, index) => (
               <div key={perf.styliste.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    {index < 3 && (
+                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
                       <Award className={`${
                         index === 0 ? 'text-yellow-500' :
                         index === 1 ? 'text-gray-400' :
@@ -183,13 +246,17 @@ const Performances = () => {
       {/* Contenu - Couturiers */}
       {activeTab === 'couturiers' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Performances des Couturiers</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+              ? 'Performances des Couturiers' 
+              : 'Mes Performances'}
+          </h2>
           <div className="grid grid-cols-1 gap-4">
             {couturiers.map((perf, index) => (
               <div key={perf.couturier.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    {index < 3 && (
+                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
                       <Award className={`${
                         index === 0 ? 'text-yellow-500' :
                         index === 1 ? 'text-gray-400' :
@@ -227,13 +294,17 @@ const Performances = () => {
       {/* Contenu - Livreurs */}
       {activeTab === 'livreurs' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Performances des Livreurs</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+              ? 'Performances des Livreurs' 
+              : 'Mes Performances'}
+          </h2>
           <div className="grid grid-cols-1 gap-4">
             {livreurs.map((perf, index) => (
               <div key={perf.livreur.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-4">
-                    {index < 3 && (
+                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
                       <Award className={`${
                         index === 0 ? 'text-yellow-500' :
                         index === 1 ? 'text-gray-400' :
