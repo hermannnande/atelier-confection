@@ -35,6 +35,8 @@ const GestionCommandes = () => {
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   const [showResetModal, setShowResetModal] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   useEffect(() => {
     fetchCommandes();
@@ -77,6 +79,41 @@ const GestionCommandes = () => {
       setShowResetModal(null);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la réinitialisation');
+    }
+  };
+
+  // Gestion de la sélection
+  const toggleSelectCommande = (commandeId) => {
+    setSelectedIds(prev => 
+      prev.includes(commandeId) 
+        ? prev.filter(id => id !== commandeId)
+        : [...prev, commandeId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === commandesFiltrees.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(commandesFiltrees.map(cmd => cmd._id || cmd.id));
+    }
+  };
+
+  // Suppression groupée
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      await Promise.all(
+        selectedIds.map(id => api.delete(`/commandes/${id}`))
+      );
+      
+      toast.success(`✅ ${selectedIds.length} commande(s) supprimée(s) avec succès !`);
+      setCommandes(prev => prev.filter(c => !selectedIds.includes(c._id || c.id)));
+      setSelectedIds([]);
+      setShowBulkDeleteModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression groupée');
     }
   };
 
@@ -215,6 +252,42 @@ const GestionCommandes = () => {
         </div>
       </div>
 
+      {/* Barre d'actions groupées (Admin uniquement) */}
+      {user?.role === 'administrateur' && commandesFiltrees.length > 0 && (
+        <div className="card max-w-full overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <input
+                type="checkbox"
+                checked={selectedIds.length === commandesFiltrees.length && commandesFiltrees.length > 0}
+                onChange={toggleSelectAll}
+                className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer flex-shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-gray-900">
+                  {selectedIds.length > 0 
+                    ? `${selectedIds.length} commande(s) sélectionnée(s)`
+                    : 'Sélectionner tout'}
+                </p>
+                {selectedIds.length > 0 && (
+                  <p className="text-xs text-gray-500">Cliquez sur "Supprimer la sélection" pour continuer</p>
+                )}
+              </div>
+            </div>
+            
+            {selectedIds.length > 0 && (
+              <button
+                onClick={() => setShowBulkDeleteModal(true)}
+                className="btn bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 flex-shrink-0 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto justify-center"
+              >
+                <Trash2 size={18} />
+                <span>Supprimer la sélection ({selectedIds.length})</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Liste des commandes */}
       {commandesFiltrees.length === 0 ? (
         <div className="card text-center py-12">
@@ -227,27 +300,43 @@ const GestionCommandes = () => {
             const statutInfo = getStatutBadge(commande.statut);
             const StatutIcon = statutInfo.icon;
             
+            const commandeId = commande._id || commande.id;
+            const isSelected = selectedIds.includes(commandeId);
+            
             return (
               <div 
-                key={commande._id || commande.id} 
-                className="card hover:shadow-lg transition-all max-w-full overflow-hidden"
+                key={commandeId} 
+                className={`card hover:shadow-lg transition-all max-w-full overflow-hidden ${isSelected && user?.role === 'administrateur' ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-base sm:text-lg font-black text-gray-900 truncate">
-                        {commande.numeroCommande}
-                      </h3>
-                      {commande.urgence && (
-                        <span className="badge bg-red-600 text-white text-xs px-2 py-1 flex-shrink-0">
-                          🔥 URGENT
-                        </span>
-                      )}
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {/* Checkbox (Admin uniquement) */}
+                    {user?.role === 'administrateur' && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectCommande(commandeId)}
+                        className="w-5 h-5 mt-1 text-red-600 border-gray-300 rounded focus:ring-red-500 cursor-pointer flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                    
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-base sm:text-lg font-black text-gray-900 truncate">
+                          {commande.numeroCommande}
+                        </h3>
+                        {commande.urgence && (
+                          <span className="badge bg-red-600 text-white text-xs px-2 py-1 flex-shrink-0">
+                            🔥 URGENT
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        {format(new Date(commande.createdAt || commande.dateCommande), 'PPP à HH:mm', { locale: fr })}
+                      </p>
                     </div>
-                    <p className="text-xs sm:text-sm text-gray-500">
-                      {format(new Date(commande.createdAt || commande.dateCommande), 'PPP à HH:mm', { locale: fr })}
-                    </p>
                   </div>
                   <span className={`${statutInfo.class} text-white px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-1 flex-shrink-0`}>
                     <StatutIcon size={14} />
@@ -475,6 +564,48 @@ const GestionCommandes = () => {
                 className="btn bg-orange-500 hover:bg-orange-600 text-white flex-1"
               >
                 Renvoyer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmation Suppression Groupée */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Suppression groupée</h2>
+            </div>
+            
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-900 font-bold mb-2">⚠️ Attention !</p>
+              <p className="text-sm text-red-800">
+                Vous êtes sur le point de supprimer <strong>{selectedIds.length} commande(s)</strong>.
+                Cette action est <strong>irréversible</strong>.
+              </p>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Voulez-vous vraiment continuer ?
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                className="btn btn-secondary flex-1"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="btn bg-red-600 hover:bg-red-700 text-white flex-1 font-bold flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                Supprimer ({selectedIds.length})
               </button>
             </div>
           </div>
