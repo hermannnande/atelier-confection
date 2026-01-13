@@ -74,30 +74,45 @@ const Commandes = () => {
       const response = await api.get('/stock');
       const stock = response.data.stock || response.data;
       
+      console.log('📦 Stock chargé:', stock);
+      console.log('📋 Commandes à vérifier:', commandes.length);
+      
       const disponibilite = {};
       
       commandes.forEach((commande) => {
         // Vérifier si une variation existe en stock pour ce modèle + taille + couleur
         const modeleId = typeof commande.modele === 'object' ? commande.modele._id || commande.modele.id : commande.modele;
+        const modeleNom = typeof commande.modele === 'object' ? commande.modele.nom : '';
+        
+        console.log(`🔍 Recherche stock pour: ${modeleNom} (${modeleId}) - ${commande.taille} - ${commande.couleur}`);
+        
         const variationEnStock = stock.find(item => {
           const itemModeleId = typeof item.modele === 'object' ? item.modele._id || item.modele.id : item.modele;
-          return itemModeleId === modeleId && 
+          const match = itemModeleId === modeleId && 
                  item.taille === commande.taille && 
                  item.couleur === commande.couleur &&
                  item.quantite > 0;
+          
+          if (match) {
+            console.log('✅ Trouvé en stock!', item);
+          }
+          return match;
         });
         
         if (variationEnStock) {
-          disponibilite[commande._id || commande.id] = {
+          const commandeId = commande._id || commande.id;
+          disponibilite[commandeId] = {
             disponible: true,
             quantite: variationEnStock.quantite
           };
+          console.log(`✅ Badge ajouté pour commande ${commandeId}`);
         }
       });
       
+      console.log('📊 Disponibilité finale:', disponibilite);
       setStockDisponible(disponibilite);
     } catch (error) {
-      console.error('Erreur lors de la vérification du stock:', error);
+      console.error('❌ Erreur lors de la vérification du stock:', error);
     }
   };
 
@@ -305,10 +320,10 @@ const Commandes = () => {
                         <p className="text-gray-600 truncate">
                           {commande.taille} - {commande.couleur}
                         </p>
-                        {stockDisponible[commande._id] && (
+                        {(stockDisponible[commande._id] || stockDisponible[commande.id]) && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
                             <Package size={10} className="mr-1" />
-                            En Stock ({stockDisponible[commande._id].quantite})
+                            En Stock ({(stockDisponible[commande._id] || stockDisponible[commande.id]).quantite})
                           </span>
                         )}
                       </div>
