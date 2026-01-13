@@ -9,8 +9,8 @@ const AtelierStyliste = () => {
 
   useEffect(() => {
     fetchCommandes();
-    // Auto-refresh toutes les 15 secondes
-    const interval = setInterval(fetchCommandes, 15000);
+    // Auto-refresh toutes les 5 secondes pour réception immédiate
+    const interval = setInterval(fetchCommandes, 5000);
     return () => clearInterval(interval);
   }, []);
 
