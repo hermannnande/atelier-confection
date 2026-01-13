@@ -35,24 +35,31 @@ const Commandes = () => {
       );
       
       // Trier avec priorité : 
-      // 1. Commandes "validee" en PREMIER
-      // 2. Parmi les "validee", tri par DATE DE VALIDATION (updated_at)
-      //    → La dernière validée en HAUT (peu importe quand elle a été créée)
-      //    → Exemple: C (ancienne) validée après A et B → C passe en HAUT
-      // 3. Puis autres commandes par date décroissante
+      // 1. Commandes "validee" URGENTES en PREMIER (pas encore envoyées à l'atelier)
+      // 2. Commandes "validee" NON URGENTES
+      // 3. Autres commandes (déjà en atelier) par date, SANS priorité d'urgence
       const commandesTriees = commandesConfirmees.sort((a, b) => {
-        // Priorité 1 : Les commandes "validee" avant tout le reste
-        const prioriteA = a.statut === 'validee' ? 0 : 1;
-        const prioriteB = b.statut === 'validee' ? 0 : 1;
+        const estValideeA = a.statut === 'validee';
+        const estValideeB = b.statut === 'validee';
         
-        if (prioriteA !== prioriteB) {
-          return prioriteA - prioriteB; // Les "validee" (0) avant les autres (1)
+        // Priorité 1 : Commandes "validee" urgentes en haut
+        if (estValideeA && a.urgence && !(estValideeB && b.urgence)) {
+          return -1; // A urgente validee avant tout
+        }
+        if (estValideeB && b.urgence && !(estValideeA && a.urgence)) {
+          return 1; // B urgente validee avant tout
         }
         
-        // Priorité 2 : Au sein du même groupe de statut, tri par DATE DE VALIDATION
-        // updated_at = date de dernière modification (donc date de validation pour les "validee")
-        // Si B validée à 10h, puis A validée à 11h, puis C validée à 12h
-        // → Ordre: C (12h), A (11h), B (10h)
+        // Priorité 2 : Commandes "validee" non urgentes avant celles déjà en atelier
+        if (estValideeA && !estValideeB) {
+          return -1; // A validee avant B (en atelier)
+        }
+        if (estValideeB && !estValideeA) {
+          return 1; // B validee avant A (en atelier)
+        }
+        
+        // Priorité 3 : Au sein du même groupe, tri par date
+        // Pour les commandes déjà en atelier, l'urgence n'a plus d'importance
         const dateA = new Date(a.updated_at || a.created_at);
         const dateB = new Date(b.updated_at || b.created_at);
         return dateB - dateA; // Plus récent en premier
