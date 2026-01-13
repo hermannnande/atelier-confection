@@ -12,6 +12,8 @@ const Appel = () => {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [noteAppelant, setNoteAppelant] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(100);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ const Appel = () => {
       setLastRefresh(new Date());
     } catch (error) {
       if (!silent) {
-        toast.error('Erreur lors du chargement des appels');
+      toast.error('Erreur lors du chargement des appels');
       }
       console.error(error);
     } finally {
@@ -170,6 +172,17 @@ const Appel = () => {
     );
   }
 
+  // Calcul de la pagination
+  const totalPages = Math.ceil(commandesAppel.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const commandesAffichees = commandesAppel.slice(startIndex, endIndex);
+
+  const goToPage = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -226,14 +239,26 @@ const Appel = () => {
             <span>Nouvelle Commande</span>
           </Link>
           
-          <div className="text-right">
-            <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
-            <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-              {commandesAppel.length}
-            </p>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
+          <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            {commandesAppel.length}
+          </p>
           </div>
         </div>
       </div>
+
+      {/* Info pagination */}
+      {commandesAppel.length > 0 && (
+        <div className="bg-white rounded-lg p-3 shadow-sm flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-700">
+            Affichage {startIndex + 1} - {Math.min(endIndex, commandesAppel.length)} sur {commandesAppel.length} commandes
+          </p>
+          <p className="text-xs text-gray-500">
+            Page {currentPage} / {totalPages}
+          </p>
+        </div>
+      )}
 
       {/* Grille des commandes */}
       {commandesAppel.length === 0 ? (
@@ -245,8 +270,9 @@ const Appel = () => {
           <p className="text-gray-600">Toutes les commandes ont été traitées ! 🎉</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {commandesAppel.map((commande, index) => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {commandesAffichees.map((commande, index) => (
             <div
               key={commande._id || commande.id}
               className="stat-card hover:scale-105 transition-transform cursor-pointer group"
@@ -272,22 +298,22 @@ const Appel = () => {
               <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3 flex items-start space-x-3">
                 {/* Infos Client */}
                 <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <User className="text-blue-600" size={16} />
-                    <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
-                  </div>
-                  <a 
-                    href={`tel:${getClientContact(commande)}`}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Phone size={12} />
-                    <span>{getClientContact(commande)}</span>
-                  </a>
-                  <div className="flex items-center space-x-1 mt-1">
-                    <MapPin className="text-emerald-600" size={14} />
-                    <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
-                  </div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <User className="text-blue-600" size={16} />
+                  <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
+                </div>
+                <a 
+                  href={`tel:${getClientContact(commande)}`}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center space-x-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Phone size={12} />
+                  <span>{getClientContact(commande)}</span>
+                </a>
+                <div className="flex items-center space-x-1 mt-1">
+                  <MapPin className="text-emerald-600" size={14} />
+                  <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
+                </div>
                 </div>
                 
                 {/* Image du produit - Petite à droite */}
@@ -351,6 +377,73 @@ const Appel = () => {
             </div>
           ))}
         </div>
+
+        {/* Contrôles de pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              {/* Bouton Précédent */}
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                ← Précédent
+              </button>
+
+              {/* Numéros de pages */}
+              <div className="flex items-center space-x-2">
+                {[...Array(totalPages)].map((_, index) => {
+                  const pageNum = index + 1;
+                  // Afficher seulement certaines pages pour éviter trop de boutons
+                  if (
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
+                  ) {
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all ${
+                          currentPage === pageNum
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  } else if (
+                    pageNum === currentPage - 3 ||
+                    pageNum === currentPage + 3
+                  ) {
+                    return <span key={pageNum} className="text-gray-400">...</span>;
+                  }
+                  return null;
+                })}
+              </div>
+
+              {/* Bouton Suivant */}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                  currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                Suivant →
+              </button>
+            </div>
+          </div>
+        )}
+      </>
       )}
 
       {/* Modal de traitement */}
@@ -372,8 +465,8 @@ const Appel = () => {
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white flex items-center justify-between">
               <h2 className="text-xl font-bold">
                 {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
-              </h2>
-              <button 
+                  </h2>
+                <button 
                 onClick={() => {
                   if (!processing) {
                     setSelectedCommande(null);
@@ -381,10 +474,10 @@ const Appel = () => {
                   }
                 }}
                 className="hover:bg-white/20 p-1 rounded transition-colors"
-                disabled={processing}
-              >
+                  disabled={processing}
+                >
                 <X size={20} />
-              </button>
+                </button>
             </div>
 
             {/* Contenu compact */}
@@ -471,7 +564,7 @@ const Appel = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Cette note sera visible par toute l'équipe de production
                 </p>
-              </div>
+                </div>
 
               {/* Actions - Compact en grille 2x2 */}
               <div className="grid grid-cols-2 gap-2 pt-2">
