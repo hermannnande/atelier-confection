@@ -119,9 +119,14 @@ const Stock = () => {
       
       for (const variation of editedVariations) {
         try {
+          // Conserver TOUTES les données importantes, y compris l'image
           await api.put(`/stock/${variation._id || variation.id}`, {
             quantite: variation.quantitePrincipale,
-            prix: variation.prix
+            prix: variation.prix,
+            modele: variation.modele,
+            taille: variation.taille,
+            couleur: variation.couleur,
+            image: variation.image || selectedModeleDetails.image // Conserver l'image
           });
           successCount++;
         } catch (error) {
