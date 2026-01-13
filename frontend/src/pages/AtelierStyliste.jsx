@@ -31,7 +31,7 @@ const AtelierStyliste = () => {
         // 2. À urgence égale, trier par date (anciennes en haut, récentes en bas)
         const dateA = new Date(a.updatedAt || a.updated_at || a.createdAt || a.created_at);
         const dateB = new Date(b.updatedAt || b.updated_at || b.createdAt || b.created_at);
-        return dateB - dateA; // Plus récent en bas, plus ancien en haut
+        return dateA - dateB; // Plus ancien en haut, plus récent en bas
       });
       
       setCommandes(sorted);
