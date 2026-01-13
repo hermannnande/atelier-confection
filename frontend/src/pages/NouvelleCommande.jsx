@@ -389,21 +389,21 @@ const NouvelleCommande = () => {
                 <div className="grid grid-cols-3 gap-3">
                   {taillesDisponibles.map((taille) => {
                     const variation = formData.couleur ? getVariationStock(taille, formData.couleur) : null;
-                    const inStock = variation && variation.quantitePrincipale > 0;
-                    
-                    return (
-                      <button
+                        const inStock = variation && variation.quantitePrincipale > 0;
+                        
+                        return (
+                              <button
                         key={taille}
-                        type="button"
+                                type="button"
                         onClick={() => handleTailleChange(taille)}
-                        className={`
+                                className={`
                           px-4 py-3 rounded-xl font-bold text-sm transition-all duration-300
                           ${formData.taille === taille
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
                             : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
-                          }
-                        `}
-                      >
+                                  }
+                                `}
+                              >
                         <div className="flex flex-col items-center">
                           <span className="text-base">{taille}</span>
                           {inStock && (
@@ -411,12 +411,12 @@ const NouvelleCommande = () => {
                               Stock: {variation.quantitePrincipale}
                             </span>
                           )}
-                        </div>
-                      </button>
+                                </div>
+                              </button>
                     );
                   })}
                 </div>
-              </div>
+                              </div>
 
               {/* Sélection de la couleur */}
               <div>
@@ -450,8 +450,8 @@ const NouvelleCommande = () => {
                           )}
                         </div>
                       </button>
-                    );
-                  })}
+                        );
+                      })}
                 </div>
               </div>
             </div>
@@ -464,24 +464,24 @@ const NouvelleCommande = () => {
                   if (variation && variation.quantitePrincipale > 0) {
                     return (
                       <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                        <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
                           <Check className="text-green-600" size={20} />
                           <p className="text-green-800 font-bold">
                             ✅ En stock : {variation.quantitePrincipale} unité(s) disponible(s)
                           </p>
                         </div>
-                      </div>
+              </div>
                     );
                   } else {
                     return (
                       <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200">
-                        <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
                           <AlertCircle className="text-amber-600" size={20} />
                           <p className="text-amber-800 font-bold">
                             ⚠️ Cette combinaison n'est pas en stock - Commande sur mesure
                           </p>
                         </div>
-                      </div>
+              </div>
                     );
                   }
                 })()}

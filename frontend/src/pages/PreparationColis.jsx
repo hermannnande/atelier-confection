@@ -158,25 +158,25 @@ const PreparationColis = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full">
       {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-              <Package className="text-white" size={32} strokeWidth={2.5} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg flex-shrink-0">
+              <Package className="text-white" size={24} strokeWidth={2.5} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-4xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent truncate">
                 Préparation Colis
               </h1>
-              <p className="text-gray-600 font-medium">Suivi des commandes en cours de confection</p>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium truncate">Suivi des commandes</p>
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500 uppercase">En Traitement</p>
-          <p className="text-5xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+        <div className="text-center sm:text-right">
+          <p className="text-xs sm:text-sm font-semibold text-gray-500 uppercase">En Traitement</p>
+          <p className="text-3xl sm:text-4xl lg:text-5xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
             {commandes.length}
           </p>
         </div>
