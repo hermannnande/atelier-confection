@@ -125,14 +125,14 @@ const Modeles = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent truncate">
             Bibliothèque de Modèles
           </h1>
-          <p className="text-gray-600 font-medium mt-1">Gérer les modèles de vêtements</p>
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium mt-1 truncate">Gérer les modèles de vêtements</p>
         </div>
         <button
           onClick={() => {
@@ -140,29 +140,29 @@ const Modeles = () => {
             resetForm();
             setShowModal(true);
           }}
-          className="btn btn-primary flex items-center space-x-2"
+          className="btn btn-primary flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
         >
-          <Plus size={20} strokeWidth={2.5} />
-          <span>Nouveau Modèle</span>
+          <Plus size={18} strokeWidth={2.5} className="flex-shrink-0" />
+          <span className="truncate">Nouveau Modèle</span>
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="stat-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-              <Package className="text-white" size={28} strokeWidth={2.5} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 max-w-full">
+        <div className="stat-card max-w-full overflow-hidden">
+          <div className="flex items-start justify-between mb-2 sm:mb-4">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 sm:p-3 lg:p-4 rounded-2xl shadow-lg flex-shrink-0">
+              <Package className="text-white" size={20} strokeWidth={2.5} />
             </div>
           </div>
-          <p className="text-sm font-semibold text-gray-500 uppercase mb-2">Total Modèles</p>
-          <p className="text-4xl font-black text-gray-900">{modeles.length}</p>
+          <p className="text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-500 uppercase mb-1 sm:mb-2 truncate">Total Modèles</p>
+          <p className="text-xl sm:text-3xl lg:text-4xl font-black text-gray-900">{modeles.length}</p>
         </div>
 
         {categories.slice(0, 3).map((cat, i) => (
-          <div key={i} className="stat-card">
-            <p className="text-sm font-semibold text-gray-500 uppercase mb-2">{cat}s</p>
-            <p className="text-3xl font-black text-gray-900">
+          <div key={i} className="stat-card max-w-full overflow-hidden">
+            <p className="text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-500 uppercase mb-1 sm:mb-2 truncate">{cat}s</p>
+            <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900">
               {modeles.filter(m => m.categorie === cat).length}
             </p>
           </div>
@@ -170,14 +170,14 @@ const Modeles = () => {
       </div>
 
       {/* Recherche */}
-      <div className="stat-card">
+      <div className="stat-card max-w-full overflow-hidden">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 flex-shrink-0" size={18} />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-12"
+            className="input pl-10 sm:pl-12 text-sm sm:text-base"
             placeholder="Rechercher un modèle..."
           />
         </div>
