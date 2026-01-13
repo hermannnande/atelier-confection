@@ -162,41 +162,41 @@ const Commandes = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full">
       {/* En-tête avec actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestion des Commandes</h1>
-          <p className="text-gray-600 mt-1">Gérez toutes les commandes clients</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Gestion des Commandes</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 truncate">Gérez toutes les commandes clients</p>
         </div>
-        <Link to="/commandes/nouvelle" className="btn btn-primary inline-flex items-center space-x-2">
-          <Plus size={20} />
+        <Link to="/commandes/nouvelle" className="btn btn-primary inline-flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-sm sm:text-base flex-shrink-0">
+          <Plus size={18} className="sm:w-5 sm:h-5" />
           <span>Nouvelle Commande</span>
         </Link>
       </div>
 
       {/* Filtres et recherche */}
-      <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+      <div className="card max-w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="sm:col-span-2">
+            <div className="relative max-w-full">
+              <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher par numéro, client ou modèle..."
+                placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
+                className="input pl-8 sm:pl-10 text-sm sm:text-base truncate"
               />
             </div>
           </div>
-          <div>
+          <div className="max-w-full">
             <select
               value={filterStatut}
               onChange={(e) => setFilterStatut(e.target.value)}
-              className="input"
+              className="input text-sm sm:text-base truncate"
             >
-              <option value="">Tous les statuts</option>
+              <option value="">Tous statuts</option>
               <option value="nouvelle">Nouvelle</option>
               <option value="validee">Validée</option>
               <option value="en_attente_paiement">Attente Paiement</option>
@@ -209,13 +209,13 @@ const Commandes = () => {
               <option value="annulee">Annulée</option>
             </select>
           </div>
-          <div>
+          <div className="max-w-full">
             <select
               value={filterUrgence}
               onChange={(e) => setFilterUrgence(e.target.value)}
-              className="input"
+              className="input text-sm sm:text-base truncate"
             >
-              <option value="">Toutes les urgences</option>
+              <option value="">Toutes</option>
               <option value="true">Urgentes</option>
               <option value="false">Non urgentes</option>
             </select>
@@ -237,54 +237,54 @@ const Commandes = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
           {filteredCommandes.map((commande) => (
-            <div key={commande._id} className="card hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900">
+            <div key={commande._id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
+              <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate flex-shrink-0">
                       {commande.numeroCommande}
                     </h3>
-                    <span className={`badge ${getStatutBadge(commande.statut)}`}>
+                    <span className={`badge ${getStatutBadge(commande.statut)} text-xs flex-shrink-0`}>
                       {getStatutLabel(commande.statut)}
                     </span>
                     {commande.urgence && (
-                      <span className="badge badge-danger">
-                        <AlertCircle size={12} className="mr-1" />
+                      <span className="badge badge-danger text-xs flex-shrink-0">
+                        <AlertCircle size={11} className="mr-0.5" />
                         Urgent
                       </span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Client</p>
-                      <p className="font-medium text-gray-900">{commande.client.nom}</p>
-                      <p className="text-gray-600">{commande.client.contact}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm max-w-full">
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Client</p>
+                      <p className="font-medium text-gray-900 truncate">{commande.client.nom}</p>
+                      <p className="text-gray-600 truncate">{commande.client.contact}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Modèle</p>
-                      <p className="font-medium text-gray-900">{commande.modele.nom}</p>
-                      <p className="text-gray-600">
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Modèle</p>
+                      <p className="font-medium text-gray-900 truncate">{commande.modele.nom}</p>
+                      <p className="text-gray-600 truncate">
                         {commande.taille} - {commande.couleur}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Ville</p>
-                      <p className="font-medium text-gray-900">{commande.client.ville}</p>
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Ville</p>
+                      <p className="font-medium text-gray-900 truncate">{commande.client.ville}</p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Prix</p>
-                      <p className="font-bold text-primary-600 text-lg">
-                        {commande.prix.toLocaleString('fr-FR')} FCFA
+                    <div className="min-w-0">
+                      <p className="text-gray-500 text-xs">Prix</p>
+                      <p className="font-bold text-primary-600 text-base sm:text-lg">
+                        {commande.prix.toLocaleString('fr-FR')} F
                       </p>
                     </div>
                   </div>
 
                   {commande.noteAppelant && (
-                    <div className="mt-3 p-3 bg-yellow-50 rounded-lg overflow-hidden">
-                      <p className="text-sm text-gray-700 break-all max-w-full overflow-wrap-anywhere">
+                    <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 rounded-lg overflow-hidden max-w-full">
+                      <p className="text-xs sm:text-sm text-gray-700 break-all overflow-wrap-anywhere">
                         <span className="font-medium">Note: </span>
                         {commande.noteAppelant}
                       </p>
@@ -292,37 +292,37 @@ const Commandes = () => {
                   )}
                 </div>
 
-                <div className="flex items-center space-x-2 ml-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto lg:ml-4 flex-shrink-0">
                   {/* Boutons d'action - visibles seulement pour gestionnaire/admin et commandes validées */}
                   {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
                     <>
                       <button
                         onClick={() => envoyerAAtelier(commande._id)}
                         disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
-                        className="btn btn-primary btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
+                        className="btn btn-primary btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer à l'atelier styliste"
                       >
-                        <Send size={16} />
-                        <span>{sendingToAtelier === commande._id ? 'Envoi...' : 'Envoyer à l\'atelier'}</span>
+                        <Send size={14} className="flex-shrink-0" />
+                        <span className="truncate">{sendingToAtelier === commande._id ? 'Envoi...' : 'Atelier'}</span>
                       </button>
                       
                       <button
                         onClick={() => envoyerEnPreparationColis(commande._id)}
                         disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
-                        className="btn btn-success btn-sm inline-flex items-center space-x-1 disabled:opacity-50"
+                        className="btn btn-success btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer directement en Préparation Colis (sans passer par l'atelier)"
                       >
-                        <Package size={16} />
-                        <span>{sendingToPreparation === commande._id ? 'Envoi...' : 'Direct Préparation'}</span>
+                        <Package size={14} className="flex-shrink-0" />
+                        <span className="truncate">{sendingToPreparation === commande._id ? 'Envoi...' : 'Direct'}</span>
                       </button>
                     </>
                   )}
                   
                   <Link
                     to={`/commandes/${commande._id}`}
-                    className="btn btn-secondary btn-sm inline-flex items-center space-x-1"
+                    className="btn btn-secondary btn-sm inline-flex items-center justify-center space-x-1 text-xs sm:text-sm w-full sm:w-auto"
                   >
-                    <Eye size={16} />
+                    <Eye size={14} className="flex-shrink-0" />
                     <span>Voir</span>
                   </Link>
                 </div>
