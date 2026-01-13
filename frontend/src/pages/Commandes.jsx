@@ -80,32 +80,50 @@ const Commandes = () => {
       const disponibilite = {};
       
       commandes.forEach((commande) => {
-        // Vérifier si une variation existe en stock pour ce modèle + taille + couleur
+        // Récupérer à la fois l'ID et le NOM du modèle
         const modeleId = typeof commande.modele === 'object' ? commande.modele._id || commande.modele.id : commande.modele;
-        const modeleNom = typeof commande.modele === 'object' ? commande.modele.nom : '';
+        const modeleNom = typeof commande.modele === 'object' ? commande.modele.nom : commande.modele;
         
         console.log(`🔍 Recherche stock pour: ${modeleNom} (${modeleId}) - ${commande.taille} - ${commande.couleur}`);
         
         const variationEnStock = stock.find(item => {
+          // Comparer par ID OU par NOM (car le stock peut utiliser l'un ou l'autre)
           const itemModeleId = typeof item.modele === 'object' ? item.modele._id || item.modele.id : item.modele;
-          const match = itemModeleId === modeleId && 
-                 item.taille === commande.taille && 
-                 item.couleur === commande.couleur &&
-                 item.quantite > 0;
+          const itemModeleNom = typeof item.modele === 'object' ? item.modele.nom : item.modele;
+          
+          // Vérifier la quantité (quantite OU quantitePrincipale)
+          const qte = item.quantitePrincipale || item.quantite || 0;
+          
+          const matchParId = itemModeleId === modeleId;
+          const matchParNom = itemModeleNom === modeleNom;
+          const matchTaille = item.taille === commande.taille;
+          const matchCouleur = item.couleur === commande.couleur;
+          const aStock = qte > 0;
+          
+          const match = (matchParId || matchParNom) && matchTaille && matchCouleur && aStock;
           
           if (match) {
-            console.log('✅ Trouvé en stock!', item);
+            console.log('✅ Trouvé en stock!', {
+              modele: itemModeleNom,
+              taille: item.taille,
+              couleur: item.couleur,
+              quantite: qte
+            });
           }
+          
           return match;
         });
         
         if (variationEnStock) {
           const commandeId = commande._id || commande.id;
+          const qte = variationEnStock.quantitePrincipale || variationEnStock.quantite || 0;
           disponibilite[commandeId] = {
             disponible: true,
-            quantite: variationEnStock.quantite
+            quantite: qte
           };
-          console.log(`✅ Badge ajouté pour commande ${commandeId}`);
+          console.log(`✅ Badge ajouté pour commande ${commandeId} avec quantité ${qte}`);
+        } else {
+          console.log(`❌ Pas trouvé en stock pour ${modeleNom} - ${commande.taille} - ${commande.couleur}`);
         }
       });
       
