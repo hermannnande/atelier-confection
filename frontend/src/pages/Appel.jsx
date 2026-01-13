@@ -83,16 +83,16 @@ const Appel = () => {
       
       switch (action) {
         case 'confirmer':
-          newStatut = 'en_attente_validation';
-          message = 'Commande traitée et en attente de validation !';
+          newStatut = 'validee';
+          message = 'Commande confirmée et envoyée aux commandes !';
           break;
         case 'urgent':
-          newStatut = 'en_attente_validation';
-          message = 'Commande URGENTE traitée et en attente de validation !';
+          newStatut = 'validee';
+          message = 'Commande marquée URGENTE et envoyée aux commandes !';
           break;
         case 'attente':
           newStatut = 'en_attente_paiement';
-          message = 'Commande mise en attente de paiement';
+          message = 'Commande mise en attente - reste visible dans Appel';
           break;
         case 'annuler':
           newStatut = 'annulee';
@@ -117,11 +117,12 @@ const Appel = () => {
       setSelectedCommande(null);
       setNoteAppelant('');
       
-      // Retirer de la liste uniquement si annulée
-      if (action === 'annuler') {
+      // Retirer de la liste si confirmée, urgente ou annulée
+      // Les commandes en "attente" (en_attente_paiement) restent visibles
+      if (['confirmer', 'urgent', 'annuler'].includes(action)) {
         setCommandesAppel(prev => prev.filter(c => (c._id || c.id) !== commandeId));
       } else {
-        // Rafraîchir la liste pour mettre à jour les statuts
+        // Pour "attente", rafraîchir pour afficher le nouveau statut
         fetchCommandesAppel();
       }
       
