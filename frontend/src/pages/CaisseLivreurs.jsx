@@ -43,13 +43,40 @@ const CaisseLivreurs = () => {
     return getLivraisonsLivreur(livreurId).filter(l => l.statut === 'livree');
   };
 
+  const getLivraisonsLivreesNonPayees = (livreurId) => {
+    return getLivraisonsLivreur(livreurId).filter(l => l.statut === 'livree' && !l.paiement_recu);
+  };
+
   const getMontantTotal = (livreurId) => {
-    const livraisonsLivrees = getLivraisonsLivrees(livreurId);
-    // Calculer le montant total de toutes les livraisons livrées
-    return livraisonsLivrees.reduce((total, livraison) => {
+    // Ne calculer que les livraisons livrées qui n'ont PAS encore été payées
+    const livraisonsNonPayees = getLivraisonsLivreesNonPayees(livreurId);
+    return livraisonsNonPayees.reduce((total, livraison) => {
       const prix = livraison.commande?.prix || 0;
       return total + prix;
     }, 0);
+  };
+
+  const handleMarquerPaiementRecu = async (livreurId, livreurNom) => {
+    const montant = getMontantTotal(livreurId);
+    const nombreLivraisons = getLivraisonsLivreesNonPayees(livreurId).length;
+
+    if (nombreLivraisons === 0) {
+      toast.error('Aucune livraison à marquer comme payée');
+      return;
+    }
+
+    if (!window.confirm(`Confirmer la réception de l'argent de ${livreurNom} ?\n\n💰 Montant : ${montant.toLocaleString('fr-FR')} FCFA\n📦 ${nombreLivraisons} livraison(s)\n\nCette action marquera toutes les livraisons livrées comme payées.`)) {
+      return;
+    }
+
+    try {
+      const response = await api.post(`/livraisons/livreur/${livreurId}/marquer-paiement-recu`);
+      toast.success(`✅ ${response.data.nombreLivraisons} livraison(s) marquées comme payées ! ${response.data.montantTotal.toLocaleString('fr-FR')} FCFA reçu.`);
+      await fetchData(); // Rafraîchir les données
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors du marquage');
+      console.error(error);
+    }
   };
 
   const handleVoirDetails = (livreur) => {
@@ -373,6 +400,17 @@ const CaisseLivreurs = () => {
 
                 {/* Boutons d'action */}
                 <div className="space-y-2">
+                  {/* Bouton Argent Remis (uniquement si montant > 0) */}
+                  {montantTotal > 0 && (
+                    <button
+                      onClick={() => handleMarquerPaiementRecu(livreur._id || livreur.id, livreur.nom)}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-lg transition-all"
+                    >
+                      <Wallet size={18} />
+                      <span>✅ Argent remis</span>
+                    </button>
+                  )}
+                  
                   {/* Bouton Voir Détails */}
                   <button
                     onClick={() => handleVoirDetails(livreur)}
@@ -499,7 +537,7 @@ const CaisseLivreurs = () => {
                         });
                       }
                       return livraisons
-                        .filter(l => l.statut === 'livree')
+                        .filter(l => l.statut === 'livree' && !l.paiement_recu && !l.paiementRecu)
                         .reduce((sum, l) => sum + (l.commande?.prix || 0), 0)
                         .toLocaleString('fr-FR');
                     })()} F
@@ -555,7 +593,10 @@ const CaisseLivreurs = () => {
                   
                   return sortedDates.map(dateKey => {
                     const livraisonsJour = groupedByDate[dateKey];
-                    const montantTotal = livraisonsJour.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+                    // Montant total du jour (toutes livraisons)
+                    const montantTotalJour = livraisonsJour.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+                    // Montant à remettre (non payées uniquement)
+                    const montantARemettre = livraisonsJour.filter(l => !l.paiement_recu && !l.paiementRecu).reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
                     
                     // Trier les livraisons du jour : refusées en bas
                     const livraisonsTriees = livraisonsJour.sort((a, b) => {
@@ -580,8 +621,11 @@ const CaisseLivreurs = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-white/80 text-[10px] font-semibold">Total du jour</p>
-                            <p className="text-white font-black text-lg">{montantTotal.toLocaleString('fr-FR')} F</p>
+                            <p className="text-white/80 text-[10px] font-semibold">À Remettre</p>
+                            <p className="text-white font-black text-lg">{montantARemettre.toLocaleString('fr-FR')} F</p>
+                            {montantARemettre < montantTotalJour && (
+                              <p className="text-white/60 text-[8px] font-semibold">Total: {montantTotalJour.toLocaleString('fr-FR')} F</p>
+                            )}
                           </div>
                         </div>
                         
@@ -590,6 +634,7 @@ const CaisseLivreurs = () => {
                           {livraisonsTriees.map((livraison) => {
                             const isRefused = livraison.statut === 'refusee';
                             const isReturned = livraison.statut === 'retournee';
+                            const isPaid = livraison.paiement_recu || livraison.paiementRecu;
                             const montant = livraison.commande?.prix || 0;
                             const clientNom = typeof livraison.commande?.client === 'object' 
                               ? livraison.commande.client.nom 
@@ -602,6 +647,7 @@ const CaisseLivreurs = () => {
                               : livraison.commande?.modele || 'N/A';
                             
                             let bgClass = 'bg-white border-2 border-gray-200 hover:shadow-md hover:border-emerald-300';
+                            if (isPaid) bgClass = 'bg-gradient-to-r from-green-100 to-emerald-50 border-2 border-green-500';
                             if (isRefused) bgClass = 'bg-gradient-to-r from-red-100 to-red-50 border-2 border-red-500';
                             if (isReturned) bgClass = 'bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400';
                             
@@ -612,6 +658,12 @@ const CaisseLivreurs = () => {
                               >
                                 {/* Badges en coin */}
                                 <div className="absolute top-1 right-1 flex flex-col gap-1">
+                                  {isPaid && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-green-600 text-white flex items-center space-x-1 shadow-md">
+                                      <Wallet size={9} strokeWidth={4} />
+                                      <span>PAYÉ</span>
+                                    </span>
+                                  )}
                                   {isReturned && (
                                     <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
                                       <RotateCcw size={9} strokeWidth={4} />

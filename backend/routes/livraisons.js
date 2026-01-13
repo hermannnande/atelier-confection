@@ -271,6 +271,55 @@ router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'ad
   }
 });
 
+// Marquer l'argent comme remis pour un livreur
+router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const { livreurId } = req.params;
+    
+    // Trouver toutes les livraisons livrées du livreur qui n'ont pas encore eu leur paiement reçu
+    const livraisons = await Livraison.find({
+      livreur: livreurId,
+      statut: 'livree',
+      paiement_recu: false
+    });
+
+    if (livraisons.length === 0) {
+      return res.status(404).json({ message: 'Aucune livraison à marquer comme payée' });
+    }
+
+    // Calculer le montant total
+    const montantTotal = await Promise.all(
+      livraisons.map(async (livraison) => {
+        const commande = await Commande.findById(livraison.commande);
+        return commande ? commande.prix : 0;
+      })
+    ).then(montants => montants.reduce((sum, prix) => sum + prix, 0));
+
+    // Marquer toutes ces livraisons comme payées
+    await Livraison.updateMany(
+      {
+        livreur: livreurId,
+        statut: 'livree',
+        paiement_recu: false
+      },
+      {
+        $set: {
+          paiement_recu: true,
+          date_paiement: new Date()
+        }
+      }
+    );
+
+    res.json({ 
+      message: 'Paiement marqué comme reçu', 
+      nombreLivraisons: livraisons.length,
+      montantTotal
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 export default router;
 
 

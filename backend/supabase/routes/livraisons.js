@@ -339,6 +339,62 @@ router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'ad
   }
 });
 
+// Marquer l'argent comme remis pour un livreur
+router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { livreurId } = req.params;
+    
+    // Trouver toutes les livraisons livrées du livreur qui n'ont pas encore eu leur paiement reçu
+    const { data: livraisons, error: selectError } = await supabase
+      .from('livraisons')
+      .select('id, commande_id')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'livree')
+      .eq('paiement_recu', false);
+
+    if (selectError) {
+      return res.status(500).json({ message: 'Erreur lors de la récupération', error: selectError.message });
+    }
+
+    if (!livraisons || livraisons.length === 0) {
+      return res.status(404).json({ message: 'Aucune livraison à marquer comme payée' });
+    }
+
+    // Récupérer les commandes pour calculer le montant total
+    const commandeIds = livraisons.map(l => l.commande_id);
+    const { data: commandes } = await supabase
+      .from('commandes')
+      .select('prix')
+      .in('id', commandeIds);
+
+    const montantTotal = commandes ? commandes.reduce((sum, c) => sum + (c.prix || 0), 0) : 0;
+
+    // Marquer toutes ces livraisons comme payées
+    const { error: updateError } = await supabase
+      .from('livraisons')
+      .update({
+        paiement_recu: true,
+        date_paiement: new Date().toISOString()
+      })
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'livree')
+      .eq('paiement_recu', false);
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: updateError.message });
+    }
+
+    return res.json({ 
+      message: 'Paiement marqué comme reçu', 
+      nombreLivraisons: livraisons.length,
+      montantTotal
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 export default router;
 
 
