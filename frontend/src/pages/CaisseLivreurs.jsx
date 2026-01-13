@@ -509,10 +509,10 @@ const CaisseLivreurs = () => {
             </div>
 
             {/* Liste des livraisons */}
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Détails des Livraisons</h3>
+            <div className="p-4">
+              <h3 className="text-base font-bold text-gray-900 mb-3">Détails des Livraisons</h3>
               
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {(() => {
                   // Grouper les livraisons par date d'assignation
                   let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
@@ -565,28 +565,28 @@ const CaisseLivreurs = () => {
                     });
                     
                     return (
-                      <div key={dateKey} className="border-2 border-gray-300 rounded-xl overflow-hidden">
+                      <div key={dateKey} className="border-2 border-gray-300 rounded-lg overflow-hidden">
                         {/* Header du bloc journalier */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-white/20 p-2 rounded-lg">
-                              <Package className="text-white" size={20} />
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-2 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="bg-white/20 p-1.5 rounded">
+                              <Package className="text-white" size={16} />
                             </div>
                             <div>
-                              <p className="text-white font-black text-lg">📅 {dateKey}</p>
-                              <p className="text-white/80 text-xs font-semibold">
+                              <p className="text-white font-black text-sm">📅 {dateKey}</p>
+                              <p className="text-white/80 text-[10px] font-semibold">
                                 {livraisonsJour.length} colis assigné{livraisonsJour.length > 1 ? 's' : ''}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-white/80 text-xs font-semibold">Total du jour</p>
-                            <p className="text-white font-black text-xl">{montantTotal.toLocaleString('fr-FR')} F</p>
+                            <p className="text-white/80 text-[10px] font-semibold">Total du jour</p>
+                            <p className="text-white font-black text-lg">{montantTotal.toLocaleString('fr-FR')} F</p>
                           </div>
                         </div>
                         
                         {/* Liste des livraisons du jour */}
-                        <div className="p-4 space-y-2 bg-gray-50">
+                        <div className="p-2 space-y-1.5 bg-gray-50">
                           {livraisonsTriees.map((livraison) => {
                             const isRefused = livraison.statut === 'refusee';
                             const isReturned = livraison.statut === 'retournee';
@@ -608,56 +608,56 @@ const CaisseLivreurs = () => {
                             return (
                               <div 
                                 key={livraison._id || livraison.id} 
-                                className={`relative border rounded-lg p-3 transition-all ${bgClass}`}
+                                className={`relative border rounded-lg p-2 transition-all ${bgClass}`}
                               >
                                 {/* Badges en coin */}
-                                <div className="absolute top-2 right-2 flex flex-col gap-1">
+                                <div className="absolute top-1 right-1 flex flex-col gap-1">
                                   {isReturned && (
-                                    <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
-                                      <RotateCcw size={10} strokeWidth={4} />
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-gray-600 text-white flex items-center space-x-1 shadow-md">
+                                      <RotateCcw size={9} strokeWidth={4} />
                                       <span>RETOURNÉ</span>
                                     </span>
                                   )}
                                 </div>
                                 
-                                <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start justify-between gap-2">
                                   {/* Partie gauche - Infos commande */}
                                   <div className="flex-1 min-w-0">
                                     {/* Numéro et statut */}
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <h4 className="font-black text-gray-900 text-sm">
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                      <h4 className="font-black text-gray-900 text-xs">
                                         {livraison.commande?.numeroCommande || 'N/A'}
                                       </h4>
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getStatutBadge(livraison.statut)}`}>
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getStatutBadge(livraison.statut)}`}>
                                         {getStatutLabel(livraison.statut)}
                                       </span>
                                     </div>
                                     
                                     {/* Client avec contact */}
-                                    <div className="bg-white/60 rounded-md p-2 mb-2">
-                                      <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Client</span>
-                                        <span className="text-xs font-black text-gray-900">{clientNom}</span>
+                                    <div className="bg-white/60 rounded p-1.5 mb-1.5">
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className="text-[9px] font-bold text-gray-500 uppercase">Client</span>
+                                        <span className="text-[11px] font-black text-gray-900">{clientNom}</span>
                                       </div>
                                       {clientContact && (
                                         <a
                                           href={`tel:${clientContact}`}
-                                          className="flex items-center justify-end space-x-1 text-blue-600 hover:text-blue-800 font-semibold text-xs"
+                                          className="flex items-center justify-end space-x-1 text-blue-600 hover:text-blue-800 font-semibold text-[10px]"
                                           onClick={(e) => e.stopPropagation()}
                                         >
-                                          <Phone size={11} />
+                                          <Phone size={10} />
                                           <span>{clientContact}</span>
                                         </a>
                                       )}
                                     </div>
                                     
                                     {/* Modèle et ville */}
-                                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                                      <div className="bg-gray-50 rounded px-2 py-1">
+                                    <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                      <div className="bg-gray-50 rounded px-1.5 py-0.5">
                                         <span className="text-gray-500 font-semibold">Modèle:</span>
                                         <p className="font-bold text-gray-900 truncate">{modeleNom}</p>
                                       </div>
-                                      <div className="bg-gray-50 rounded px-2 py-1">
+                                      <div className="bg-gray-50 rounded px-1.5 py-0.5">
                                         <span className="text-gray-500 font-semibold">Ville:</span>
                                         <p className="font-bold text-gray-900 truncate">
                                           {livraison.adresseLivraison?.ville || livraison.adresse_livraison?.ville || 'N/A'}
@@ -668,14 +668,14 @@ const CaisseLivreurs = () => {
                                   </div>
                                   
                                   {/* Partie droite - Montant et action */}
-                                  <div className="flex flex-col items-end justify-between min-w-[120px]">
+                                  <div className="flex flex-col items-end justify-between min-w-[100px]">
                                     {/* Montant */}
                                     <div className="text-right">
-                                      <p className="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
-                                      <p className="text-xl font-black text-emerald-600">
+                                      <p className="text-[8px] text-gray-400 font-bold uppercase mb-0.5">Montant</p>
+                                      <p className="text-lg font-black text-emerald-600">
                                         {montant.toLocaleString('fr-FR')}
                                       </p>
-                                      <p className="text-[10px] font-bold text-gray-500">FCFA</p>
+                                      <p className="text-[9px] font-bold text-gray-500">FCFA</p>
                                     </div>
                                     
                                     {/* Bouton Retourné pour les colis refusés */}
@@ -683,10 +683,10 @@ const CaisseLivreurs = () => {
                                       <button
                                         onClick={() => handleMarquerRetourne(livraison._id || livraison.id, livraison.commande)}
                                         disabled={markingReturned === (livraison._id || livraison.id)}
-                                        className="mt-2 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-3 py-1.5 rounded-md text-[10px] font-black flex items-center justify-center space-x-1 transition-all disabled:opacity-50 shadow-md"
+                                        className="mt-1 w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-2 py-1 rounded text-[9px] font-black flex items-center justify-center space-x-0.5 transition-all disabled:opacity-50 shadow-md"
                                       >
-                                        <RotateCcw size={12} strokeWidth={4} />
-                                        <span>{markingReturned === (livraison._id || livraison.id) ? 'EN COURS...' : 'RETOURNÉ'}</span>
+                                        <RotateCcw size={10} strokeWidth={4} />
+                                        <span>{markingReturned === (livraison._id || livraison.id) ? 'EN COURS' : 'RETOURNÉ'}</span>
                                       </button>
                                     )}
                                   </div>
