@@ -21,16 +21,16 @@ const AtelierCouturier = () => {
         c.statut === 'en_couture'
       );
       
-      // Trier: urgentes en haut, puis par ordre d'arrivée (plus récent en premier)
+      // Trier: urgentes en haut, puis les plus anciennes en haut (récentes en bas)
       const sorted = filtered.sort((a, b) => {
         // 1. Les urgentes avant les normales
         if (a.urgence && !b.urgence) return -1;
         if (!a.urgence && b.urgence) return 1;
         
-        // 2. À urgence égale, trier par ordre d'arrivée (updated_at)
+        // 2. À urgence égale, trier par date (anciennes en haut, récentes en bas)
         const dateA = new Date(a.updated_at || a.created_at);
         const dateB = new Date(b.updated_at || b.created_at);
-        return dateA - dateB; // Plus ancien en premier (ordre d'arrivée)
+        return dateB - dateA; // Plus récent en bas, plus ancien en haut
       });
       
       setCommandes(sorted);
