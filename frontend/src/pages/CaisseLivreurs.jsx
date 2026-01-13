@@ -405,6 +405,13 @@ const CaisseLivreurs = () => {
                 <div>
                   <h2 className="text-2xl font-bold">{selectedLivreur.nom}</h2>
                   <p className="text-emerald-100">{selectedLivreur.telephone}</p>
+                  {filterDate && (
+                    <div className="mt-2">
+                      <span className="inline-block bg-white/20 px-3 py-1 rounded-lg text-xs font-bold">
+                        📅 Filtré : {filterDate}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button 
                   onClick={() => setShowDetailsModal(false)}
@@ -418,25 +425,84 @@ const CaisseLivreurs = () => {
                 <div className="bg-white/20 rounded-lg p-2 text-center">
                   <p className="text-[10px] font-semibold opacity-90 mb-1">Total</p>
                   <p className="text-2xl font-black">
-                    {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).length}
+                    {(() => {
+                      let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                      if (filterDate) {
+                        livraisons = livraisons.filter(l => {
+                          const dateAssignation = new Date(l.dateAssignation || l.date_assignation);
+                          const dateStr = dateAssignation.toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric' 
+                          });
+                          return dateStr === filterDate;
+                        });
+                      }
+                      return livraisons.length;
+                    })()}
                   </p>
                 </div>
                 <div className="bg-white/20 rounded-lg p-2 text-center">
                   <p className="text-[10px] font-semibold opacity-90 mb-1">✅ Livrées</p>
                   <p className="text-2xl font-black">
-                    {getLivraisonsLivrees(selectedLivreur._id || selectedLivreur.id).length}
+                    {(() => {
+                      let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                      if (filterDate) {
+                        livraisons = livraisons.filter(l => {
+                          const dateAssignation = new Date(l.dateAssignation || l.date_assignation);
+                          const dateStr = dateAssignation.toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric' 
+                          });
+                          return dateStr === filterDate;
+                        });
+                      }
+                      return livraisons.filter(l => l.statut === 'livree').length;
+                    })()}
                   </p>
                 </div>
                 <div className="bg-white/20 rounded-lg p-2 text-center">
                   <p className="text-[10px] font-semibold opacity-90 mb-1">❌ Refusées</p>
                   <p className="text-2xl font-black">
-                    {getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id).filter(l => l.statut === 'refusee').length}
+                    {(() => {
+                      let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                      if (filterDate) {
+                        livraisons = livraisons.filter(l => {
+                          const dateAssignation = new Date(l.dateAssignation || l.date_assignation);
+                          const dateStr = dateAssignation.toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric' 
+                          });
+                          return dateStr === filterDate;
+                        });
+                      }
+                      return livraisons.filter(l => l.statut === 'refusee').length;
+                    })()}
                   </p>
                 </div>
                 <div className="bg-white/20 rounded-lg p-2 text-center">
                   <p className="text-[10px] font-semibold opacity-90 mb-1">À Remettre</p>
                   <p className="text-lg font-black">
-                    {getMontantTotal(selectedLivreur._id || selectedLivreur.id).toLocaleString('fr-FR')} F
+                    {(() => {
+                      let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                      if (filterDate) {
+                        livraisons = livraisons.filter(l => {
+                          const dateAssignation = new Date(l.dateAssignation || l.date_assignation);
+                          const dateStr = dateAssignation.toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric' 
+                          });
+                          return dateStr === filterDate;
+                        });
+                      }
+                      return livraisons
+                        .filter(l => l.statut === 'livree')
+                        .reduce((sum, l) => sum + (l.commande?.prix || 0), 0)
+                        .toLocaleString('fr-FR');
+                    })()} F
                   </p>
                 </div>
               </div>
@@ -449,7 +515,21 @@ const CaisseLivreurs = () => {
               <div className="space-y-6">
                 {(() => {
                   // Grouper les livraisons par date d'assignation
-                  const livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                  let livraisons = getLivraisonsLivreur(selectedLivreur._id || selectedLivreur.id);
+                  
+                  // Filtrer par date si une date est sélectionnée
+                  if (filterDate) {
+                    livraisons = livraisons.filter(livraison => {
+                      const dateAssignation = new Date(livraison.dateAssignation || livraison.date_assignation);
+                      const dateStr = dateAssignation.toLocaleDateString('fr-FR', { 
+                        day: '2-digit', 
+                        month: '2-digit', 
+                        year: 'numeric' 
+                      });
+                      return dateStr === filterDate;
+                    });
+                  }
+                  
                   const groupedByDate = {};
                   
                   livraisons.forEach(livraison => {
