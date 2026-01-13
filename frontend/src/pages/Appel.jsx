@@ -449,7 +449,7 @@ const Appel = () => {
       {/* Modal de traitement */}
       {selectedCommande && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
           onClick={() => {
             if (!processing) {
               setSelectedCommande(null);
@@ -458,12 +458,12 @@ const Appel = () => {
           }}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full"
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white flex items-center justify-between">
-              <h2 className="text-xl font-bold">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 sm:p-4 rounded-t-xl text-white flex items-center justify-between sticky top-0 z-10">
+              <h2 className="text-base sm:text-xl font-bold">
                 {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
                   </h2>
                 <button 
@@ -476,33 +476,33 @@ const Appel = () => {
                 className="hover:bg-white/20 p-1 rounded transition-colors"
                   disabled={processing}
                 >
-                <X size={20} />
+                <X size={18} />
                 </button>
             </div>
 
             {/* Contenu compact */}
-            <div className="p-4 space-y-3">
+            <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
               {/* Client avec Image du produit */}
-              <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
+              <div className="bg-gray-50 rounded-lg p-2 sm:p-3 flex items-start space-x-2 sm:space-x-3">
                 {/* Infos Client */}
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
-                    <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">Nom</span>
+                    <span className="text-sm sm:text-base font-bold text-gray-900 truncate ml-2">{getClientNom(selectedCommande)}</span>
                   </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">Contact</span>
                     <a 
                       href={`tel:${getClientContact(selectedCommande)}`}
-                      className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                      className="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
                     >
-                      <Phone size={14} />
-                      <span>{getClientContact(selectedCommande)}</span>
+                      <Phone size={12} className="sm:w-3.5 sm:h-3.5" />
+                      <span className="truncate">{getClientContact(selectedCommande)}</span>
                     </a>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
-                    <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
+                    <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase">Ville</span>
+                    <span className="text-sm sm:text-base font-bold text-gray-900 truncate ml-2">{getVille(selectedCommande)}</span>
                   </div>
                 </div>
                 
@@ -512,99 +512,100 @@ const Appel = () => {
                     <img 
                       src={selectedCommande.modele.image} 
                       alt={getModeleNom(selectedCommande.modele)}
-                      className="w-20 h-20 object-cover rounded-lg shadow-md"
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg shadow-md"
                       onError={(e) => {
                         e.target.style.display = 'none';
                       }}
                     />
                   </div>
                 ) : (
-                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
-                    <Package className="text-white" size={32} />
+                  <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
+                    <Package className="text-white" size={24} />
                   </div>
                 )}
               </div>
 
               {/* Détails Commande - Compact */}
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <p className="text-xs text-gray-500 uppercase font-semibold mb-2">📦 Détails de la commande</p>
-                <div className="space-y-1 text-sm">
+              <div className="bg-blue-50 rounded-lg p-2 sm:p-3 border border-blue-200">
+                <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-semibold mb-1.5">📦 Détails</p>
+                <div className="space-y-1 text-xs sm:text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Modèle</span>
-                    <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
+                    <span className="font-bold text-gray-900 truncate ml-2">{getModeleNom(selectedCommande.modele)}</span>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">📏 {selectedCommande.taille}</span>
-                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
+                  <div className="flex items-center space-x-2 sm:space-x-4">
+                    <span className="px-2 py-0.5 sm:py-1 bg-white rounded text-[10px] sm:text-xs font-semibold">📏 {selectedCommande.taille}</span>
+                    <span className="px-2 py-0.5 sm:py-1 bg-white rounded text-[10px] sm:text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
                   </div>
                 </div>
               </div>
 
               {/* Prix - Compact */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 flex justify-between items-center">
-                <span className="text-white text-sm font-semibold">Prix Total</span>
-                <span className="text-white text-2xl font-black">
-                  {selectedCommande.prix?.toLocaleString('fr-FR')} FCFA
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-2 sm:p-3 flex justify-between items-center">
+                <span className="text-white text-xs sm:text-sm font-semibold">Prix Total</span>
+                <span className="text-white text-lg sm:text-2xl font-black">
+                  {selectedCommande.prix?.toLocaleString('fr-FR')} F
                 </span>
               </div>
 
               {/* Note - Compact */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  📝 Note / Précisions de l'appelant
+                <label className="block text-[10px] sm:text-xs font-semibold text-gray-700 mb-1">
+                  📝 Note / Précisions
                 </label>
                 <textarea
                   value={noteAppelant}
                   onChange={(e) => setNoteAppelant(e.target.value)}
-                  placeholder="Ajouter des précisions pour l'atelier (optionnel)..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Précisions pour l'atelier (optionnel)..."
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows="2"
                   disabled={processing}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Cette note sera visible par toute l'équipe de production
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                  Visible par l'équipe
                 </p>
                 </div>
 
               {/* Actions - Compact en grille 2x2 */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2 pt-2">
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
                   disabled={processing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-green-600 hover:bg-green-700 text-white px-2 sm:px-3 py-2 sm:py-3 rounded-lg font-bold text-[11px] sm:text-sm transition-all flex items-center justify-center space-x-0.5 sm:space-x-1 disabled:opacity-50"
                 >
-                  <CheckCircle size={18} />
+                  <CheckCircle size={14} className="sm:w-[18px] sm:h-[18px]" />
                   <span>CONFIRMER</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
                   disabled={processing}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-3 py-2 sm:py-3 rounded-lg font-bold text-[11px] sm:text-sm transition-all flex items-center justify-center space-x-0.5 sm:space-x-1 disabled:opacity-50"
                 >
-                  <AlertTriangle size={18} />
+                  <AlertTriangle size={14} className="sm:w-[18px] sm:h-[18px]" />
                   <span>URGENT</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
                   disabled={processing}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-3 py-2 sm:py-3 rounded-lg font-bold text-[11px] sm:text-sm transition-all flex items-center justify-center space-x-0.5 sm:space-x-1 disabled:opacity-50"
                 >
-                  <Clock size={18} />
-                  <span>EN ATTENTE</span>
+                  <Clock size={14} className="sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">EN ATTENTE</span>
+                  <span className="sm:hidden">ATTENTE</span>
                 </button>
 
                 <button
                   onClick={() => {
-                    if (confirm('Êtes-vous sûr de vouloir annuler cette commande ?')) {
+                    if (confirm('Annuler cette commande ?')) {
                       handleAction(selectedCommande._id || selectedCommande.id, 'annuler');
                     }
                   }}
                   disabled={processing}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-2 sm:px-3 py-2 sm:py-3 rounded-lg font-bold text-[11px] sm:text-sm transition-all flex items-center justify-center space-x-0.5 sm:space-x-1 disabled:opacity-50"
                 >
-                  <XCircle size={18} />
+                  <XCircle size={14} className="sm:w-[18px] sm:h-[18px]" />
                   <span>ANNULER</span>
                 </button>
               </div>
