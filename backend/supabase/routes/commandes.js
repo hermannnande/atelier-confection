@@ -420,6 +420,32 @@ router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 
   }
 });
 
+// Supprimer TOUTES les commandes (Admin uniquement - Réinitialisation complète)
+router.delete('/admin/reset-all', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    
+    // Compter avant suppression
+    const { count } = await supabase
+      .from('commandes')
+      .select('*', { count: 'exact', head: true });
+
+    // Supprimer toutes les commandes
+    const { error } = await supabase
+      .from('commandes')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Condition qui match tout
+
+    if (error) return res.status(500).json({ message: 'Erreur lors de la réinitialisation', error: error.message });
+    return res.json({ 
+      message: 'Toutes les commandes ont été supprimées avec succès', 
+      deletedCount: count || 0 
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 // Supprimer une commande (Admin uniquement)
 router.delete('/:id', authenticate, authorize('administrateur'), async (req, res) => {
   try {

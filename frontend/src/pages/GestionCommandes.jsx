@@ -21,7 +21,8 @@ import {
   Scissors,
   Shirt,
   Truck,
-  Search
+  Search,
+  AlertOctagon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -35,6 +36,9 @@ const GestionCommandes = () => {
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   const [showResetModal, setShowResetModal] = useState(null);
+  const [showResetAllModal, setShowResetAllModal] = useState(false);
+  const [confirmationText, setConfirmationText] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     fetchCommandes();
@@ -77,6 +81,28 @@ const GestionCommandes = () => {
       setShowResetModal(null);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la réinitialisation');
+    }
+  };
+
+  const handleResetAll = async () => {
+    if (confirmationText !== 'REINITIALISER') {
+      toast.error('Veuillez taper "REINITIALISER" pour confirmer');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const response = await api.delete('/commandes/admin/reset-all');
+      toast.success(`✅ ${response.data.deletedCount} commande(s) supprimée(s) ! Système réinitialisé.`, {
+        duration: 5000,
+      });
+      setCommandes([]);
+      setShowResetAllModal(false);
+      setConfirmationText('');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la réinitialisation');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -186,6 +212,30 @@ const GestionCommandes = () => {
           </p>
         </div>
       </div>
+
+      {/* Bouton de réinitialisation complète (Admin uniquement) */}
+      {user?.role === 'administrateur' && commandes.length > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-xl p-4 max-w-full">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <AlertOctagon className="text-red-600 flex-shrink-0 mt-1" size={24} />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base sm:text-lg font-bold text-red-900 mb-1">Zone dangereuse</h3>
+                <p className="text-xs sm:text-sm text-red-700">
+                  Supprime <strong>TOUTES</strong> les commandes ({commandes.length}) pour repartir à zéro. Cette action est <strong>irréversible</strong>.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowResetAllModal(true)}
+              className="btn bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 flex-shrink-0 shadow-lg hover:shadow-xl transition-all w-full sm:w-auto justify-center"
+            >
+              <Trash2 size={18} />
+              <span>Réinitialiser tout</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filtres */}
       <div className="card max-w-full overflow-hidden">
@@ -475,6 +525,82 @@ const GestionCommandes = () => {
                 className="btn bg-orange-500 hover:bg-orange-600 text-white flex-1"
               >
                 Renvoyer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmation Réinitialisation Complète */}
+      {showResetAllModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 border-4 border-red-500">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full animate-pulse">
+                <AlertOctagon className="text-red-600" size={32} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-red-600">⚠️ DANGER</h2>
+                <p className="text-sm text-gray-600">Réinitialisation complète</p>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-900 font-bold mb-2">Cette action va :</p>
+              <ul className="text-sm text-red-800 space-y-1 list-disc list-inside">
+                <li>Supprimer <strong>TOUTES les {commandes.length} commandes</strong></li>
+                <li>Effacer tout l'historique</li>
+                <li>Réinitialiser les performances</li>
+                <li>Remettre le système à zéro</li>
+              </ul>
+            </div>
+
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-4">
+              <p className="text-yellow-900 font-bold text-sm flex items-center gap-2">
+                <AlertTriangle size={18} />
+                CETTE ACTION EST IRRÉVERSIBLE !
+              </p>
+            </div>
+            
+            <p className="text-gray-700 font-semibold mb-2">
+              Pour confirmer, tapez : <span className="text-red-600 font-black">REINITIALISER</span>
+            </p>
+            <input
+              type="text"
+              value={confirmationText}
+              onChange={(e) => setConfirmationText(e.target.value)}
+              placeholder="Tapez REINITIALISER"
+              className="w-full px-4 py-3 border-2 border-red-300 rounded-lg focus:border-red-500 focus:ring-2 focus:ring-red-200 font-bold text-center text-lg mb-6"
+              disabled={isResetting}
+            />
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowResetAllModal(false);
+                  setConfirmationText('');
+                }}
+                className="btn btn-secondary flex-1"
+                disabled={isResetting}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleResetAll}
+                disabled={confirmationText !== 'REINITIALISER' || isResetting}
+                className="btn bg-red-600 hover:bg-red-700 text-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed font-bold"
+              >
+                {isResetting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Suppression...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Trash2 size={18} />
+                    Supprimer tout
+                  </span>
+                )}
               </button>
             </div>
           </div>

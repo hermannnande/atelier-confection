@@ -326,6 +326,20 @@ router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 
   }
 });
 
+// Supprimer TOUTES les commandes (Admin uniquement - Réinitialisation complète)
+router.delete('/admin/reset-all', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const result = await Commande.deleteMany({});
+    
+    res.json({ 
+      message: 'Toutes les commandes ont été supprimées avec succès', 
+      deletedCount: result.deletedCount 
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la réinitialisation', error: error.message });
+  }
+});
+
 // Supprimer une commande (Admin uniquement)
 router.delete('/:id', authenticate, authorize('administrateur'), async (req, res) => {
   try {
