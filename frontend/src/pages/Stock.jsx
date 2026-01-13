@@ -57,9 +57,16 @@ const Stock = () => {
   const groupedStock = stock.reduce((acc, item) => {
     const key = item.modele;
     if (!acc[key]) {
+      // Chercher l'image depuis la bibliothèque de modèles si elle n'existe pas dans le stock
+      let imageUrl = item.image;
+      if (!imageUrl) {
+        const modeleCorrespondant = modeles.find(m => m.nom === key);
+        imageUrl = modeleCorrespondant?.image || null;
+      }
+      
       acc[key] = {
         modele: key,
-        image: item.image,
+        image: imageUrl,
         variations: [],
         quantiteTotal: 0,
         quantiteLivraison: 0,
