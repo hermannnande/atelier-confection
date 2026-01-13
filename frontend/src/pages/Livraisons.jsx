@@ -364,8 +364,6 @@ const Livraisons = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {livraisonsFiltered.map((livraison) => {
-            const imageUrl = livraison.commande?.modele?.imageUrl;
-            
             return (
               <div 
                 key={livraison._id} 
@@ -385,28 +383,6 @@ const Livraisons = () => {
                     <span className="px-2 py-1 bg-red-600 text-white rounded text-xs font-black shadow-lg">
                       ⚡ URGENT
                     </span>
-                  </div>
-                )}
-
-                {/* Image produit */}
-                {imageUrl ? (
-                  <div className="w-full h-24 mb-2 rounded-lg overflow-hidden bg-gray-100">
-                    <img 
-                      src={imageUrl} 
-                      alt={livraison.commande?.modele?.nom}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                    <div className="w-full h-full hidden items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-                      <Package className="text-gray-400" size={32} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-24 mb-2 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <Package className="text-gray-400" size={32} />
                   </div>
                 )}
 
