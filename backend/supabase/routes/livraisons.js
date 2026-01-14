@@ -73,6 +73,7 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
       return res.status(400).json({ message: 'La commande doit être en stock pour être assignée à un livreur' });
     }
 
+    // Vérifier le stock (optionnel maintenant, ne bloque plus l'assignation)
     const { data: stockItem, error: e2 } = await supabase
       .from('stock')
       .select('*')
@@ -81,11 +82,7 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
       .eq('couleur', commande.couleur)
       .maybeSingle();
 
-    if (e2 || !stockItem || (stockItem.quantite_principale || 0) < 1) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
-    }
-
-    // Créer livraison
+    // Créer livraison (même si stock vide)
     const { data: livraison, error: e3 } = await supabase
       .from('livraisons')
       .insert({
@@ -114,28 +111,30 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
       .eq('id', commandeId);
     if (e4) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e4.message });
 
-    // Transférer stock principal -> en livraison
-    const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
-    mouvements.push({
-      type: 'transfert',
-      quantite: 1,
-      source: 'Stock principal',
-      destination: 'Stock en livraison',
-      commande: commandeId,
-      utilisateur: req.userId,
-      date: new Date().toISOString(),
-      commentaire: 'Assignation au livreur',
-    });
+    // Transférer stock principal -> en livraison (SI disponible)
+    if (stockItem && (stockItem.quantite_principale || 0) >= 1) {
+      const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
+      mouvements.push({
+        type: 'transfert',
+        quantite: 1,
+        source: 'Stock principal',
+        destination: 'Stock en livraison',
+        commande: commandeId,
+        utilisateur: req.userId,
+        date: new Date().toISOString(),
+        commentaire: 'Assignation au livreur',
+      });
 
-    const { error: e5 } = await supabase
-      .from('stock')
-      .update({
-        quantite_principale: (stockItem.quantite_principale || 0) - 1,
-        quantite_en_livraison: (stockItem.quantite_en_livraison || 0) + 1,
-        mouvements,
-      })
-      .eq('id', stockItem.id);
-    if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
+      const { error: e5 } = await supabase
+        .from('stock')
+        .update({
+          quantite_principale: (stockItem.quantite_principale || 0) - 1,
+          quantite_en_livraison: (stockItem.quantite_en_livraison || 0) + 1,
+          mouvements,
+        })
+        .eq('id', stockItem.id);
+      if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
+    }
 
     return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(livraison) });
   } catch (error) {

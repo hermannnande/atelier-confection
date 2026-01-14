@@ -41,18 +41,14 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
       return res.status(400).json({ message: 'La commande doit être en stock pour être assignée' });
     }
 
-    // Vérifier le stock
+    // Vérifier le stock (optionnel maintenant, ne bloque plus l'assignation)
     const stockItem = await Stock.findOne({
       modele: commande.modele.nom,
       taille: commande.taille,
       couleur: commande.couleur
     });
 
-    if (!stockItem || stockItem.quantitePrincipale < 1) {
-      return res.status(400).json({ message: 'Stock insuffisant' });
-    }
-
-    // Créer la livraison
+    // Créer la livraison (même si stock vide)
     const livraison = new Livraison({
       commande: commandeId,
       livreur: livreurId,
@@ -76,19 +72,21 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
     });
     await commande.save();
 
-    // Transférer du stock principal au stock en livraison
-    stockItem.quantitePrincipale -= 1;
-    stockItem.quantiteEnLivraison += 1;
-    stockItem.mouvements.push({
-      type: 'transfert',
-      quantite: 1,
-      source: 'Stock principal',
-      destination: 'Stock en livraison',
-      commande: commandeId,
-      utilisateur: req.userId,
-      commentaire: 'Assignation au livreur'
-    });
-    await stockItem.save();
+    // Transférer du stock principal au stock en livraison (SI disponible)
+    if (stockItem && stockItem.quantitePrincipale >= 1) {
+      stockItem.quantitePrincipale -= 1;
+      stockItem.quantiteEnLivraison += 1;
+      stockItem.mouvements.push({
+        type: 'transfert',
+        quantite: 1,
+        source: 'Stock principal',
+        destination: 'Stock en livraison',
+        commande: commandeId,
+        utilisateur: req.userId,
+        commentaire: 'Assignation au livreur'
+      });
+      await stockItem.save();
+    }
 
     await livraison.populate('commande livreur', 'nom telephone');
 
