@@ -1,6 +1,6 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
-import { authenticate, authorize } from '../../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { mapTimestamps, withMongoShape } from '../map.js';
 
 const router = express.Router();
