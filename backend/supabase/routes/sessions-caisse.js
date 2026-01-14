@@ -74,13 +74,13 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       return res.status(500).json({ message: 'Erreur lors de la récupération', error: sessionError.message });
     }
 
-    // Si pas de session ouverte, chercher les livraisons livrées non assignées à une session
+    // Si pas de session ouverte, chercher les livraisons (livrées, en cours, refusées) non assignées à une session
     if (!session) {
       const { data: livraisonsNonAssignees, error: livError } = await supabase
         .from('livraisons')
         .select('*, commande:commande_id(*)')
         .eq('livreur_id', livreurId)
-        .eq('statut', 'livree')
+        .in('statut', ['livree', 'en_cours', 'refusee'])
         .is('session_caisse_id', null);
 
       if (livError) return res.status(500).json({ message: 'Erreur livraisons', error: livError.message });
@@ -202,12 +202,12 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       .eq('statut', 'ouverte')
       .single();
 
-    // Chercher les livraisons livrées non assignées
+    // Chercher les livraisons (livrées, en cours, refusées) non assignées
     const { data: nouvellesLivraisons, error: livError } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
       .eq('livreur_id', livreurId)
-      .eq('statut', 'livree')
+      .in('statut', ['livree', 'en_cours', 'refusee'])
       .is('session_caisse_id', null);
 
     if (livError) return res.status(500).json({ message: 'Erreur livraisons', error: livError.message });

@@ -51,11 +51,11 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         }
       });
 
-    // Si pas de session ouverte, chercher les livraisons livrées non assignées à une session
+    // Si pas de session ouverte, chercher les livraisons (livrées, en cours, refusées) non assignées à une session
     if (!session) {
       const livraisonsNonAssignees = await Livraison.find({
         livreur: livreurId,
-        statut: 'livree',
+        statut: { $in: ['livree', 'en_cours', 'refusee'] },
         session_caisse: { $exists: false }
       }).populate('commande');
 
@@ -153,10 +153,10 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       statut: 'ouverte'
     });
 
-    // Chercher les livraisons livrées non assignées
+    // Chercher les livraisons (livrées, en cours, refusées) non assignées
     const nouvellesLivraisons = await Livraison.find({
       livreur: livreurId,
-      statut: 'livree',
+      statut: { $in: ['livree', 'en_cours', 'refusee'] },
       session_caisse: { $exists: false }
     }).populate('commande');
 
