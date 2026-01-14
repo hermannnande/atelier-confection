@@ -63,7 +63,10 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
       // Créer une nouvelle session si des livraisons existent
       if (livraisonsNonAssignees.length > 0) {
-        const montantTotal = livraisonsNonAssignees.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+        // Ne compter QUE les colis livrés dans le montant total
+        const montantTotal = livraisonsNonAssignees
+          .filter(l => l.statut === 'livree')
+          .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
         
         session = new SessionCaisse({
           livreur: livreurId,
@@ -204,7 +207,10 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
     }).populate('commande');
 
     if (colisEnCours.length > 0) {
-      const montantNouvelle = colisEnCours.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+      // Ne compter QUE les colis livrés (donc 0 ici car ce sont des "en_cours")
+      const montantNouvelle = colisEnCours
+        .filter(l => l.statut === 'livree')
+        .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
 
       const nouvelleSession = new SessionCaisse({
         livreur: session.livreur,
@@ -255,7 +261,10 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       return res.json({ message: 'Aucune nouvelle livraison à ajouter' });
     }
 
-    const nouveauMontant = nouvellesLivraisons.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+    // Ne compter QUE les colis livrés dans le montant
+    const nouveauMontant = nouvellesLivraisons
+      .filter(l => l.statut === 'livree')
+      .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
 
     if (!session) {
       // Créer une nouvelle session
