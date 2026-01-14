@@ -1,6 +1,8 @@
 import express from 'express';
 import SessionCaisse from '../models/SessionCaisse.js';
 import Livraison from '../models/Livraison.js';
+import Stock from '../models/Stock.js';
+import Commande from '../models/Commande.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -136,16 +138,52 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       }
     );
 
-    // Retirer les colis non livrés de la session (pour qu'ils réapparaissent dans une prochaine session)
-    await Livraison.updateMany(
-      { 
-        _id: { $in: session.livraisons.map(l => l._id || l) },
-        statut: { $ne: 'livree' }
-      },
-      { 
-        $unset: { session_caisse: '' }
+    // Récupérer les colis non livrés pour les remettre en stock
+    const colisNonLivres = await Livraison.find({
+      _id: { $in: session.livraisons.map(l => l._id || l) },
+      statut: { $ne: 'livree' }
+    }).populate('commande');
+
+    // Pour chaque colis non livré, le remettre en stock
+    for (const livraison of colisNonLivres) {
+      const commande = livraison.commande;
+      if (!commande) continue;
+
+      // Trouver l'item dans le stock
+      const stockItem = await Stock.findOne({
+        modele: commande.modele?.nom || commande.modele,
+        taille: commande.taille,
+        couleur: commande.couleur
+      });
+
+      if (stockItem) {
+        // Remettre en stock principal depuis stock en livraison
+        stockItem.quantitePrincipale += 1;
+        stockItem.quantiteEnLivraison = Math.max(stockItem.quantiteEnLivraison - 1, 0);
+        stockItem.mouvements.push({
+          type: 'retour',
+          quantite: 1,
+          source: 'Livraison ' + (livraison.statut === 'refusee' ? 'refusée' : 'non livrée'),
+          destination: 'Stock principal',
+          commande: commande._id,
+          utilisateur: req.userId,
+          date: new Date(),
+          commentaire: 'Retour en stock suite à clôture session'
+        });
+        await stockItem.save();
       }
-    );
+
+      // Remettre la commande en stock
+      commande.statut = 'en_stock';
+      commande.livreur = null;
+      await commande.save();
+    }
+
+    // Supprimer les livraisons non livrées
+    await Livraison.deleteMany({
+      _id: { $in: session.livraisons.map(l => l._id || l) },
+      statut: { $ne: 'livree' }
+    });
 
     res.json({
       message: `Session clôturée ! ${session.nombreLivraisons} livraison(s) - ${session.montantTotal.toLocaleString('fr-FR')} FCFA reçu de ${session.livreur?.nom}`,

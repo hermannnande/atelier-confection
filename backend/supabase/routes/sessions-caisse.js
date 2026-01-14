@@ -180,12 +180,66 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 
     if (livError) return res.status(500).json({ message: 'Erreur mise à jour livraisons', error: livError.message });
 
-    // Retirer les colis non livrés de la session (pour qu'ils réapparaissent dans une prochaine session)
-    await supabase
+    // Récupérer les colis non livrés pour les remettre en stock
+    const { data: colisNonLivres, error: fetchError } = await supabase
       .from('livraisons')
-      .update({ session_caisse_id: null })
+      .select('*, commande:commande_id(*)')
       .eq('session_caisse_id', sessionId)
       .neq('statut', 'livree');
+
+    if (!fetchError && colisNonLivres && colisNonLivres.length > 0) {
+      // Pour chaque colis non livré, le remettre en stock
+      for (const livraison of colisNonLivres) {
+        const commande = livraison.commande;
+        if (!commande) continue;
+
+        // Trouver l'item dans le stock
+        const { data: stockItem, error: stockError } = await supabase
+          .from('stock')
+          .select('*')
+          .eq('modele', commande.modele?.nom || commande.modele)
+          .eq('taille', commande.taille)
+          .eq('couleur', commande.couleur)
+          .maybeSingle();
+
+        if (!stockError && stockItem) {
+          // Remettre en stock principal depuis stock en livraison
+          const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
+          mouvements.push({
+            type: 'retour',
+            quantite: 1,
+            source: 'Livraison ' + (livraison.statut === 'refusee' ? 'refusée' : 'non livrée'),
+            destination: 'Stock principal',
+            commande: commande.id,
+            utilisateur: req.userId,
+            date: new Date().toISOString(),
+            commentaire: 'Retour en stock suite à clôture session'
+          });
+
+          await supabase
+            .from('stock')
+            .update({
+              quantite_principale: (stockItem.quantite_principale || 0) + 1,
+              quantite_en_livraison: Math.max((stockItem.quantite_en_livraison || 0) - 1, 0),
+              mouvements
+            })
+            .eq('id', stockItem.id);
+        }
+
+        // Remettre la commande en stock
+        await supabase
+          .from('commandes')
+          .update({ statut: 'en_stock', livreur_id: null })
+          .eq('id', commande.id);
+      }
+
+      // Supprimer les livraisons non livrées
+      await supabase
+        .from('livraisons')
+        .delete()
+        .eq('session_caisse_id', sessionId)
+        .neq('statut', 'livree');
+    }
 
     return res.json({
       message: `Session clôturée ! ${session.nombre_livraisons} livraison(s) - ${session.montant_total.toLocaleString('fr-FR')} FCFA reçu de ${session.livreur?.nom}`,
