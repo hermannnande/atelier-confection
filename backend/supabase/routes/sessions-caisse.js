@@ -188,13 +188,13 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       .eq('statut', 'en_cours');
 
     // Récupérer les colis REFUSÉS pour les remettre en stock
-    const { data: colisRefuses, error: fetchError } = await supabase
+    const { data: colisRefuses, error: fetchRefusesError } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
       .eq('session_caisse_id', sessionId)
       .eq('statut', 'refusee');
 
-    if (!fetchError && colisRefuses && colisRefuses.length > 0) {
+    if (!fetchRefusesError && colisRefuses && colisRefuses.length > 0) {
       // Pour chaque colis refusé, le remettre en stock
       for (const livraison of colisRefuses) {
         const commande = livraison.commande;
