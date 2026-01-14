@@ -132,6 +132,14 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       session.livraisons = livraisons || [];
     }
 
+    // Calculer le nombre de colis livrés et restants
+    if (session && session.livraisons) {
+      const nombreLivres = session.livraisons.filter(l => l.statut === 'livree').length;
+      const nombreRestants = session.livraisons.filter(l => ['en_cours', 'refusee'].includes(l.statut)).length;
+      session.nombreLivres = nombreLivres;
+      session.nombreRestants = nombreRestants;
+    }
+
     return res.json({ session: session ? mapSession(session) : null });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });

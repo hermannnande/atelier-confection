@@ -272,18 +272,31 @@ const CaisseLivreurs = () => {
                         depuis {formatDateCourte(sessionActive.dateDebut)}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-gray-600">Colis livrés</p>
-                        <p className="text-xl font-black text-gray-800">
-                          {sessionActive.nombreLivraisons}
-                        </p>
+                    <div className="space-y-3">
+                      {/* Compteurs de colis */}
+                      <div className="flex items-center justify-between bg-white/50 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-700">Colis livrés:</span>
+                          <span className="text-lg font-black text-emerald-600">
+                            {sessionActive.nombreLivres || 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-700">Restant:</span>
+                          <span className="text-lg font-black text-orange-600">
+                            {sessionActive.nombreRestants || 0}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-600">Montant total</p>
-                        <p className="text-lg sm:text-xl font-black text-emerald-600 truncate">
-                          {(sessionActive.montantTotal || 0).toLocaleString('fr-FR')} F
-                        </p>
+
+                      {/* Montant total */}
+                      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white">Montant total</span>
+                          <span className="text-lg sm:text-xl font-black text-white truncate">
+                            {(sessionActive.montantTotal || 0).toLocaleString('fr-FR')} F
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -388,22 +401,32 @@ const CaisseLivreurs = () => {
 
             {/* Récapitulatif */}
             <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 mb-4 border border-emerald-200">
-              <p className="text-sm font-semibold text-gray-700 mb-2">
+              <p className="text-sm font-semibold text-gray-700 mb-3">
                 {selectedLivreur.nom}
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-600">Colis livrés</p>
-                  <p className="text-2xl font-black text-gray-800">
-                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreLivraisons || 0}
-                  </p>
+              
+              {/* Compteurs de colis */}
+              <div className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-700">Colis livrés:</span>
+                  <span className="text-xl font-black text-emerald-600">
+                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreLivres || 0}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">Montant à recevoir</p>
-                  <p className="text-2xl font-black text-emerald-600">
-                    {(sessions[selectedLivreur._id || selectedLivreur.id]?.montantTotal || 0).toLocaleString('fr-FR')} F
-                  </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-700">Restant:</span>
+                  <span className="text-xl font-black text-orange-600">
+                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreRestants || 0}
+                  </span>
                 </div>
+              </div>
+
+              {/* Montant à recevoir */}
+              <div>
+                <p className="text-xs text-gray-600">Montant à recevoir</p>
+                <p className="text-2xl font-black text-emerald-600">
+                  {(sessions[selectedLivreur._id || selectedLivreur.id]?.montantTotal || 0).toLocaleString('fr-FR')} F
+                </p>
               </div>
             </div>
 
