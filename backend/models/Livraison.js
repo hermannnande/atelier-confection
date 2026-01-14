@@ -46,7 +46,12 @@ const livraisonSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  date_paiement: Date
+  date_paiement: Date,
+  // Session de caisse
+  session_caisse: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SessionCaisse'
+  }
 }, {
   timestamps: true
 });

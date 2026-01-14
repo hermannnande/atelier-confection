@@ -11,6 +11,7 @@ import mongoLivraisonRoutes from './routes/livraisons.js';
 import mongoPerformanceRoutes from './routes/performances.js';
 import mongoUserRoutes from './routes/users.js';
 import mongoModeleRoutes from './routes/modeles.js';
+import mongoSessionCaisseRoutes from './routes/sessions-caisse.js';
 import systemRoutes from './routes/system.js';
 
 dotenv.config();
@@ -30,7 +31,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes (MongoDB ou Supabase)
 if (USE_SUPABASE) {
-  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }] =
+  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }, { default: sessionCaisseRoutes }] =
     await Promise.all([
       import('./supabase/routes/auth.js'),
       import('./supabase/routes/commandes.js'),
@@ -40,6 +41,7 @@ if (USE_SUPABASE) {
       import('./supabase/routes/performances.js'),
       import('./supabase/routes/users.js'),
       import('./supabase/routes/modeles.js'),
+      import('./supabase/routes/sessions-caisse.js'),
     ]);
 
   app.use('/api/auth', authRoutes);
@@ -50,6 +52,7 @@ if (USE_SUPABASE) {
   app.use('/api/performances', performanceRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/modeles', modeleRoutes);
+  app.use('/api/sessions-caisse', sessionCaisseRoutes);
 
   console.log('🟣 Mode base de données: Supabase (PostgreSQL)');
 } else {
@@ -60,6 +63,7 @@ if (USE_SUPABASE) {
   app.use('/api/performances', mongoPerformanceRoutes);
   app.use('/api/users', mongoUserRoutes);
   app.use('/api/modeles', mongoModeleRoutes);
+  app.use('/api/sessions-caisse', mongoSessionCaisseRoutes);
 
   console.log('🟢 Mode base de données: MongoDB');
 }
