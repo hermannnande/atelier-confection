@@ -196,6 +196,34 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       statut: 'refusee'
     });
 
+    // Créer automatiquement une nouvelle session avec les colis "en cours" restants
+    const colisEnCours = await Livraison.find({
+      livreur: session.livreur,
+      statut: 'en_cours',
+      session_caisse: { $exists: false }
+    }).populate('commande');
+
+    if (colisEnCours.length > 0) {
+      const montantNouvelle = colisEnCours.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+
+      const nouvelleSession = new SessionCaisse({
+        livreur: session.livreur,
+        livraisons: colisEnCours.map(l => l._id),
+        montantTotal: montantNouvelle,
+        nombreLivraisons: colisEnCours.length,
+        statut: 'ouverte',
+        dateDebut: new Date()
+      });
+
+      await nouvelleSession.save();
+
+      // Lier les colis à la nouvelle session
+      await Livraison.updateMany(
+        { _id: { $in: colisEnCours.map(l => l._id) } },
+        { $set: { session_caisse: nouvelleSession._id } }
+      );
+    }
+
     res.json({
       message: `Session clôturée ! ${session.nombreLivraisons} livraison(s) - ${session.montantTotal.toLocaleString('fr-FR')} FCFA reçu de ${session.livreur?.nom}`,
       session

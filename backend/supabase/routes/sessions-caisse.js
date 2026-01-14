@@ -248,6 +248,38 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
         .eq('statut', 'refusee');
     }
 
+    // Créer automatiquement une nouvelle session avec les colis "en cours" restants
+    const { data: colisEnCours, error: enCoursError } = await supabase
+      .from('livraisons')
+      .select('*, commande:commande_id(*)')
+      .eq('livreur_id', session.livreur_id)
+      .eq('statut', 'en_cours')
+      .is('session_caisse_id', null);
+
+    if (!enCoursError && colisEnCours && colisEnCours.length > 0) {
+      const montantNouvelle = colisEnCours.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+
+      const { data: nouvelleSession, error: createError } = await supabase
+        .from('sessions_caisse')
+        .insert({
+          livreur_id: session.livreur_id,
+          montant_total: montantNouvelle,
+          nombre_livraisons: colisEnCours.length,
+          statut: 'ouverte',
+          date_debut: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (!createError && nouvelleSession) {
+        // Lier les colis "en cours" à la nouvelle session
+        await supabase
+          .from('livraisons')
+          .update({ session_caisse_id: nouvelleSession.id })
+          .in('id', colisEnCours.map(l => l.id));
+      }
+    }
+
     return res.json({
       message: `Session clôturée ! ${session.nombre_livraisons} livraison(s) - ${session.montant_total.toLocaleString('fr-FR')} FCFA reçu de ${session.livreur?.nom}`,
       session: mapSession(session)
