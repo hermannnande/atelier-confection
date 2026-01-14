@@ -180,16 +180,23 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 
     if (livError) return res.status(500).json({ message: 'Erreur mise à jour livraisons', error: livError.message });
 
-    // Récupérer les colis non livrés pour les remettre en stock
-    const { data: colisNonLivres, error: fetchError } = await supabase
+    // Retirer les colis "en cours" de la session (ils réapparaîtront dans la prochaine session)
+    await supabase
+      .from('livraisons')
+      .update({ session_caisse_id: null })
+      .eq('session_caisse_id', sessionId)
+      .eq('statut', 'en_cours');
+
+    // Récupérer les colis REFUSÉS pour les remettre en stock
+    const { data: colisRefuses, error: fetchError } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
       .eq('session_caisse_id', sessionId)
-      .neq('statut', 'livree');
+      .eq('statut', 'refusee');
 
-    if (!fetchError && colisNonLivres && colisNonLivres.length > 0) {
-      // Pour chaque colis non livré, le remettre en stock
-      for (const livraison of colisNonLivres) {
+    if (!fetchError && colisRefuses && colisRefuses.length > 0) {
+      // Pour chaque colis refusé, le remettre en stock
+      for (const livraison of colisRefuses) {
         const commande = livraison.commande;
         if (!commande) continue;
 
@@ -208,7 +215,7 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
           mouvements.push({
             type: 'retour',
             quantite: 1,
-            source: 'Livraison ' + (livraison.statut === 'refusee' ? 'refusée' : 'non livrée'),
+            source: 'Livraison refusée',
             destination: 'Stock principal',
             commande: commande.id,
             utilisateur: req.userId,
@@ -233,12 +240,12 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
           .eq('id', commande.id);
       }
 
-      // Supprimer les livraisons non livrées
+      // Supprimer les livraisons refusées (remises en stock)
       await supabase
         .from('livraisons')
         .delete()
         .eq('session_caisse_id', sessionId)
-        .neq('statut', 'livree');
+        .eq('statut', 'refusee');
     }
 
     return res.json({

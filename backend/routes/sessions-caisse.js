@@ -138,14 +138,25 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       }
     );
 
-    // Récupérer les colis non livrés pour les remettre en stock
-    const colisNonLivres = await Livraison.find({
+    // Retirer les colis "en cours" de la session (ils réapparaîtront dans la prochaine session)
+    await Livraison.updateMany(
+      { 
+        _id: { $in: session.livraisons.map(l => l._id || l) },
+        statut: 'en_cours'
+      },
+      { 
+        $unset: { session_caisse: '' }
+      }
+    );
+
+    // Récupérer les colis REFUSÉS pour les remettre en stock
+    const colisRefuses = await Livraison.find({
       _id: { $in: session.livraisons.map(l => l._id || l) },
-      statut: { $ne: 'livree' }
+      statut: 'refusee'
     }).populate('commande');
 
-    // Pour chaque colis non livré, le remettre en stock
-    for (const livraison of colisNonLivres) {
+    // Pour chaque colis refusé, le remettre en stock
+    for (const livraison of colisRefuses) {
       const commande = livraison.commande;
       if (!commande) continue;
 
@@ -163,7 +174,7 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
         stockItem.mouvements.push({
           type: 'retour',
           quantite: 1,
-          source: 'Livraison ' + (livraison.statut === 'refusee' ? 'refusée' : 'non livrée'),
+          source: 'Livraison refusée',
           destination: 'Stock principal',
           commande: commande._id,
           utilisateur: req.userId,
@@ -179,10 +190,10 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       await commande.save();
     }
 
-    // Supprimer les livraisons non livrées
+    // Supprimer les livraisons refusées (remises en stock)
     await Livraison.deleteMany({
       _id: { $in: session.livraisons.map(l => l._id || l) },
-      statut: { $ne: 'livree' }
+      statut: 'refusee'
     });
 
     res.json({
