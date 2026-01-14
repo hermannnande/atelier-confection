@@ -168,16 +168,24 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 
     if (updateError) return res.status(500).json({ message: 'Erreur mise à jour session', error: updateError.message });
 
-    // Marquer toutes les livraisons de cette session comme payées
+    // Marquer SEULEMENT les livraisons "livrées" comme payées
     const { error: livError } = await supabase
       .from('livraisons')
       .update({
         paiement_recu: true,
         date_paiement: new Date().toISOString()
       })
-      .eq('session_caisse_id', sessionId);
+      .eq('session_caisse_id', sessionId)
+      .eq('statut', 'livree');
 
     if (livError) return res.status(500).json({ message: 'Erreur mise à jour livraisons', error: livError.message });
+
+    // Retirer les colis non livrés de la session (pour qu'ils réapparaissent dans une prochaine session)
+    await supabase
+      .from('livraisons')
+      .update({ session_caisse_id: null })
+      .eq('session_caisse_id', sessionId)
+      .neq('statut', 'livree');
 
     return res.json({
       message: `Session clôturée ! ${session.nombre_livraisons} livraison(s) - ${session.montant_total.toLocaleString('fr-FR')} FCFA reçu de ${session.livreur?.nom}`,

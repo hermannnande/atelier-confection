@@ -122,14 +122,28 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 
     await session.save();
 
-    // Marquer toutes les livraisons comme payées
+    // Marquer SEULEMENT les livraisons "livrées" comme payées
     await Livraison.updateMany(
-      { _id: { $in: session.livraisons.map(l => l._id || l) } },
+      { 
+        _id: { $in: session.livraisons.map(l => l._id || l) },
+        statut: 'livree'
+      },
       { 
         $set: { 
           paiement_recu: true,
           date_paiement: new Date()
         } 
+      }
+    );
+
+    // Retirer les colis non livrés de la session (pour qu'ils réapparaissent dans une prochaine session)
+    await Livraison.updateMany(
+      { 
+        _id: { $in: session.livraisons.map(l => l._id || l) },
+        statut: { $ne: 'livree' }
+      },
+      { 
+        $unset: { session_caisse: '' }
       }
     );
 
