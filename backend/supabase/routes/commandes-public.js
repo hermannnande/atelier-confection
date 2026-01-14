@@ -19,11 +19,11 @@ router.post('/public', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Token invalide' });
     }
 
-    // Validation des champs requis
-    if (!client || !phone || !name || !taille || !couleur || !price) {
+    // Validation des champs requis (nom du client optionnel, mais téléphone requis)
+    if (!phone || !name || !taille || !couleur || !price) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Champs manquants (client, phone, name, taille, couleur, price requis)' 
+        message: 'Champs manquants (phone, name, taille, couleur, price requis)' 
       });
     }
 
@@ -54,7 +54,7 @@ router.post('/public', async (req, res) => {
     // Préparer les données de la commande
     const commandeData = {
       client: {
-        nom: client.trim(),
+        nom: (client && client.trim()) || '🔍 Client à identifier',
         contact: phone.trim(),
         ville: (ville || 'Non spécifié').trim()
       },
