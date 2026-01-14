@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const CaisseLivreurs = () => {
@@ -14,6 +14,8 @@ const CaisseLivreurs = () => {
   const [loading, setLoading] = useState(true);
   const [selectedLivreur, setSelectedLivreur] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [commentaire, setCommentaire] = useState('');
   const [processing, setProcessing] = useState(false);
 
@@ -124,6 +126,19 @@ const CaisseLivreurs = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleVoirDetails = (livreur) => {
+    const livreurId = livreur._id || livreur.id;
+    const session = sessions[livreurId];
+    
+    if (!session) {
+      toast.error('Aucune session active pour ce livreur');
+      return;
+    }
+
+    setSelectedSession(session);
+    setShowDetailsModal(true);
   };
 
   const handleRafraichirLivraisons = async (livreurId) => {
@@ -275,6 +290,13 @@ const CaisseLivreurs = () => {
 
                   {/* Boutons d'action */}
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => handleVoirDetails(livreur)}
+                      className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0"
+                      title="Voir les détails des colis"
+                    >
+                      <Eye size={18} />
+                    </button>
                     <button
                       onClick={() => handleCloturerSession(livreur)}
                       className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0"
@@ -428,6 +450,126 @@ const CaisseLivreurs = () => {
                     <span>Confirmer</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal détails des colis */}
+      {showDetailsModal && selectedSession && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sticky top-0 bg-white pb-4 border-b">
+              <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                <Package size={24} className="mr-2 text-purple-600" />
+                Détails de la session
+              </h3>
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedSession(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Résumé */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 mb-4 border border-purple-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Total colis</p>
+                  <p className="text-3xl font-black text-gray-800">
+                    {selectedSession.nombreLivraisons || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Montant total</p>
+                  <p className="text-3xl font-black text-purple-600">
+                    {(selectedSession.montantTotal || 0).toLocaleString('fr-FR')} F
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des colis */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                <Package size={18} className="mr-2" />
+                Liste des colis ({selectedSession.livraisons?.length || 0})
+              </h4>
+
+              {selectedSession.livraisons && selectedSession.livraisons.length > 0 ? (
+                selectedSession.livraisons.map((livraison, index) => {
+                  const commande = livraison.commande || {};
+                  const isLivree = livraison.statut === 'livree';
+                  const isEnCours = livraison.statut === 'en_cours';
+                  const isRefusee = livraison.statut === 'refusee';
+
+                  return (
+                    <div
+                      key={livraison._id || livraison.id || index}
+                      className={`border rounded-lg p-4 ${
+                        isLivree
+                          ? 'bg-emerald-50 border-emerald-200'
+                          : isEnCours
+                          ? 'bg-blue-50 border-blue-200'
+                          : isRefusee
+                          ? 'bg-red-50 border-red-200'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800">
+                            {commande.numeroCommande || 'N/A'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {commande.modele?.nom || 'Modèle inconnu'} - {commande.taille} - {commande.couleur}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Client: {commande.client?.nom || 'N/A'} - {commande.client?.ville || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end space-y-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              isLivree
+                                ? 'bg-emerald-500 text-white'
+                                : isEnCours
+                                ? 'bg-blue-500 text-white'
+                                : isRefusee
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-500 text-white'
+                            }`}
+                          >
+                            {isLivree ? '✅ Livrée' : isEnCours ? '📦 En cours' : isRefusee ? '❌ Refusée' : livraison.statut}
+                          </span>
+                          <p className="text-lg font-bold text-gray-800">
+                            {(commande.prix || 0).toLocaleString('fr-FR')} F
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center text-gray-500 py-8">Aucun colis dans cette session</p>
+              )}
+            </div>
+
+            {/* Bouton fermer */}
+            <div className="mt-6 pt-4 border-t">
+              <button
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedSession(null);
+                }}
+                className="w-full btn btn-secondary"
+              >
+                Fermer
               </button>
             </div>
           </div>
