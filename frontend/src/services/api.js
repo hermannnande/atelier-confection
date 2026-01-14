@@ -31,8 +31,15 @@ api.interceptors.response.use(
     const url = String(error.config?.url || '');
     const isLoginRequest = url.includes('/auth/login');
     const isRegisterRequest = url.includes('/auth/register');
+    
+    // Routes qui gèrent leurs propres erreurs (ne pas déconnecter automatiquement)
+    const routesWithCustomErrorHandling = [
+      '/sessions-caisse',
+      '/users',
+    ];
+    const hasCustomErrorHandling = routesWithCustomErrorHandling.some(route => url.includes(route));
 
-    if (status === 401 && !isLoginRequest && !isRegisterRequest) {
+    if (status === 401 && !isLoginRequest && !isRegisterRequest && !hasCustomErrorHandling) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
