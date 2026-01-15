@@ -125,14 +125,37 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
       statutInitial = req.body.statut;
     }
 
+    // Validation des champs obligatoires
+    if (!client || !client.nom || !client.contact) {
+      return res.status(400).json({ 
+        message: 'Informations client incomplètes', 
+        required: ['client.nom', 'client.contact'] 
+      });
+    }
+
+    if (!modele || !modele.nom) {
+      return res.status(400).json({ 
+        message: 'Informations modèle incomplètes', 
+        required: ['modele.nom'] 
+      });
+    }
+
+    if (!req.body.taille || !req.body.couleur) {
+      return res.status(400).json({ 
+        message: 'Taille et couleur obligatoires', 
+        required: ['taille', 'couleur'] 
+      });
+    }
+
     const commandeData = {
+      numero_commande: null, // Sera généré automatiquement par le trigger
       client,
       modele,
       taille: req.body.taille,
       couleur: req.body.couleur,
-      prix: Number(req.body.prix),
+      prix: Number(req.body.prix) || 0,
       urgence: !!urgenceFlag,
-      note_appelant: noteAppelant,
+      note_appelant: noteAppelant || null,
       appelant_id: req.userId,
       statut: statutInitial,
       historique: [
@@ -146,7 +169,10 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
     };
 
     const { data, error } = await supabase.from('commandes').insert(commandeData).select('*').single();
-    if (error) return res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
+    if (error) {
+      console.error('❌ Erreur Supabase lors de la création:', error);
+      return res.status(500).json({ message: 'Erreur lors de la création', error: error.message, details: error });
+    }
 
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
     const commande = mapCommande(attachUsers(data, usersById));

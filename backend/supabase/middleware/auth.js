@@ -37,8 +37,17 @@ export const authorize = (...roles) => {
       return res.status(401).json({ message: 'Authentification requise' });
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: 'Accès non autorisé pour votre rôle' });
+    // Normaliser les rôles en minuscules pour la comparaison
+    const userRole = (req.user.role || '').toLowerCase();
+    const allowedRoles = roles.map(r => r.toLowerCase());
+
+    if (!allowedRoles.includes(userRole)) {
+      console.log(`❌ Accès refusé - Rôle utilisateur: "${req.user.role}" (${userRole}), Rôles autorisés: ${roles.join(', ')} (${allowedRoles.join(', ')})`);
+      return res.status(403).json({ 
+        message: 'Accès non autorisé pour votre rôle',
+        votre_role: req.user.role,
+        roles_autorises: roles
+      });
     }
 
     next();

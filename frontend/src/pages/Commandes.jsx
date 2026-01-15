@@ -343,8 +343,8 @@ const Commandes = () => {
                       <p className="font-medium text-gray-900 truncate">{commande.modele.nom}</p>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-gray-600 truncate">
-                          {commande.taille} - {commande.couleur}
-                        </p>
+                        {commande.taille} - {commande.couleur}
+                      </p>
                         {(stockDisponible[commande._id] || stockDisponible[commande.id]) && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
                             <Package size={10} className="mr-1" />

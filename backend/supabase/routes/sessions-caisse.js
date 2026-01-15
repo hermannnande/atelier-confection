@@ -16,6 +16,10 @@ function mapSession(row) {
       livraisons: row.livraisons || [],
       montantTotal: row.montant_total,
       nombreLivraisons: row.nombre_livraisons,
+      nombreLivres: row.nombreLivres,
+      nombreEnCours: row.nombreEnCours,
+      nombreRefuses: row.nombreRefuses,
+      nombreRestants: row.nombreRestants,
       dateDebut: row.date_debut,
       dateCloture: row.date_cloture,
       livreurId: row.livreur_id,
@@ -132,12 +136,15 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       session.livraisons = livraisons || [];
     }
 
-    // Calculer le nombre de colis livrés et restants
+    // Calculer le nombre de colis par statut
     if (session && session.livraisons) {
       const nombreLivres = session.livraisons.filter(l => l.statut === 'livree').length;
-      const nombreRestants = session.livraisons.filter(l => ['en_cours', 'refusee'].includes(l.statut)).length;
+      const nombreEnCours = session.livraisons.filter(l => l.statut === 'en_cours').length;
+      const nombreRefuses = session.livraisons.filter(l => l.statut === 'refusee').length;
       session.nombreLivres = nombreLivres;
-      session.nombreRestants = nombreRestants;
+      session.nombreEnCours = nombreEnCours;
+      session.nombreRefuses = nombreRefuses;
+      session.nombreRestants = nombreEnCours + nombreRefuses; // Pour compatibilité
     }
 
     return res.json({ session: session ? mapSession(session) : null });

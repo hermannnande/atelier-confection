@@ -274,17 +274,26 @@ const CaisseLivreurs = () => {
                     </div>
                     <div className="space-y-3">
                       {/* Compteurs de colis */}
-                      <div className="flex items-center justify-between bg-white/50 rounded-lg px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-700">Colis livrés:</span>
-                          <span className="text-lg font-black text-emerald-600">
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* Colis livrés */}
+                        <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
+                          <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
+                          <span className="text-xl font-black text-emerald-600">
                             {sessionActive.nombreLivres || 0}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-700">Restant:</span>
-                          <span className="text-lg font-black text-orange-600">
-                            {sessionActive.nombreRestants || 0}
+                        {/* Colis en cours */}
+                        <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
+                          <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
+                          <span className="text-xl font-black text-blue-600">
+                            {sessionActive.nombreEnCours || 0}
+                          </span>
+                        </div>
+                        {/* Colis refusés */}
+                        <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
+                          <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
+                          <span className="text-xl font-black text-red-600">
+                            {sessionActive.nombreRefuses || 0}
                           </span>
                         </div>
                       </div>
@@ -406,17 +415,26 @@ const CaisseLivreurs = () => {
               </p>
               
               {/* Compteurs de colis */}
-              <div className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-700">Colis livrés:</span>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {/* Colis livrés */}
+                <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
+                  <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
                   <span className="text-xl font-black text-emerald-600">
                     {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreLivres || 0}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-700">Restant:</span>
-                  <span className="text-xl font-black text-orange-600">
-                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreRestants || 0}
+                {/* Colis en cours */}
+                <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
+                  <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
+                  <span className="text-xl font-black text-blue-600">
+                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreEnCours || 0}
+                  </span>
+                </div>
+                {/* Colis refusés */}
+                <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
+                  <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
+                  <span className="text-xl font-black text-red-600">
+                    {sessions[selectedLivreur._id || selectedLivreur.id]?.nombreRefuses || 0}
                   </span>
                 </div>
               </div>
