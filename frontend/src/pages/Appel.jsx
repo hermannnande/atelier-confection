@@ -80,29 +80,34 @@ const Appel = () => {
       stockLength: stock.length
     });
     
-    // Chercher dans le stock si une variation correspond
+    // Dans Supabase, chaque ligne du stock est une variation individuelle (modele + taille + couleur)
+    // Chercher une ligne qui correspond exactement
     const variationEnStock = stock.find(s => {
       const stockModeleNom = typeof s.modele === 'string' ? s.modele : (s.modele?.nom || '');
       
-      console.log('  📦 Comparaison avec stock:', {
+      const modeleMatch = stockModeleNom.toLowerCase() === modeleNom.toLowerCase();
+      const tailleMatch = s.taille === taille;
+      const couleurMatch = s.couleur === couleur;
+      const quantiteMatch = (s.quantitePrincipale || 0) > 0;
+      
+      console.log('  📦 Comparaison:', {
         stockModele: stockModeleNom,
-        variations: s.variations?.map(v => `${v.taille}-${v.couleur} (${v.quantitePrincipale})`)
+        stockTaille: s.taille,
+        stockCouleur: s.couleur,
+        stockQuantite: s.quantitePrincipale,
+        modeleMatch,
+        tailleMatch,
+        couleurMatch,
+        quantiteMatch
       });
       
-      return (
-        stockModeleNom.toLowerCase() === modeleNom.toLowerCase() &&
-        s.variations?.some(v => {
-          const match = v.taille === taille && 
-                       v.couleur === couleur && 
-                       v.quantitePrincipale > 0;
-          
-          if (match) {
-            console.log('  ✅ MATCH TROUVÉ !', v);
-          }
-          
-          return match;
-        })
-      );
+      const match = modeleMatch && tailleMatch && couleurMatch && quantiteMatch;
+      
+      if (match) {
+        console.log('  ✅ MATCH TROUVÉ !', s);
+      }
+      
+      return match;
     });
     
     const result = !!variationEnStock;
