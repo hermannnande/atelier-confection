@@ -23,7 +23,29 @@ const Stock = () => {
   
   // Suggestions
   const taillesSuggestions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
-  const couleursSuggestions = ['Blanc', 'Noir', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Rose', 'Violet', 'Orange', 'Gris', 'Beige', 'Marron', 'Terracotta', 'Multicolore'];
+  const couleursSuggestions = [
+    'Blanc',
+    'Noir',
+    'Rouge',
+    'Rouge Bordeaux',
+    'Bleu',
+    'Bleu ciel',
+    'Bleu bic',
+    'Vert',
+    'Vert Treillis',
+    'Jaune',
+    'Jaune Moutarde',
+    'Rose',
+    'Saumon',
+    'Violet',
+    'Violet clair',
+    'Orange',
+    'Grise',
+    'Beige',
+    'Marron',
+    'Terracotta',
+    'Multicolore'
+  ];
 
   const [variations, setVariations] = useState([]);
 
