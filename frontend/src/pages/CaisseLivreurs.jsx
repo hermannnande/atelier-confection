@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const CaisseLivreurs = () => {
@@ -18,6 +18,15 @@ const CaisseLivreurs = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [commentaire, setCommentaire] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [showHistoriqueModal, setShowHistoriqueModal] = useState(false);
+  const [historiqueComplet, setHistoriqueComplet] = useState([]);
+  const [loadingHistorique, setLoadingHistorique] = useState(false);
+  const [filtreHistorique, setFiltreHistorique] = useState({
+    livreurId: '',
+    dateDebut: '',
+    dateFin: ''
+  });
+  const [searchHistorique, setSearchHistorique] = useState('');
 
   useEffect(() => {
     // Vérifier les permissions avant de charger les données
@@ -169,6 +178,21 @@ const CaisseLivreurs = () => {
     }
   };
 
+  const handleVoirHistoriqueComplet = async () => {
+    setShowHistoriqueModal(true);
+    setLoadingHistorique(true);
+    
+    try {
+      const { data } = await api.get('/sessions-caisse?statut=cloturee');
+      setHistoriqueComplet(data.sessions || []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors du chargement de l\'historique');
+      console.error(error);
+    } finally {
+      setLoadingHistorique(false);
+    }
+  };
+
   const formatDate = (date) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString('fr-FR', {
@@ -209,6 +233,13 @@ const CaisseLivreurs = () => {
             Gestion des sessions de paiement par livreur
           </p>
         </div>
+        <button
+          onClick={handleVoirHistoriqueComplet}
+          className="btn btn-secondary flex items-center gap-2"
+        >
+          <History size={20} />
+          <span className="hidden sm:inline">Historique Complet</span>
+        </button>
       </div>
 
       {/* Message info si aucune session */}
@@ -491,6 +522,240 @@ const CaisseLivreurs = () => {
                     <span>Confirmer</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Historique Complet */}
+      {showHistoriqueModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 sticky top-0 bg-white pb-4 border-b z-10">
+              <h3 className="text-2xl font-bold text-gray-800 flex items-center">
+                <History size={28} className="mr-3 text-blue-600" />
+                Historique des Sessions Clôturées
+              </h3>
+              <button
+                onClick={() => {
+                  setShowHistoriqueModal(false);
+                  setFiltreHistorique({ livreurId: '', dateDebut: '', dateFin: '' });
+                  setSearchHistorique('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={28} />
+              </button>
+            </div>
+
+            {/* Filtres et Recherche */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Recherche par nom */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Search size={16} className="inline mr-1" />
+                    Rechercher un livreur
+                  </label>
+                  <input
+                    type="text"
+                    value={searchHistorique}
+                    onChange={(e) => setSearchHistorique(e.target.value)}
+                    placeholder="Nom du livreur..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Filtre par livreur */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Filter size={16} className="inline mr-1" />
+                    Livreur
+                  </label>
+                  <select
+                    value={filtreHistorique.livreurId}
+                    onChange={(e) => setFiltreHistorique({ ...filtreHistorique, livreurId: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tous les livreurs</option>
+                    {livreurs.map((livreur) => (
+                      <option key={livreur._id || livreur.id} value={livreur._id || livreur.id}>
+                        {livreur.nom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Bouton reset */}
+                <div className="flex items-end">
+                  <button
+                    onClick={() => {
+                      setFiltreHistorique({ livreurId: '', dateDebut: '', dateFin: '' });
+                      setSearchHistorique('');
+                    }}
+                    className="w-full btn btn-secondary"
+                  >
+                    Réinitialiser
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des sessions */}
+            {loadingHistorique ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Statistiques */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                    <p className="text-sm text-gray-600 mb-1">Total Sessions</p>
+                    <p className="text-3xl font-black text-blue-600">
+                      {historiqueComplet.filter(s => {
+                        const matchSearch = searchHistorique === '' || 
+                          s.livreur?.nom?.toLowerCase().includes(searchHistorique.toLowerCase());
+                        const matchLivreur = filtreHistorique.livreurId === '' || 
+                          (s.livreurId || s.livreur_id) === filtreHistorique.livreurId;
+                        return matchSearch && matchLivreur;
+                      }).length}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+                    <p className="text-sm text-gray-600 mb-1">Total Colis</p>
+                    <p className="text-3xl font-black text-emerald-600">
+                      {historiqueComplet.filter(s => {
+                        const matchSearch = searchHistorique === '' || 
+                          s.livreur?.nom?.toLowerCase().includes(searchHistorique.toLowerCase());
+                        const matchLivreur = filtreHistorique.livreurId === '' || 
+                          (s.livreurId || s.livreur_id) === filtreHistorique.livreurId;
+                        return matchSearch && matchLivreur;
+                      }).reduce((sum, s) => sum + (s.nombreLivraisons || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                    <p className="text-sm text-gray-600 mb-1">Total Montant</p>
+                    <p className="text-2xl font-black text-purple-600">
+                      {historiqueComplet.filter(s => {
+                        const matchSearch = searchHistorique === '' || 
+                          s.livreur?.nom?.toLowerCase().includes(searchHistorique.toLowerCase());
+                        const matchLivreur = filtreHistorique.livreurId === '' || 
+                          (s.livreurId || s.livreur_id) === filtreHistorique.livreurId;
+                        return matchSearch && matchLivreur;
+                      }).reduce((sum, s) => sum + (s.montantTotal || 0), 0).toLocaleString('fr-FR')} F
+                    </p>
+                  </div>
+                </div>
+
+                {/* Table des sessions */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Livreur
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date Clôture
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Colis
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Montant
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Gestionnaire
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Commentaire
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {historiqueComplet
+                        .filter(session => {
+                          const matchSearch = searchHistorique === '' || 
+                            session.livreur?.nom?.toLowerCase().includes(searchHistorique.toLowerCase());
+                          const matchLivreur = filtreHistorique.livreurId === '' || 
+                            (session.livreurId || session.livreur_id) === filtreHistorique.livreurId;
+                          return matchSearch && matchLivreur;
+                        })
+                        .sort((a, b) => new Date(b.dateCloture || b.date_cloture) - new Date(a.dateCloture || a.date_cloture))
+                        .map((session, index) => (
+                          <tr key={session._id || session.id || index} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
+                                  {session.livreur?.nom?.charAt(0).toUpperCase() || 'L'}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {session.livreur?.nom || 'Inconnu'}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {session.livreur?.telephone || ''}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {formatDate(session.dateCloture || session.date_cloture)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {session.nombreLivraisons || 0} colis
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              {(session.montantTotal || 0).toLocaleString('fr-FR')} F
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {session.gestionnaire?.nom || '-'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                              {session.commentaire || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {historiqueComplet.filter(s => {
+                  const matchSearch = searchHistorique === '' || 
+                    s.livreur?.nom?.toLowerCase().includes(searchHistorique.toLowerCase());
+                  const matchLivreur = filtreHistorique.livreurId === '' || 
+                    (s.livreurId || s.livreur_id) === filtreHistorique.livreurId;
+                  return matchSearch && matchLivreur;
+                }).length === 0 && (
+                  <div className="text-center py-12">
+                    <History size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500 text-lg font-semibold">Aucune session trouvée</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      {searchHistorique || filtreHistorique.livreurId 
+                        ? 'Essayez de modifier vos filtres' 
+                        : 'Les sessions clôturées apparaîtront ici'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="mt-6 pt-4 border-t flex justify-end">
+              <button
+                onClick={() => {
+                  setShowHistoriqueModal(false);
+                  setFiltreHistorique({ livreurId: '', dateDebut: '', dateFin: '' });
+                  setSearchHistorique('');
+                }}
+                className="btn btn-secondary"
+              >
+                Fermer
               </button>
             </div>
           </div>
