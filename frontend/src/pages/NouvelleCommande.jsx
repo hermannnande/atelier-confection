@@ -15,7 +15,7 @@ const NouvelleCommande = () => {
   
   // Listes complètes des tailles et couleurs disponibles
   const taillesDisponibles = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
-  const couleursDisponibles = ['Blanc', 'Noir', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Rose', 'Violet', 'Orange', 'Gris', 'Beige', 'Marron', 'Terracotta', 'Multicolore'];
+  const couleursDisponibles = ['Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Bleu', 'Bleu ciel', 'Bleu bic', 'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde', 'Rose', 'Violet', 'Violet clair', 'Orange', 'Gris', 'Beige', 'Marron', 'Saumon', 'Terracotta', 'Multicolore'];
   
   const [formData, setFormData] = useState({
     client: {
