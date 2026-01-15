@@ -6,6 +6,7 @@ import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Packag
 
 const Appel = () => {
   const [commandesAppel, setCommandesAppel] = useState([]);
+  const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -16,6 +17,7 @@ const Appel = () => {
 
   useEffect(() => {
     fetchCommandesAppel();
+    fetchStock();
   }, []);
 
   // Charger la note existante quand la modal s'ouvre
@@ -45,6 +47,38 @@ const Appel = () => {
       }
     }
   }, [isAutoRefreshing]);
+
+  const fetchStock = async () => {
+    try {
+      const response = await api.get('/stock');
+      setStock(response.data.stock || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement du stock:', error);
+    }
+  };
+
+  const isCommandeEnStock = (commande) => {
+    if (!commande || !stock || stock.length === 0) return false;
+    
+    const modeleNom = getModeleNom(commande.modele);
+    const taille = commande.taille;
+    const couleur = commande.couleur;
+    
+    // Chercher dans le stock si une variation correspond
+    const variationEnStock = stock.find(s => {
+      const stockModeleNom = typeof s.modele === 'string' ? s.modele : (s.modele?.nom || '');
+      return (
+        stockModeleNom.toLowerCase() === modeleNom.toLowerCase() &&
+        s.variations?.some(v => 
+          v.taille === taille && 
+          v.couleur === couleur && 
+          v.quantitePrincipale > 0
+        )
+      );
+    });
+    
+    return !!variationEnStock;
+  };
 
   const fetchCommandesAppel = async (silent = false) => {
     try {
@@ -246,10 +280,17 @@ const Appel = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {commandesAppel.map((commande, index) => (
+          {commandesAppel.map((commande, index) => {
+            const enStock = isCommandeEnStock(commande);
+            
+            return (
             <div
               key={commande._id || commande.id}
-              className="stat-card hover:scale-105 transition-transform cursor-pointer group"
+              className={`stat-card hover:scale-105 transition-all cursor-pointer group ${
+                enStock 
+                  ? 'border-4 border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-xl shadow-blue-500/30' 
+                  : ''
+              }`}
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
@@ -263,9 +304,16 @@ const Appel = () => {
                     {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <span className="badge badge-warning text-xs px-2 py-1">
-                  📞 Appel
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="badge badge-warning text-xs px-2 py-1">
+                    📞 Appel
+                  </span>
+                  {enStock && (
+                    <span className="badge bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs px-2 py-1 font-bold shadow-lg animate-pulse">
+                      📦 En Stock
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Client avec image */}
@@ -349,7 +397,8 @@ const Appel = () => {
                 Traiter la commande
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -369,22 +418,31 @@ const Appel = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold">
+                    {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
                   </h2>
+                  {isCommandeEnStock(selectedCommande) && (
+                    <span className="bg-white text-blue-700 text-xs px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
+                      📦 Disponible en Stock
+                    </span>
+                  )}
+                </div>
                 <button 
-                onClick={() => {
-                  if (!processing) {
-                    setSelectedCommande(null);
-                    setNoteAppelant('');
-                  }
-                }}
-                className="hover:bg-white/20 p-1 rounded transition-colors"
+                  onClick={() => {
+                    if (!processing) {
+                      setSelectedCommande(null);
+                      setNoteAppelant('');
+                    }
+                  }}
+                  className="hover:bg-white/20 p-1 rounded transition-colors"
                   disabled={processing}
                 >
-                <X size={20} />
+                  <X size={20} />
                 </button>
+              </div>
             </div>
 
             {/* Contenu compact */}
