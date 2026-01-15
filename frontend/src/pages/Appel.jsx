@@ -51,39 +51,78 @@ const Appel = () => {
   const fetchStock = async () => {
     try {
       const response = await api.get('/stock');
-      setStock(response.data.stock || []);
+      const stockData = response.data.stock || [];
+      console.log('📦 Stock chargé:', stockData.length, 'modèles');
+      console.log('📦 Détail du stock:', stockData.map(s => ({
+        modele: typeof s.modele === 'string' ? s.modele : s.modele?.nom,
+        variations: s.variations?.length || 0
+      })));
+      setStock(stockData);
     } catch (error) {
-      console.error('Erreur lors du chargement du stock:', error);
+      console.error('❌ Erreur lors du chargement du stock:', error);
     }
   };
 
   const isCommandeEnStock = (commande) => {
-    if (!commande || !stock || stock.length === 0) return false;
+    if (!commande || !stock || stock.length === 0) {
+      console.log('❌ Vérification stock - Pas de commande ou stock vide');
+      return false;
+    }
     
     const modeleNom = getModeleNom(commande.modele);
     const taille = commande.taille;
     const couleur = commande.couleur;
     
+    console.log('🔍 Vérification stock pour:', {
+      modele: modeleNom,
+      taille,
+      couleur,
+      stockLength: stock.length
+    });
+    
     // Chercher dans le stock si une variation correspond
     const variationEnStock = stock.find(s => {
       const stockModeleNom = typeof s.modele === 'string' ? s.modele : (s.modele?.nom || '');
+      
+      console.log('  📦 Comparaison avec stock:', {
+        stockModele: stockModeleNom,
+        variations: s.variations?.map(v => `${v.taille}-${v.couleur} (${v.quantitePrincipale})`)
+      });
+      
       return (
         stockModeleNom.toLowerCase() === modeleNom.toLowerCase() &&
-        s.variations?.some(v => 
-          v.taille === taille && 
-          v.couleur === couleur && 
-          v.quantitePrincipale > 0
-        )
+        s.variations?.some(v => {
+          const match = v.taille === taille && 
+                       v.couleur === couleur && 
+                       v.quantitePrincipale > 0;
+          
+          if (match) {
+            console.log('  ✅ MATCH TROUVÉ !', v);
+          }
+          
+          return match;
+        })
       );
     });
     
-    return !!variationEnStock;
+    const result = !!variationEnStock;
+    console.log('📊 Résultat final:', result ? '✅ EN STOCK' : '❌ PAS EN STOCK');
+    
+    return result;
   };
 
   const fetchCommandesAppel = async (silent = false) => {
     try {
       const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement');
       const newCommandes = response.data.commandes || [];
+      
+      console.log('📞 Commandes chargées:', newCommandes.length);
+      console.log('📞 Détail des commandes:', newCommandes.map(c => ({
+        numero: c.numeroCommande,
+        modele: getModeleNom(c.modele),
+        taille: c.taille,
+        couleur: c.couleur
+      })));
       
       // Vérifier s'il y a de nouvelles commandes
       if (silent && newCommandes.length > commandesAppel.length) {
