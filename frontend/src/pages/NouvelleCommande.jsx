@@ -391,93 +391,148 @@ const NouvelleCommande = () => {
         {/* Sélection Taille & Couleur */}
         {selectedModel && (
           <div className="stat-card animate-scale-in max-w-full overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-emerald-600 to-teal-600 rounded-full flex-shrink-0"></div>
-                <span className="truncate">Sélectionner Taille & Couleur</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-6">
+              <h2 className="text-xl lg:text-2xl font-black text-gray-900 flex items-center gap-3 min-w-0">
+                <div className="w-1.5 h-8 bg-gradient-to-b from-emerald-500 to-teal-600 rounded-full flex-shrink-0 shadow-lg"></div>
+                <span className="truncate bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  Taille & Couleur
+                </span>
               </h2>
               {formData.taille && formData.couleur && (
-                <span className="badge badge-success flex items-center gap-2 text-xs sm:text-sm flex-shrink-0">
-                  <Check size={12} className="sm:hidden" />
-                  <Check size={14} className="hidden sm:block" />
-                  <span className="truncate max-w-[150px]">{formData.taille} • {formData.couleur}</span>
-                </span>
+                <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 py-2 rounded-xl shadow-lg animate-scale-in">
+                  <Check size={18} strokeWidth={3} />
+                  <span className="font-bold">{formData.taille} • {formData.couleur}</span>
+                </div>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              {/* Sélection de la taille */}
-              <div className="max-w-full overflow-hidden">
-                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">
-                  📏 Taille *
-                </label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                  {taillesDisponibles.map((taille) => {
-                    const variation = formData.couleur ? getVariationStock(taille, formData.couleur) : null;
-                        const inStock = variation && variation.quantitePrincipale > 0;
-                        
-                        return (
-                              <button
-                        key={taille}
-                                type="button"
-                        onClick={() => handleTailleChange(taille)}
-                                className={`
-                          px-2 sm:px-3 lg:px-4 py-2 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300
-                          ${formData.taille === taille
-                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
-                            : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
-                                  }
-                                `}
-                              >
-                        <div className="flex flex-col items-center">
-                          <span className="text-sm sm:text-base">{taille}</span>
-                          {inStock && (
-                            <span className="text-[10px] sm:text-xs opacity-80 mt-0.5 sm:mt-1">
-                              {variation.quantitePrincipale}
-                            </span>
-                          )}
-                                </div>
-                              </button>
-                    );
-                  })}
+            {/* Sélection de la taille */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                  <span className="text-sm font-bold">📏</span>
                 </div>
-                              </div>
-
-              {/* Sélection de la couleur */}
-              <div className="max-w-full overflow-hidden">
-                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-2 sm:mb-3">
-                  🎨 Couleur *
+                <label className="text-sm font-bold text-gray-700">
+                  Choisissez la taille
                 </label>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 max-h-64 sm:max-h-96 overflow-y-auto pr-1 sm:pr-2">
-                  {couleursDisponibles.map((couleur) => {
-                    const variation = formData.taille ? getVariationStock(formData.taille, couleur) : null;
-                    const inStock = variation && variation.quantitePrincipale > 0;
-                    
-                    return (
-                      <button
-                        key={couleur}
-                        type="button"
-                        onClick={() => handleCouleurChange(couleur)}
-                        className={`
-                          px-2 sm:px-3 lg:px-4 py-2 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 text-left min-w-0
-                          ${formData.couleur === couleur
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 scale-105'
-                            : 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 hover:from-purple-100 hover:to-pink-100 hover:shadow-md'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center justify-between gap-1 min-w-0">
-                          <span className="truncate">{couleur}</span>
-                          {inStock && (
-                            <span className="text-[10px] sm:text-xs opacity-80 bg-white/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex-shrink-0">
-                              {variation.quantitePrincipale}
-                            </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {taillesDisponibles.map((taille) => {
+                  const variation = formData.couleur ? getVariationStock(taille, formData.couleur) : null;
+                  const inStock = variation && variation.quantitePrincipale > 0;
+                  
+                  return (
+                    <button
+                      key={taille}
+                      type="button"
+                      onClick={() => handleTailleChange(taille)}
+                      className={`
+                        relative px-5 py-3 rounded-xl font-black text-base transition-all duration-300
+                        ${formData.taille === taille
+                          ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/40 scale-110 -translate-y-1'
+                          : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-400 hover:shadow-lg hover:scale-105'
+                        }
+                      `}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-lg">{taille}</span>
+                        {inStock && formData.couleur && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            formData.taille === taille ? 'bg-white/30 text-white' : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {variation.quantitePrincipale} dispo
+                          </span>
+                        )}
+                      </div>
+                      {formData.taille === taille && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <Check size={14} className="text-emerald-600" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sélection de la couleur */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
+                  <span className="text-sm font-bold">🎨</span>
+                </div>
+                <label className="text-sm font-bold text-gray-700">
+                  Choisissez la couleur
+                </label>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                {couleursDisponibles.map((couleur) => {
+                  const variation = formData.taille ? getVariationStock(formData.taille, couleur) : null;
+                  const inStock = variation && variation.quantitePrincipale > 0;
+                  
+                  // Mapper les couleurs vers des codes couleur réels
+                  const couleurMap = {
+                    'Blanc': 'bg-white border-2 border-gray-300',
+                    'Noir': 'bg-gray-900',
+                    'Rouge': 'bg-red-500',
+                    'Rouge Bordeaux': 'bg-red-900',
+                    'Bleu': 'bg-blue-500',
+                    'Bleu ciel': 'bg-sky-300',
+                    'Bleu bic': 'bg-blue-600',
+                    'Vert': 'bg-green-500',
+                    'Vert Treillis': 'bg-green-700',
+                    'Jaune': 'bg-yellow-400',
+                    'Jaune Moutarde': 'bg-yellow-600',
+                    'Rose': 'bg-pink-400',
+                    'Saumon': 'bg-orange-300',
+                    'Violet': 'bg-purple-500',
+                    'Violet clair': 'bg-purple-300',
+                    'Orange': 'bg-orange-500',
+                    'Grise': 'bg-gray-400',
+                    'Beige': 'bg-amber-200',
+                    'Marron': 'bg-amber-800',
+                    'Terracotta': 'bg-orange-700',
+                    'Multicolore': 'bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500'
+                  };
+                  
+                  return (
+                    <button
+                      key={couleur}
+                      type="button"
+                      onClick={() => handleCouleurChange(couleur)}
+                      className={`
+                        relative p-3 rounded-xl transition-all duration-300 text-left
+                        ${formData.couleur === couleur
+                          ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/40 scale-105 -translate-y-1'
+                          : 'bg-white border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg hover:scale-105'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg ${couleurMap[couleur] || 'bg-gray-300'} shadow-md flex-shrink-0 ring-2 ring-white`}></div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-bold text-sm truncate ${
+                            formData.couleur === couleur ? 'text-white' : 'text-gray-800'
+                          }`}>
+                            {couleur}
+                          </p>
+                          {inStock && formData.taille && (
+                            <p className={`text-xs font-semibold ${
+                              formData.couleur === couleur ? 'text-white/90' : 'text-emerald-600'
+                            }`}>
+                              {variation.quantitePrincipale} en stock
+                            </p>
                           )}
                         </div>
-                      </button>
-                        );
-                      })}
-                </div>
+                      </div>
+                      {formData.couleur === couleur && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <Check size={16} className="text-emerald-600" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
