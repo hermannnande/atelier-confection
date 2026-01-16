@@ -326,15 +326,23 @@ const Appel = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {commandesAppel.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
+            const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
+            
+            // Déterminer le style de la carte selon le statut et la disponibilité en stock
+            let cardStyle = 'stat-card hover:scale-105 transition-all cursor-pointer group';
+            
+            if (estEnAttentePaiement) {
+              // Commande en attente de paiement = bordure orange + fond orange clair
+              cardStyle += ' border-4 border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 shadow-xl shadow-orange-500/30';
+            } else if (enStock) {
+              // Commande disponible en stock = bordure bleue
+              cardStyle += ' border-4 border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-xl shadow-blue-500/30';
+            }
             
             return (
             <div
               key={commande._id || commande.id}
-              className={`stat-card hover:scale-105 transition-all cursor-pointer group ${
-                enStock 
-                  ? 'border-4 border-blue-500 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-xl shadow-blue-500/30' 
-                  : ''
-              }`}
+              className={cardStyle}
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
@@ -349,9 +357,15 @@ const Appel = () => {
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="badge badge-warning text-xs px-2 py-1">
-                    📞 Appel
-                  </span>
+                  {estEnAttentePaiement ? (
+                    <span className="badge bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs px-2 py-1 font-bold shadow-lg">
+                      ⏳ Attente Paiement
+                    </span>
+                  ) : (
+                    <span className="badge badge-warning text-xs px-2 py-1">
+                      📞 Appel
+                    </span>
+                  )}
                   {enStock && (
                     <span className="badge bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs px-2 py-1 font-bold shadow-lg animate-pulse">
                       📦 En Stock
@@ -462,12 +476,21 @@ const Appel = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 rounded-t-xl text-white">
+            <div className={`${
+              selectedCommande.statut === 'en_attente_paiement'
+                ? 'bg-gradient-to-r from-orange-600 to-amber-600'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+            } p-4 rounded-t-xl text-white`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-xl font-bold">
                     {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
                   </h2>
+                  {selectedCommande.statut === 'en_attente_paiement' && (
+                    <span className="bg-white text-orange-700 text-xs px-3 py-1 rounded-full font-bold shadow-lg">
+                      ⏳ En Attente de Paiement
+                    </span>
+                  )}
                   {isCommandeEnStock(selectedCommande) && (
                     <span className="bg-white text-blue-700 text-xs px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
                       📦 Disponible en Stock
