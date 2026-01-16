@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Shirt, CheckCircle, AlertCircle, Package, RefreshCw } from 'lucide-react';
+import { Shirt, CheckCircle, AlertCircle, Package, RefreshCw, Eye } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 const AtelierCouturier = () => {
+  const { user } = useAuthStore();
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Mode lecture seule pour les gestionnaires
+  const isReadOnly = user?.role === 'gestionnaire';
 
   useEffect(() => {
     fetchCommandes();
@@ -69,6 +74,17 @@ const AtelierCouturier = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
+      {/* Badge mode lecture seule pour gestionnaire */}
+      {isReadOnly && (
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4 flex items-center gap-3">
+          <Eye className="text-blue-600 flex-shrink-0" size={24} />
+          <div>
+            <p className="text-sm sm:text-base font-bold text-blue-900">Mode Supervision</p>
+            <p className="text-xs sm:text-sm text-blue-700">Vous consultez cette page en <strong>lecture seule</strong>. Seuls les couturiers peuvent marquer les tâches terminées.</p>
+          </div>
+        </div>
+      )}
+      
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
@@ -181,13 +197,28 @@ const AtelierCouturier = () => {
                 </div>
               )}
 
-              {/* Bouton d'action */}
+              {/* Bouton d'action (désactivé pour les gestionnaires) */}
               <button
-                onClick={() => handleTerminerCouture(commande._id, commande)}
-                className="w-full bg-white hover:bg-gray-50 text-gray-900 font-black py-1.5 sm:py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-1 text-[11px] sm:text-xs"
+                onClick={() => !isReadOnly && handleTerminerCouture(commande._id, commande)}
+                disabled={isReadOnly}
+                className={`w-full font-black py-1.5 sm:py-2 rounded-lg transition-all shadow-lg flex items-center justify-center gap-1 text-[11px] sm:text-xs ${
+                  isReadOnly 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-white hover:bg-gray-50 text-gray-900 transform hover:scale-105'
+                }`}
+                title={isReadOnly ? 'Action réservée aux couturiers' : 'Terminer et ajouter au stock'}
               >
-                <CheckCircle size={12} strokeWidth={3} className="flex-shrink-0" />
-                <span>TERMINER</span>
+                {isReadOnly ? (
+                  <>
+                    <Eye size={12} strokeWidth={3} className="flex-shrink-0" />
+                    <span>LECTURE SEULE</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={12} strokeWidth={3} className="flex-shrink-0" />
+                    <span>TERMINER</span>
+                  </>
+                )}
               </button>
             </div>
           ))}
