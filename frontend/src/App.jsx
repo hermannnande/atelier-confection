@@ -109,16 +109,16 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Atelier - Stylistes */}
+          {/* Atelier - Stylistes (lecture seule pour gestionnaires) */}
           <Route path="atelier/styliste" element={
-            <ProtectedRoute allowedRoles={['styliste', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['styliste', 'gestionnaire', 'administrateur']}>
               <AtelierStyliste />
             </ProtectedRoute>
           } />
           
-          {/* Atelier - Couturiers */}
+          {/* Atelier - Couturiers (lecture seule pour gestionnaires) */}
           <Route path="atelier/couturier" element={
-            <ProtectedRoute allowedRoles={['couturier', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['couturier', 'gestionnaire', 'administrateur']}>
               <AtelierCouturier />
             </ProtectedRoute>
           } />
