@@ -44,14 +44,25 @@ router.get('/overview', authenticate, authorize('gestionnaire', 'administrateur'
 
 router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
+    
     const [{ data: appelants }, { data: commandes }] = await Promise.all([
       supabase.from('users').select('id, nom, email, actif').eq('role', 'appelant').eq('actif', true),
-      supabase.from('commandes').select('id, appelant_id, statut, urgence, prix'),
+      supabase.from('commandes').select('id, appelant_id, statut, urgence, prix, created_at'),
     ]);
 
+    // Filtrer par date si fournie
+    let filteredCommandes = commandes || [];
+    if (dateDebut && dateFin) {
+      filteredCommandes = filteredCommandes.filter((c) => {
+        const date = new Date(c.created_at);
+        return date >= new Date(dateDebut) && date <= new Date(dateFin);
+      });
+    }
+
     const commandesByAppelant = new Map();
-    for (const c of commandes || []) {
+    for (const c of filteredCommandes) {
       if (!c.appelant_id) continue;
       const arr = commandesByAppelant.get(c.appelant_id) || [];
       arr.push(c);
@@ -90,14 +101,25 @@ router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur
 
 router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
+    
     const [{ data: stylistes }, { data: commandes }] = await Promise.all([
       supabase.from('users').select('id, nom, email, actif').eq('role', 'styliste').eq('actif', true),
-      supabase.from('commandes').select('id, styliste_id, statut'),
+      supabase.from('commandes').select('id, styliste_id, statut, created_at, date_decoupe'),
     ]);
 
+    // Filtrer par date si fournie (on utilise date_decoupe pour les stylistes)
+    let filteredCommandes = commandes || [];
+    if (dateDebut && dateFin) {
+      filteredCommandes = filteredCommandes.filter((c) => {
+        const date = c.date_decoupe ? new Date(c.date_decoupe) : new Date(c.created_at);
+        return date >= new Date(dateDebut) && date <= new Date(dateFin);
+      });
+    }
+
     const commandesByStyliste = new Map();
-    for (const c of commandes || []) {
+    for (const c of filteredCommandes) {
       if (!c.styliste_id) continue;
       const arr = commandesByStyliste.get(c.styliste_id) || [];
       arr.push(c);
@@ -125,14 +147,25 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
 
 router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
+    
     const [{ data: couturiers }, { data: commandes }] = await Promise.all([
       supabase.from('users').select('id, nom, email, actif').eq('role', 'couturier').eq('actif', true),
       supabase.from('commandes').select('id, couturier_id, statut, created_at, date_couture'),
     ]);
 
+    // Filtrer par date si fournie (on utilise date_couture pour les couturiers)
+    let filteredCommandes = commandes || [];
+    if (dateDebut && dateFin) {
+      filteredCommandes = filteredCommandes.filter((c) => {
+        const date = c.date_couture ? new Date(c.date_couture) : new Date(c.created_at);
+        return date >= new Date(dateDebut) && date <= new Date(dateFin);
+      });
+    }
+
     const commandesByCouturier = new Map();
-    for (const c of commandes || []) {
+    for (const c of filteredCommandes) {
       if (!c.couturier_id) continue;
       const arr = commandesByCouturier.get(c.couturier_id) || [];
       arr.push(c);
@@ -173,16 +206,27 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
 
 router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
+    
     const [{ data: livreurs }, { data: livraisons }, { data: commandes }] = await Promise.all([
       supabase.from('users').select('id, nom, telephone, actif').eq('role', 'livreur').eq('actif', true),
-      supabase.from('livraisons').select('id, livreur_id, statut, commande_id'),
+      supabase.from('livraisons').select('id, livreur_id, statut, commande_id, created_at, date_livraison'),
       supabase.from('commandes').select('id, prix'),
     ]);
 
+    // Filtrer par date si fournie (on utilise date_livraison ou created_at)
+    let filteredLivraisons = livraisons || [];
+    if (dateDebut && dateFin) {
+      filteredLivraisons = filteredLivraisons.filter((l) => {
+        const date = l.date_livraison ? new Date(l.date_livraison) : new Date(l.created_at);
+        return date >= new Date(dateDebut) && date <= new Date(dateFin);
+      });
+    }
+
     const prixByCommande = new Map((commandes || []).map((c) => [c.id, Number(c.prix || 0)]));
     const livByLivreur = new Map();
-    for (const l of livraisons || []) {
+    for (const l of filteredLivraisons) {
       if (!l.livreur_id) continue;
       const arr = livByLivreur.get(l.livreur_id) || [];
       arr.push(l);
