@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atelier Confection - Accueil</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="announcement-bar">
+      <div class="announcement-content">
+        <span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          -20% sur votre première commande
+        </span>
+      </div>
+    </div>
+    <header class="site-header" id="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img" aria-label="Logo">
+              <path d="M12 2l3.5 7H22l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h6.5L12 2z" />
+            </svg>
+          </span>
+          <span class="brand-text">Atelier Confection</span>
+        </a>
+
+        <nav class="main-nav" aria-label="Navigation principale">
+          <a href="#" class="nav-link">Accueil</a>
+          <a href="#" class="nav-link">Produits</a>
+          <a href="#" class="nav-link">Collection</a>
+          <a href="#" class="nav-link">Contact</a>
+        </nav>
+
+        <div class="header-actions" aria-label="Actions">
+          <button class="icon-btn" type="button" aria-label="Rechercher">
+            <svg viewBox="0 0 24 24">
+              <path d="M10.5 3a7.5 7.5 0 015.85 12.2l4.23 4.22-1.41 1.42-4.23-4.23A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z" />
+            </svg>
+          </button>
+          <button class="icon-btn" type="button" aria-label="Favoris">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 20.5l-1.45-1.32C5.4 14.36 2 11.27 2 7.5 2 5 4 3 6.5 3c1.74 0 3.41.81 4.5 2.09C12.09 3.81 13.76 3 15.5 3 18 3 20 5 20 7.5c0 3.77-3.4 6.86-8.55 11.68L12 20.5z" />
+            </svg>
+          </button>
+          <button class="icon-btn" type="button" aria-label="Panier">
+            <svg viewBox="0 0 24 24">
+              <path d="M7 4h-2l-1 2h2l3.6 7.59-1.35 2.44A2 2 0 009 19h10v-2H9.42a.25.25 0 01-.22-.37L10 15h7a2 2 0 001.8-1.1l3.2-6.9H6.21l-.94-2zM7 20a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 017 20zm10 0a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 0117 20z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <video
+          class="hero-video"
+          autoplay
+          muted
+          loop
+          playsinline
+        >
+          <source src="https://brand.assets.adidas.com/video/upload/f_auto:video,q_auto/if_w_gt_1920,w_1920/global_dropset_4_power_training_ss26_launch_hp_and_catlp_banner_hero_d_14fe3d88e7.mp4" type="video/mp4" />
+        </video>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <p class="hero-tag">Collection Atelier</p>
+          <h1>Elegance sur mesure pour chaque jour</h1>
+          <p class="hero-subtitle">
+            Decouvrez des modeles uniques et des finitions parfaites.
+          </p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="#">Decouvrir</a>
+            <a class="btn-ghost" href="#">Voir la collection</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="categories" id="categories">
+        <div class="section-header">
+          <p class="section-tag">Categories</p>
+        </div>
+        <div class="category-grid">
+          <a
+            class="category-card"
+            id="categorie-elegant"
+            href="#categorie-elegant"
+            aria-label="Categorie Elegant"
+          >
+            <img
+              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png"
+              alt="Categorie Elegant"
+              loading="lazy"
+            />
+            <div class="category-overlay">
+              <span>Elegant</span>
+            </div>
+          </a>
+          <a
+            class="category-card"
+            id="categorie-perle-rare"
+            href="#categorie-perle-rare"
+            aria-label="Categorie Perle Rare"
+          >
+            <img
+              src="https://obrille.com/wp-content/uploads/2026/01/B2.png"
+              alt="Categorie Perle Rare"
+              loading="lazy"
+            />
+            <div class="category-overlay">
+              <span>Perle Rare</span>
+            </div>
+          </a>
+          <a
+            class="category-card"
+            id="categorie-perle-unique"
+            href="#categorie-perle-unique"
+            aria-label="Categorie Perle Unique"
+          >
+            <img
+              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_52_59.png"
+              alt="Categorie Perle Unique"
+              loading="lazy"
+            />
+            <div class="category-overlay">
+              <span>Perle Unique</span>
+            </div>
+          </a>
+          <a
+            class="category-card"
+            id="categorie-style-event"
+            href="#categorie-style-event"
+            aria-label="Categorie Style Event"
+          >
+            <img
+              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-19_06_20.png"
+              alt="Categorie Style Event"
+              loading="lazy"
+            />
+            <div class="category-overlay">
+              <span>Style Event</span>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="promo-banner">
+        <a href="#collection" class="banner-link">
+          <img
+            src="https://a.lovart.ai/artifacts/agent/H99LNgNEGUcbV0rK.png?x-oss-process=image/resize,w_512,m_lfit/format,webp"
+            alt="Collection Promo"
+            loading="lazy"
+          />
+          <div class="banner-overlay">
+            <div class="banner-content">
+              <a href="#collection" class="banner-btn">
+                Découvrir
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </a>
+      </section>
+    </main>
+
+    <script src="js/main.js"></script>
+  </body>
+</html>
