@@ -327,6 +327,12 @@ const Appel = () => {
           {commandesAppel.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
             const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
+            const dateSource =
+              commande.dateCommande ||
+              commande.createdAt || // Supabase mapCommande -> createdAt
+              commande.created_at; // fallback éventuel
+            const dateObj = dateSource ? new Date(dateSource) : null;
+            const isValidDate = dateObj && !Number.isNaN(dateObj.getTime());
             
             // Déterminer le style de la carte selon le statut et la disponibilité en stock
             let cardStyle = 'stat-card hover:scale-105 transition-all cursor-pointer group';
@@ -353,11 +359,11 @@ const Appel = () => {
                     #{commande.numeroCommande || (commande._id || commande.id).slice(-6).toUpperCase()}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
+                    {isValidDate ? dateObj.toLocaleDateString('fr-FR') : '—'}
                   </p>
                   <p className="text-xs text-gray-600 font-semibold flex items-center gap-1 mt-0.5">
                     <Clock size={12} className="text-blue-600" />
-                    {new Date(commande.dateCommande || commande.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    {isValidDate ? dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
