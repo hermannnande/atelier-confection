@@ -355,6 +355,10 @@ const Appel = () => {
                   <p className="text-xs text-gray-500">
                     {new Date(commande.dateCommande || commande.created_at).toLocaleDateString('fr-FR')}
                   </p>
+                  <p className="text-xs text-gray-600 font-semibold flex items-center gap-1 mt-0.5">
+                    <Clock size={12} className="text-blue-600" />
+                    {new Date(commande.dateCommande || commande.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
                 <div className="flex flex-col gap-1">
                   {estEnAttentePaiement ? (
