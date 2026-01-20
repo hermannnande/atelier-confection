@@ -174,10 +174,12 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
       commandesByCouturier.set(c.couturier_id, arr);
     }
 
+    const commandesEnCoursTotal = filteredCommandes.filter((c) => c.statut === 'en_couture').length;
+
     const performances = (couturiers || []).map((c) => {
       const list = commandesByCouturier.get(c.id) || [];
       const commandesTerminees = list.filter((x) => ['en_stock', 'en_livraison', 'livree'].includes(x.statut));
-      const commandesEnCours = list.filter((x) => x.statut === 'en_couture');
+      const commandesEnCours = commandesEnCoursTotal;
 
       let tempsMoyenConfection = 0;
       if (commandesTerminees.length > 0) {
