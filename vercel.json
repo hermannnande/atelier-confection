@@ -15,6 +15,10 @@
       "config": {
         "distDir": "dist"
       }
+    },
+    {
+      "src": "site-web/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
