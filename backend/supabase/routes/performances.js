@@ -126,10 +126,12 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
       commandesByStyliste.set(c.styliste_id, arr);
     }
 
+    const commandesEnCoursTotal = filteredCommandes.filter((c) => c.statut === 'en_decoupe').length;
+
     const performances = (stylistes || []).map((s) => {
       const list = commandesByStyliste.get(s.id) || [];
       const commandesDecoupees = list.filter((c) => ['en_couture', 'en_stock', 'en_livraison', 'livree'].includes(c.statut)).length;
-      const commandesEnCours = list.filter((c) => c.statut === 'en_decoupe').length;
+      const commandesEnCours = commandesEnCoursTotal;
       return {
         styliste: { id: s.id, nom: s.nom, email: s.email },
         totalCommandesTraitees: commandesDecoupees,
