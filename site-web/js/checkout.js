@@ -1,6 +1,10 @@
-const store = window.SiteStore;
-const CART_KEY = 'atelier-cart';
-const CHECKOUT_CART_KEY = 'checkoutCart';
+(() => {
+  if (window.__CheckoutPageLoaded) return;
+  window.__CheckoutPageLoaded = true;
+
+  const store = window.SiteStore;
+  const CART_KEY = 'atelier-cart';
+  const CHECKOUT_CART_KEY = 'checkoutCart';
 
 const readCartFallback = () => {
   try {
@@ -189,3 +193,4 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
 
 // Charger le résumé au chargement de la page
 loadCartSummary();
+})();
