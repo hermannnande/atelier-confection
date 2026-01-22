@@ -2,7 +2,18 @@
 // TIROIR PANIER (CART DRAWER)
 // ===========================
 
-const store = window.SiteStore;
+const CART_KEY = 'atelier-cart';
+const CHECKOUT_CART_KEY = 'checkoutCart';
+const getStore = () => window.SiteStore;
+
+const readCartFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
 
 const CartDrawer = {
   overlay: null,
@@ -91,7 +102,8 @@ const CartDrawer = {
   },
 
   render() {
-    const cart = store?.getCart() || [];
+    const store = getStore();
+    const cart = store?.getCart ? store.getCart() : readCartFromStorage();
     
     if (cart.length === 0) {
       this.renderEmpty();
@@ -127,7 +139,8 @@ const CartDrawer = {
   },
 
   renderItem(item) {
-    const price = store?.parsePrice(item.price) || 0;
+    const store = getStore();
+    const price = store?.parsePrice ? store.parsePrice(item.price) : Number(item.price) || 0;
     const total = price * (item.qty || 1);
 
     return `
@@ -136,7 +149,9 @@ const CartDrawer = {
         <div class="cart-drawer-item-details">
           <h4 class="cart-drawer-item-name">${item.name}</h4>
           <p class="cart-drawer-item-meta">${item.size} • ${item.color}</p>
-          <p class="cart-drawer-item-price">${store?.formatPrice(total) || '0 FCFA'}</p>
+          <p class="cart-drawer-item-price">${
+            store?.formatPrice ? store.formatPrice(total) : `${total} FCFA`
+          }</p>
           <div class="cart-drawer-item-actions">
             <div class="cart-drawer-item-qty">
               <button class="qty-btn qty-minus" data-action="decrease">−</button>
@@ -156,8 +171,9 @@ const CartDrawer = {
   },
 
   renderFooter(cart) {
+    const store = getStore();
     const subtotal = cart.reduce((sum, item) => {
-      const price = store?.parsePrice(item.price) || 0;
+      const price = store?.parsePrice ? store.parsePrice(item.price) : Number(item.price) || 0;
       return sum + (price * (item.qty || 1));
     }, 0);
 
@@ -165,7 +181,9 @@ const CartDrawer = {
       <div class="cart-drawer-summary">
         <div class="drawer-summary-line">
           <span>Sous-total</span>
-          <span class="drawer-summary-value">${store?.formatPrice(subtotal) || '0 FCFA'}</span>
+          <span class="drawer-summary-value">${
+            store?.formatPrice ? store.formatPrice(subtotal) : `${subtotal} FCFA`
+          }</span>
         </div>
         <div class="drawer-summary-line">
           <span>Livraison</span>
@@ -179,7 +197,7 @@ const CartDrawer = {
         <div class="drawer-summary-line drawer-total">
           <span>Total</span>
           <span class="drawer-summary-value drawer-total-value" id="drawerTotal">
-            ${store?.formatPrice(subtotal) || '0 FCFA'}
+            ${store?.formatPrice ? store.formatPrice(subtotal) : `${subtotal} FCFA`}
           </span>
         </div>
       </div>
@@ -221,6 +239,7 @@ const CartDrawer = {
   },
 
   attachItemEvents() {
+    const store = getStore();
     // Événements pour les boutons +/-
     this.content.querySelectorAll('.qty-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -230,9 +249,8 @@ const CartDrawer = {
         const color = itemEl.dataset.color;
         const action = e.target.dataset.action;
 
-        const item = store?.getCart().find(
-          i => i.id === id && i.size === size && i.color === color
-        );
+        const cart = store?.getCart ? store.getCart() : readCartFromStorage();
+        const item = cart.find((i) => i.id === id && i.size === size && i.color === color);
 
         if (item) {
           let newQty = item.qty;
@@ -242,7 +260,12 @@ const CartDrawer = {
             newQty -= 1;
           }
 
-          store?.updateCartItem(id, size, color, newQty);
+          if (store?.updateCartItem) {
+            store.updateCartItem(id, size, color, newQty);
+          } else {
+            item.qty = Math.max(1, newQty);
+            localStorage.setItem(CART_KEY, JSON.stringify(cart));
+          }
           this.render();
         }
       });
@@ -257,7 +280,14 @@ const CartDrawer = {
         const color = itemEl.dataset.color;
 
         if (confirm('Retirer cet article du panier ?')) {
-          store?.removeFromCart(id, size, color);
+          if (store?.removeFromCart) {
+            store.removeFromCart(id, size, color);
+          } else {
+            const cart = readCartFromStorage().filter(
+              (it) => !(it.id === id && it.size === size && it.color === color)
+            );
+            localStorage.setItem(CART_KEY, JSON.stringify(cart));
+          }
           this.render();
         }
       });
@@ -265,6 +295,7 @@ const CartDrawer = {
   },
 
   attachFooterEvents() {
+    const store = getStore();
     const promoBtn = this.footer.querySelector('.drawer-promo-btn');
     const promoInput = this.footer.querySelector('.drawer-promo-input');
     const totalEl = this.footer.querySelector('#drawerTotal');
@@ -303,7 +334,7 @@ const CartDrawer = {
 
     // Gestion du bouton checkout (afficher le popup d'info)
     checkoutBtn?.addEventListener('click', () => {
-      const cart = store?.getCart() || [];
+      const cart = store?.getCart ? store.getCart() : readCartFromStorage();
       if (cart.length === 0) {
         store?.showToast('Votre panier est vide');
         return;
@@ -370,8 +401,9 @@ const CartDrawer = {
       this.close();
       // Sauvegarder le panier pour la page checkout
       try {
-        const cart = store?.getCart ? store.getCart() : [];
-        sessionStorage.setItem('checkoutCart', JSON.stringify(cart));
+        const store = getStore();
+        const cart = store?.getCart ? store.getCart() : readCartFromStorage();
+        sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(cart));
       } catch (e) {
         // Ignorer si sessionStorage indisponible
       }
