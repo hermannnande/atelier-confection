@@ -1,6 +1,8 @@
+const store = window.SiteStore;
+
 // Charger les articles du panier depuis localStorage
 function loadCartSummary() {
-  const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+  const cartItems = store.getCart();
   const summaryItemsContainer = document.getElementById('summaryItems');
   
   if (cartItems.length === 0) {
@@ -11,14 +13,14 @@ function loadCartSummary() {
   let subtotal = 0;
 
   summaryItemsContainer.innerHTML = cartItems.map(item => {
-    const price = parseInt(item.price.replace(/[^0-9]/g, ''));
-    const qty = parseInt(item.qty);
+    const price = store.parsePrice(item.price);
+    const qty = parseInt(item.qty, 10) || 1;
     const itemTotal = price * qty;
     subtotal += itemTotal;
 
     return `
       <div class="summary-item">
-        <img src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png" 
+        <img src="${item.image}" 
              alt="${item.name}" 
              class="summary-item-image">
         <div class="summary-item-details">
@@ -26,15 +28,15 @@ function loadCartSummary() {
           <div class="summary-item-meta">
             ${item.size} • ${item.color} • Qté: ${qty}
           </div>
-          <div class="summary-item-price">${itemTotal.toLocaleString()} FCFA</div>
+          <div class="summary-item-price">${store.formatPrice(itemTotal)}</div>
         </div>
       </div>
     `;
   }).join('');
 
   // Mettre à jour les totaux
-  document.getElementById('summarySubtotal').textContent = subtotal.toLocaleString() + ' FCFA';
-  document.getElementById('summaryTotal').textContent = subtotal.toLocaleString() + ' FCFA';
+  document.getElementById('summarySubtotal').textContent = store.formatPrice(subtotal);
+  document.getElementById('summaryTotal').textContent = store.formatPrice(subtotal);
 }
 
 // Validation du formulaire
@@ -51,7 +53,7 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     ville: formData.get('city'),
     address: formData.get('address') || '',
     notes: formData.get('notes') || '',
-    items: JSON.parse(localStorage.getItem('cartItems') || '[]'),
+    items: store.getCart(),
     total: document.getElementById('summaryTotal').textContent,
     source: 'site-web',
     date: new Date().toISOString()
@@ -96,7 +98,7 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     localStorage.setItem('orders', JSON.stringify(orders));
 
     // Vider le panier
-    localStorage.removeItem('cartItems');
+    store.clearCart();
 
     // Redirection vers page de confirmation
     showSuccessModal(orderData);

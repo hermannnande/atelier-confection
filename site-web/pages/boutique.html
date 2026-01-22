@@ -51,8 +51,8 @@
         <nav class="main-nav" aria-label="Navigation principale">
           <a href="../index.html" class="nav-link">Accueil</a>
           <a href="boutique.html" class="nav-link active">Produits</a>
-          <a href="#" class="nav-link">Collection</a>
-          <a href="#" class="nav-link">Contact</a>
+          <a href="../index.html#categories" class="nav-link">Collection</a>
+          <a href="contact.html" class="nav-link">Contact</a>
         </nav>
 
         <div class="header-actions" aria-label="Actions">
@@ -61,16 +61,18 @@
               <path d="M10.5 3a7.5 7.5 0 015.85 12.2l4.23 4.22-1.41 1.42-4.23-4.23A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z" />
             </svg>
           </button>
-          <button class="icon-btn" type="button" aria-label="Favoris">
+          <a href="favoris.html" class="icon-btn" aria-label="Favoris">
             <svg viewBox="0 0 24 24">
               <path d="M12 20.5l-1.45-1.32C5.4 14.36 2 11.27 2 7.5 2 5 4 3 6.5 3c1.74 0 3.41.81 4.5 2.09C12.09 3.81 13.76 3 15.5 3 18 3 20 5 20 7.5c0 3.77-3.4 6.86-8.55 11.68L12 20.5z" />
             </svg>
-          </button>
-          <button class="icon-btn" type="button" aria-label="Panier">
+            <span class="badge" data-badge="wishlist">0</span>
+          </a>
+          <a href="panier.html" class="icon-btn" aria-label="Panier">
             <svg viewBox="0 0 24 24">
               <path d="M7 4h-2l-1 2h2l3.6 7.59-1.35 2.44A2 2 0 009 19h10v-2H9.42a.25.25 0 01-.22-.37L10 15h7a2 2 0 001.8-1.1l3.2-6.9H6.21l-.94-2zM7 20a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 017 20zm10 0a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 0117 20z" />
             </svg>
-          </button>
+            <span class="badge" data-badge="cart">0</span>
+          </a>
         </div>
       </div>
     </header>
@@ -130,7 +132,16 @@
       <section class="products-grid">
         <div class="products-container">
           <!-- Produit 1 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="robe-elegante-marron"
+            data-name="Robe Élégante Marron"
+            data-category="Élégant"
+            data-price="15000"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png"
+            data-colors="Marron,Noir,Beige"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png"
@@ -170,7 +181,16 @@
           </a>
 
           <!-- Produit 2 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="robe-blanche-elegante"
+            data-name="Robe Blanche Élégante"
+            data-category="Perle Rare"
+            data-price="16500"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/A1.png"
+            data-colors="Blanc,Beige"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/A1.png"
@@ -207,7 +227,16 @@
           </a>
 
           <!-- Produit 3 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="ensemble-bleu-ciel"
+            data-name="Ensemble Bleu Ciel"
+            data-category="Style Event"
+            data-price="18000"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/A3.png"
+            data-colors="Bleu Ciel,Bleu"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/A3.png"
@@ -245,7 +274,16 @@
           </a>
 
           <!-- Produit 4 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="robe-marron-premium"
+            data-name="Robe Marron Premium"
+            data-category="Perle Unique"
+            data-price="17000"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/gesvd.jpg"
+            data-colors="Marron"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/gesvd.jpg"
@@ -281,7 +319,16 @@
           </a>
 
           <!-- Produit 5 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="ensemble-blanc-chic"
+            data-name="Ensemble Blanc Chic"
+            data-category="Élégant"
+            data-price="19000"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/vjhbj.png"
+            data-colors="Blanc"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/vjhbj.png"
@@ -317,7 +364,16 @@
           </a>
 
           <!-- Produit 6 -->
-          <a href="produit.html" class="product-card">
+          <a
+            href="produit.html"
+            class="product-card"
+            data-id="robe-noire-elegante"
+            data-name="Robe Noire Élégante"
+            data-category="Perle Rare"
+            data-price="14500"
+            data-image="https://obrille.com/wp-content/uploads/2026/01/B2.png"
+            data-colors="Noir,Gris Foncé"
+          >
             <div class="product-image">
               <img
                 src="https://obrille.com/wp-content/uploads/2026/01/B2.png"

@@ -19,7 +19,7 @@
     </div>
     <header class="site-header" id="site-header">
       <div class="header-inner">
-        <a class="brand" href="#">
+        <a class="brand" href="index.html">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img" aria-label="Logo">
               <path d="M12 2l3.5 7H22l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h6.5L12 2z" />
@@ -29,10 +29,10 @@
         </a>
 
         <nav class="main-nav" aria-label="Navigation principale">
-          <a href="#" class="nav-link">Accueil</a>
-          <a href="#" class="nav-link">Produits</a>
-          <a href="#" class="nav-link">Collection</a>
-          <a href="#" class="nav-link">Contact</a>
+          <a href="index.html" class="nav-link">Accueil</a>
+          <a href="pages/boutique.html" class="nav-link">Produits</a>
+          <a href="#categories" class="nav-link">Collection</a>
+          <a href="pages/contact.html" class="nav-link">Contact</a>
         </nav>
 
         <div class="header-actions" aria-label="Actions">
@@ -41,16 +41,18 @@
               <path d="M10.5 3a7.5 7.5 0 015.85 12.2l4.23 4.22-1.41 1.42-4.23-4.23A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z" />
             </svg>
           </button>
-          <button class="icon-btn" type="button" aria-label="Favoris">
+          <a class="icon-btn" href="pages/favoris.html" aria-label="Favoris">
             <svg viewBox="0 0 24 24">
               <path d="M12 20.5l-1.45-1.32C5.4 14.36 2 11.27 2 7.5 2 5 4 3 6.5 3c1.74 0 3.41.81 4.5 2.09C12.09 3.81 13.76 3 15.5 3 18 3 20 5 20 7.5c0 3.77-3.4 6.86-8.55 11.68L12 20.5z" />
             </svg>
-          </button>
-          <button class="icon-btn" type="button" aria-label="Panier">
+            <span class="badge" data-badge="wishlist">0</span>
+          </a>
+          <a class="icon-btn" href="pages/panier.html" aria-label="Panier">
             <svg viewBox="0 0 24 24">
               <path d="M7 4h-2l-1 2h2l3.6 7.59-1.35 2.44A2 2 0 009 19h10v-2H9.42a.25.25 0 01-.22-.37L10 15h7a2 2 0 001.8-1.1l3.2-6.9H6.21l-.94-2zM7 20a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 017 20zm10 0a1.5 1.5 0 11-.01 3.01A1.5 1.5 0 0117 20z" />
             </svg>
-          </button>
+            <span class="badge" data-badge="cart">0</span>
+          </a>
         </div>
       </div>
     </header>

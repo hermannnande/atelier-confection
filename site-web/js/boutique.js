@@ -1,25 +1,65 @@
+const store = window.SiteStore;
+
+const getProductData = (card) => {
+  const name = card.dataset.name || card.querySelector('.product-name')?.textContent.trim();
+  const priceText = card.dataset.price || card.querySelector('.price-current')?.textContent;
+  const image =
+    card.dataset.image ||
+    card.querySelector('img')?.getAttribute('src');
+  const category = card.dataset.category || card.querySelector('.product-category')?.textContent.trim();
+  const colors = card.dataset.colors
+    ? card.dataset.colors.split(',').map((color) => color.trim())
+    : [];
+  const id = card.dataset.id || store.slugify(name);
+
+  return {
+    id,
+    name,
+    price: store.parsePrice(priceText),
+    image,
+    category,
+    colors,
+  };
+};
+
+const setFavoriteState = (btn, isFavorite) => {
+  const svg = btn.querySelector('svg');
+  if (!svg) return;
+
+  if (isFavorite) {
+    svg.style.fill = '#ff0000';
+    svg.style.stroke = '#ff0000';
+  } else {
+    svg.style.fill = 'none';
+    svg.style.stroke = '#000';
+  }
+};
+
 // Gestion des favoris
 document.querySelectorAll('.product-favorite').forEach(btn => {
+  const card = btn.closest('.product-card');
+  if (!card) return;
+
+  const product = getProductData(card);
+  setFavoriteState(btn, store.isInWishlist(product.id));
+
   btn.addEventListener('click', function(e) {
     e.preventDefault();
     e.stopPropagation();
-    
-    const svg = this.querySelector('svg');
-    const isFavorite = svg.style.fill === 'rgb(255, 0, 0)';
-    
-    if (isFavorite) {
-      svg.style.fill = 'none';
-      svg.style.stroke = '#000';
-    } else {
-      svg.style.fill = '#ff0000';
-      svg.style.stroke = '#ff0000';
-      
-      // Animation
-      this.style.transform = 'scale(1.2)';
-      setTimeout(() => {
-        this.style.transform = 'scale(1)';
-      }, 200);
-    }
+
+    const result = store.toggleWishlist(product);
+    setFavoriteState(btn, result.added);
+
+    // Animation
+    this.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+      this.style.transform = 'scale(1)';
+    }, 200);
+
+    store.showToast(
+      result.added ? "Ajouté à la liste d'envie" : 'Retiré des favoris',
+      'info'
+    );
   });
 });
 

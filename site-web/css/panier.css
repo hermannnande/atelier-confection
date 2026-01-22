@@ -327,24 +327,6 @@
   flex-shrink: 0;
 }
 
-/* Badge sur l'icône */
-.badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f00;
-  color: #fff;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 0 6px;
-}
-
 /* Responsive */
 @media (max-width: 1024px) {
   .cart-content {
@@ -466,45 +448,46 @@
 }
 
 .checkout-modal-content h2 {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   color: #000;
 }
 
 .checkout-modal-message {
-  margin-bottom: 32px;
-  line-height: 1.8;
+  margin-bottom: 28px;
+  line-height: 1.7;
 }
 
 .checkout-modal-message p {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   color: #333;
+  font-size: 15px;
 }
 
 .checkout-modal-message .greeting {
-  font-size: 18px;
+  font-size: 17px;
   color: #000;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .delivery-info {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 16px;
-  padding: 24px;
-  margin: 24px 0;
+  border-radius: 14px;
+  padding: 20px;
+  margin: 20px 0 16px 0;
 }
 
 .info-badge {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .info-badge:last-child {
@@ -512,23 +495,25 @@
 }
 
 .info-badge .icon {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
 }
 
 .info-badge span:last-child {
   flex: 1;
   color: #333;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .checkout-modal-message .note {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
   font-style: italic;
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid #e0e0e0;
+  line-height: 1.5;
 }
 
 .checkout-modal-actions {

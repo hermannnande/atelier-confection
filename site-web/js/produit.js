@@ -1,9 +1,25 @@
+const store = window.SiteStore;
+const productRoot = document.querySelector('.product-page');
+
+const productData = productRoot
+  ? {
+      id: productRoot.dataset.id,
+      name: productRoot.dataset.name,
+      category: productRoot.dataset.category,
+      price: store.parsePrice(productRoot.dataset.price),
+      image: productRoot.dataset.image,
+    }
+  : null;
+
+const getSelectedSize = () =>
+  document.querySelector('.size-btn.active')?.dataset.size;
+const getSelectedColor = () =>
+  document.querySelector('.color-btn.active')?.dataset.color;
+
 // Gestion de la sélection de taille
 document.querySelectorAll('.size-btn').forEach(btn => {
   btn.addEventListener('click', function() {
-    // Retirer la classe active de tous les boutons
     document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
-    // Ajouter la classe active au bouton cliqué
     this.classList.add('active');
   });
 });
@@ -11,76 +27,97 @@ document.querySelectorAll('.size-btn').forEach(btn => {
 // Gestion de la sélection de couleur
 document.querySelectorAll('.color-btn').forEach(btn => {
   btn.addEventListener('click', function() {
-    // Retirer la classe active de tous les boutons
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-    // Ajouter la classe active au bouton cliqué
     this.classList.add('active');
   });
 });
 
 // Gestion du bouton favoris
 const favoriteBtn = document.querySelector('.btn-favorite');
-let isFavorite = false;
+if (favoriteBtn && productData) {
+  const svg = favoriteBtn.querySelector('svg');
+  const updateFavoriteStyle = (active) => {
+    if (!svg) return;
+    if (active) {
+      svg.style.fill = '#ff0000';
+      svg.style.stroke = '#ff0000';
+      favoriteBtn.style.borderColor = '#ff0000';
+    } else {
+      svg.style.fill = 'none';
+      svg.style.stroke = '#000';
+      favoriteBtn.style.borderColor = '#e0e0e0';
+    }
+  };
 
-favoriteBtn.addEventListener('click', function() {
-  isFavorite = !isFavorite;
-  const svg = this.querySelector('svg');
-  
-  if (isFavorite) {
-    svg.style.fill = '#ff0000';
-    svg.style.stroke = '#ff0000';
-    this.style.borderColor = '#ff0000';
-  } else {
-    svg.style.fill = 'none';
-    svg.style.stroke = '#000';
-    this.style.borderColor = '#e0e0e0';
-  }
-});
+  updateFavoriteStyle(store.isInWishlist(productData.id));
+
+  favoriteBtn.addEventListener('click', function() {
+    const selectedSize = getSelectedSize();
+    const selectedColor = getSelectedColor();
+    const wishlistItem = {
+      ...productData,
+      size: selectedSize,
+      color: selectedColor,
+      sizes: Array.from(document.querySelectorAll('.size-btn')).map((btn) => btn.dataset.size),
+      colors: Array.from(document.querySelectorAll('.color-btn')).map((btn) => btn.dataset.color),
+    };
+
+    const result = store.toggleWishlist(wishlistItem);
+    updateFavoriteStyle(result.added);
+    store.showToast(
+      result.added ? "Ajouté à la liste d'envie" : 'Retiré des favoris'
+    );
+  });
+}
 
 // Gestion du bouton ajouter au panier
 const addCartBtn = document.querySelector('.btn-add-cart');
+if (addCartBtn && productData) {
+  addCartBtn.addEventListener('click', function() {
+    const selectedSize = getSelectedSize();
+    const selectedColor = getSelectedColor();
 
-addCartBtn.addEventListener('click', function() {
-  const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
-  const selectedColor = document.querySelector('.color-btn.active')?.dataset.color;
-  
-  if (!selectedSize || !selectedColor) {
-    alert('Veuillez sélectionner une taille et une couleur');
-    return;
-  }
-  
-  // Animation du bouton
-  this.style.transform = 'scale(0.95)';
-  setTimeout(() => {
-    this.style.transform = 'scale(1)';
-  }, 150);
-  
-  // Message de confirmation
-  const originalText = this.innerHTML;
-  this.innerHTML = `
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-    Ajouté au panier !
-  `;
-  
-  setTimeout(() => {
-    this.innerHTML = originalText;
-  }, 2000);
-  
-  console.log('Produit ajouté:', { size: selectedSize, color: selectedColor });
-});
+    if (!selectedSize || !selectedColor) {
+      store.showToast('Veuillez sélectionner une taille et une couleur', 'info');
+      return;
+    }
+
+    store.addToCart({
+      ...productData,
+      size: selectedSize,
+      color: selectedColor,
+      qty: 1,
+    });
+
+    this.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      this.style.transform = 'scale(1)';
+    }, 150);
+
+    const originalText = this.innerHTML;
+    this.innerHTML = `
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+      Ajouté au panier !
+    `;
+
+    setTimeout(() => {
+      this.innerHTML = originalText;
+    }, 2000);
+  });
+}
 
 // Animation au scroll pour les images de la galerie
 const observerOptions = {
