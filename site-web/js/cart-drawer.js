@@ -184,12 +184,12 @@ const CartDrawer = {
         </div>
       </div>
       <div class="cart-drawer-actions">
-        <a href="pages/checkout.html" class="cart-drawer-btn cart-drawer-btn-primary">
+        <button type="button" class="cart-drawer-btn cart-drawer-btn-primary drawer-checkout-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
           Procéder au paiement
-        </a>
+        </button>
         <a href="pages/panier.html" class="cart-drawer-btn cart-drawer-btn-secondary">
           Voir le panier complet
         </a>
@@ -268,7 +268,9 @@ const CartDrawer = {
     const promoBtn = this.footer.querySelector('.drawer-promo-btn');
     const promoInput = this.footer.querySelector('.drawer-promo-input');
     const totalEl = this.footer.querySelector('#drawerTotal');
+    const checkoutBtn = this.footer.querySelector('.drawer-checkout-btn');
 
+    // Gestion du code promo
     promoBtn?.addEventListener('click', () => {
       const code = promoInput?.value.trim().toUpperCase();
 
@@ -298,6 +300,91 @@ const CartDrawer = {
       if (promoInput) promoInput.value = '';
       store?.showToast(`Code promo appliqué ! -${promoCodes[code] * 100}%`);
     });
+
+    // Gestion du bouton checkout (afficher le popup d'info)
+    checkoutBtn?.addEventListener('click', () => {
+      const cart = store?.getCart() || [];
+      if (cart.length === 0) {
+        store?.showToast('Votre panier est vide');
+        return;
+      }
+      this.showCheckoutModal();
+    });
+  },
+
+  showCheckoutModal() {
+    const modal = document.createElement('div');
+    modal.className = 'checkout-modal';
+    modal.innerHTML = `
+      <div class="checkout-modal-overlay"></div>
+      <div class="checkout-modal-content">
+        <div class="checkout-modal-icon">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 16v-4"></path>
+            <path d="M12 8h.01"></path>
+          </svg>
+        </div>
+        <h2>⚡ Paiement à la livraison</h2>
+        <div class="checkout-modal-message">
+          <p class="greeting">✨ <strong>Bonjour Madame</strong>,</p>
+          <p>Nous vous proposons de <strong style="color: #d4af37;">magnifiques tenues</strong>, confectionnées avec soin.</p>
+          <div class="delivery-info">
+            <div class="info-badge">
+              <span class="icon">⏱️</span>
+              <span><strong>Délai</strong> : confection + livraison en <strong style="color: #d4af37;">3 jours ouvrables</strong></span>
+            </div>
+            <div class="info-badge">
+              <span class="icon">💰</span>
+              <span><strong style="color: #d4af37;">Paiement uniquement à la livraison</strong></span>
+            </div>
+            <div class="info-badge">
+              <span class="icon">✨</span>
+              <span>Rendu <strong style="color: #d4af37;">élégant, bien fini et de qualité</strong></span>
+            </div>
+          </div>
+          <p class="note" style="font-size: 13px; margin-top: 16px;">Votre commande sera traitée par notre atelier, puis livrée à votre adresse.</p>
+        </div>
+        <div class="checkout-modal-actions">
+          <button class="btn-cancel">Annuler</button>
+          <button class="btn-continue">Continuer →</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Animation d'entrée
+    setTimeout(() => {
+      modal.querySelector('.checkout-modal-overlay').style.opacity = '1';
+      modal.querySelector('.checkout-modal-content').style.opacity = '1';
+      modal.querySelector('.checkout-modal-content').style.transform = 'translateY(0) scale(1)';
+    }, 10);
+
+    // Événements
+    modal.querySelector('.btn-cancel')?.addEventListener('click', () => {
+      this.closeCheckoutModal(modal);
+    });
+    modal.querySelector('.btn-continue')?.addEventListener('click', () => {
+      this.closeCheckoutModal(modal);
+      // Fermer le tiroir d'abord
+      this.close();
+      // Rediriger vers checkout
+      setTimeout(() => {
+        window.location.href = 'pages/checkout.html';
+      }, 300);
+    });
+    modal.querySelector('.checkout-modal-overlay')?.addEventListener('click', () => {
+      this.closeCheckoutModal(modal);
+    });
+  },
+
+  closeCheckoutModal(modal) {
+    if (modal) {
+      modal.querySelector('.checkout-modal-overlay').style.opacity = '0';
+      modal.querySelector('.checkout-modal-content').style.opacity = '0';
+      modal.querySelector('.checkout-modal-content').style.transform = 'translateY(-20px) scale(0.95)';
+      setTimeout(() => modal.remove(), 300);
+    }
   }
 };
 
