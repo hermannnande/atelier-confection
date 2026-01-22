@@ -2,6 +2,8 @@
 // TIROIR PANIER (CART DRAWER)
 // ===========================
 
+const store = window.SiteStore;
+
 const CartDrawer = {
   overlay: null,
   drawer: null,
@@ -82,7 +84,7 @@ const CartDrawer = {
   },
 
   render() {
-    const cart = window.store?.getCart() || [];
+    const cart = store?.getCart() || [];
     
     if (cart.length === 0) {
       this.renderEmpty();
@@ -118,7 +120,7 @@ const CartDrawer = {
   },
 
   renderItem(item) {
-    const price = window.store?.parsePrice(item.price) || 0;
+    const price = store?.parsePrice(item.price) || 0;
     const total = price * (item.qty || 1);
 
     return `
@@ -127,7 +129,7 @@ const CartDrawer = {
         <div class="cart-drawer-item-details">
           <h4 class="cart-drawer-item-name">${item.name}</h4>
           <p class="cart-drawer-item-meta">${item.size} • ${item.color}</p>
-          <p class="cart-drawer-item-price">${window.store?.formatPrice(total) || '0 FCFA'}</p>
+          <p class="cart-drawer-item-price">${store?.formatPrice(total) || '0 FCFA'}</p>
           <div class="cart-drawer-item-actions">
             <div class="cart-drawer-item-qty">
               <button class="qty-btn qty-minus" data-action="decrease">−</button>
@@ -148,27 +150,67 @@ const CartDrawer = {
 
   renderFooter(cart) {
     const subtotal = cart.reduce((sum, item) => {
-      const price = window.store?.parsePrice(item.price) || 0;
+      const price = store?.parsePrice(item.price) || 0;
       return sum + (price * (item.qty || 1));
     }, 0);
 
     this.footer.innerHTML = `
-      <div class="cart-drawer-total">
-        <span class="cart-drawer-total-label">Total</span>
-        <span class="cart-drawer-total-value">${window.store?.formatPrice(subtotal) || '0 FCFA'}</span>
+      <div class="cart-drawer-summary">
+        <div class="drawer-summary-line">
+          <span>Sous-total</span>
+          <span class="drawer-summary-value">${store?.formatPrice(subtotal) || '0 FCFA'}</span>
+        </div>
+        <div class="drawer-summary-line">
+          <span>Livraison</span>
+          <span class="drawer-summary-value drawer-free">Gratuite</span>
+        </div>
+        <div class="drawer-summary-line drawer-promo-line">
+          <input type="text" class="drawer-promo-input" placeholder="Code promo" />
+          <button class="drawer-promo-btn">Appliquer</button>
+        </div>
+        <div class="drawer-summary-divider"></div>
+        <div class="drawer-summary-line drawer-total">
+          <span>Total</span>
+          <span class="drawer-summary-value drawer-total-value" id="drawerTotal">
+            ${store?.formatPrice(subtotal) || '0 FCFA'}
+          </span>
+        </div>
       </div>
       <div class="cart-drawer-actions">
         <a href="pages/checkout.html" class="cart-drawer-btn cart-drawer-btn-primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
-          Commander maintenant
+          Procéder au paiement
         </a>
         <a href="pages/panier.html" class="cart-drawer-btn cart-drawer-btn-secondary">
           Voir le panier complet
         </a>
       </div>
+      <div class="cart-drawer-trust">
+        <div class="drawer-trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Paiement sécurisé</span>
+        </div>
+        <div class="drawer-trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+          <span>Livraison rapide</span>
+        </div>
+        <div class="drawer-trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/>
+            <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/>
+          </svg>
+          <span>Retour 7 jours</span>
+        </div>
+      </div>
     `;
+
+    this.attachFooterEvents();
   },
 
   attachItemEvents() {
@@ -181,7 +223,7 @@ const CartDrawer = {
         const color = itemEl.dataset.color;
         const action = e.target.dataset.action;
 
-        const item = window.store?.getCart().find(
+        const item = store?.getCart().find(
           i => i.id === id && i.size === size && i.color === color
         );
 
@@ -193,7 +235,7 @@ const CartDrawer = {
             newQty -= 1;
           }
 
-          window.store?.updateCartItem(id, size, color, newQty);
+          store?.updateCartItem(id, size, color, newQty);
           this.render();
         }
       });
@@ -208,10 +250,46 @@ const CartDrawer = {
         const color = itemEl.dataset.color;
 
         if (confirm('Retirer cet article du panier ?')) {
-          window.store?.removeFromCart(id, size, color);
+          store?.removeFromCart(id, size, color);
           this.render();
         }
       });
+    });
+  },
+
+  attachFooterEvents() {
+    const promoBtn = this.footer.querySelector('.drawer-promo-btn');
+    const promoInput = this.footer.querySelector('.drawer-promo-input');
+    const totalEl = this.footer.querySelector('#drawerTotal');
+
+    promoBtn?.addEventListener('click', () => {
+      const code = promoInput?.value.trim().toUpperCase();
+
+      if (!code) {
+        store?.showToast('Veuillez entrer un code promo');
+        return;
+      }
+
+      const promoCodes = {
+        BIENVENUE20: 0.2,
+        PROMO10: 0.1,
+        NOEL15: 0.15,
+      };
+
+      if (!promoCodes[code]) {
+        store?.showToast('Code promo invalide');
+        return;
+      }
+
+      const subtotal = (store?.getCart() || []).reduce((sum, item) => {
+        const price = store?.parsePrice(item.price) || 0;
+        return sum + (price * (item.qty || 1));
+      }, 0);
+
+      const newTotal = subtotal * (1 - promoCodes[code]);
+      if (totalEl) totalEl.textContent = store?.formatPrice(newTotal) || '0 FCFA';
+      if (promoInput) promoInput.value = '';
+      store?.showToast(`Code promo appliqué ! -${promoCodes[code] * 100}%`);
     });
   }
 };
