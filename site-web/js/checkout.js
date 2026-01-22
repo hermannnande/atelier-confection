@@ -1,19 +1,36 @@
 const store = window.SiteStore;
+const CART_KEY = 'atelier-cart';
+
+const readCartFallback = () => {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
 
 // Charger les articles du panier depuis localStorage
 function loadCartSummary() {
-  const cartItems = store.getCart();
+  const cartItems = store?.getCart ? store.getCart() : readCartFallback();
   const summaryItemsContainer = document.getElementById('summaryItems');
   
   if (cartItems.length === 0) {
-    window.location.href = '../pages/panier.html';
+    summaryItemsContainer.innerHTML = `
+      <div class="summary-empty">
+        <p>Votre panier est vide.</p>
+        <a href="panier.html" class="summary-empty-link">Retour au panier</a>
+      </div>
+    `;
+    document.getElementById('summarySubtotal').textContent = '0 FCFA';
+    document.getElementById('summaryTotal').textContent = '0 FCFA';
     return;
   }
 
   let subtotal = 0;
 
   summaryItemsContainer.innerHTML = cartItems.map(item => {
-    const price = store.parsePrice(item.price);
+    const price = store?.parsePrice ? store.parsePrice(item.price) : Number(item.price) || 0;
     const qty = parseInt(item.qty, 10) || 1;
     const itemTotal = price * qty;
     subtotal += itemTotal;
@@ -28,15 +45,18 @@ function loadCartSummary() {
           <div class="summary-item-meta">
             ${item.size} • ${item.color} • Qté: ${qty}
           </div>
-          <div class="summary-item-price">${store.formatPrice(itemTotal)}</div>
+          <div class="summary-item-price">${
+            store?.formatPrice ? store.formatPrice(itemTotal) : `${itemTotal} FCFA`
+          }</div>
         </div>
       </div>
     `;
   }).join('');
 
   // Mettre à jour les totaux
-  document.getElementById('summarySubtotal').textContent = store.formatPrice(subtotal);
-  document.getElementById('summaryTotal').textContent = store.formatPrice(subtotal);
+  const formatted = store?.formatPrice ? store.formatPrice(subtotal) : `${subtotal} FCFA`;
+  document.getElementById('summarySubtotal').textContent = formatted;
+  document.getElementById('summaryTotal').textContent = formatted;
 }
 
 // Validation du formulaire
@@ -52,7 +72,7 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     phone: formData.get('phone'),
     ville: formData.get('city'),
     notes: formData.get('notes') || '',
-    items: store.getCart(),
+    items: store?.getCart ? store.getCart() : readCartFallback(),
     total: document.getElementById('summaryTotal').textContent,
     source: 'site-web',
     date: new Date().toISOString()
@@ -106,8 +126,12 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     }));
 
     // Vider le panier
-    store.cart = [];
-    store.saveCart();
+    if (store?.saveCart) {
+      store.cart = [];
+      store.saveCart();
+    } else {
+      localStorage.setItem(CART_KEY, JSON.stringify([]));
+    }
 
     // Redirection vers la page de remerciement
     window.location.href = 'merci.html';
