@@ -1,12 +1,18 @@
-const store = window.SiteStore;
+const getStore = () => window.SiteStore;
 const productRoot = document.querySelector('.product-page');
+
+const parsePriceFallback = (value) => {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  return Number(String(value).replace(/[^0-9]/g, '')) || 0;
+};
 
 const productData = productRoot
   ? {
       id: productRoot.dataset.id,
       name: productRoot.dataset.name,
       category: productRoot.dataset.category,
-      price: store.parsePrice(productRoot.dataset.price),
+      price: parsePriceFallback(productRoot.dataset.price),
       image: productRoot.dataset.image,
     }
   : null;
@@ -49,9 +55,11 @@ if (favoriteBtn && productData) {
     }
   };
 
-  updateFavoriteStyle(store.isInWishlist(productData.id));
+  updateFavoriteStyle(getStore()?.isInWishlist(productData.id));
 
   favoriteBtn.addEventListener('click', function() {
+    const store = getStore();
+    if (!store) return;
     const selectedSize = getSelectedSize();
     const selectedColor = getSelectedColor();
     const wishlistItem = {
@@ -70,24 +78,73 @@ if (favoriteBtn && productData) {
   });
 }
 
+const updateBadgesFallback = (cart) => {
+  const count = cart.reduce((sum, item) => sum + (item.qty || 0), 0);
+  document.querySelectorAll('[data-badge="cart"]').forEach((badge) => {
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  });
+};
+
+const addToCartFallback = (item) => {
+  const CART_KEY = 'atelier-cart';
+  const cart = (() => {
+    try {
+      const raw = localStorage.getItem(CART_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  })();
+
+  const existing = cart.find(
+    (entry) =>
+      entry.id === item.id &&
+      entry.size === item.size &&
+      entry.color === item.color
+  );
+
+  if (existing) {
+    existing.qty += item.qty || 1;
+  } else {
+    cart.push({
+      ...item,
+      qty: item.qty || 1,
+      price: parsePriceFallback(item.price),
+    });
+  }
+
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  updateBadgesFallback(cart);
+};
+
 // Gestion du bouton ajouter au panier
 const addCartBtn = document.querySelector('.btn-add-cart');
 if (addCartBtn && productData) {
   addCartBtn.addEventListener('click', function() {
     const selectedSize = getSelectedSize();
     const selectedColor = getSelectedColor();
+    const store = getStore();
 
     if (!selectedSize || !selectedColor) {
-      store.showToast('Veuillez sélectionner une taille et une couleur', 'info');
+      store?.showToast('Veuillez sélectionner une taille et une couleur', 'info');
       return;
     }
 
-    store.addToCart({
+    const payload = {
       ...productData,
       size: selectedSize,
       color: selectedColor,
       qty: 1,
-    });
+    };
+
+    if (store?.addToCart) {
+      store.addToCart(payload);
+    } else {
+      addToCartFallback(payload);
+    }
+
+    window.CartDrawer?.open();
 
     this.style.transform = 'scale(0.95)';
     setTimeout(() => {
