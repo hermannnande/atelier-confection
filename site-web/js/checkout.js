@@ -1,5 +1,6 @@
 const store = window.SiteStore;
 const CART_KEY = 'atelier-cart';
+const CHECKOUT_CART_KEY = 'checkoutCart';
 
 const readCartFallback = () => {
   try {
@@ -10,9 +11,21 @@ const readCartFallback = () => {
   }
 };
 
+const readCheckoutCart = () => {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 // Charger les articles du panier depuis localStorage
 function loadCartSummary() {
-  const cartItems = store?.getCart ? store.getCart() : readCartFallback();
+  const sessionCart = readCheckoutCart();
+  const cartItems = sessionCart.length
+    ? sessionCart
+    : (store?.getCart ? store.getCart() : readCartFallback());
   const summaryItemsContainer = document.getElementById('summaryItems');
   
   if (cartItems.length === 0) {
@@ -25,6 +38,11 @@ function loadCartSummary() {
     document.getElementById('summarySubtotal').textContent = '0 FCFA';
     document.getElementById('summaryTotal').textContent = '0 FCFA';
     return;
+  }
+
+  // Nettoyer le cache checkout pour éviter un vieux panier
+  if (sessionCart.length) {
+    sessionStorage.removeItem(CHECKOUT_CART_KEY);
   }
 
   let subtotal = 0;

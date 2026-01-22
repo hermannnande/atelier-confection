@@ -226,6 +226,11 @@ function proceedToCheckout() {
     store.showToast('Votre panier est vide');
     return;
   }
+  try {
+    sessionStorage.setItem('checkoutCart', JSON.stringify(cart));
+  } catch (e) {
+    // Ignorer si sessionStorage indisponible
+  }
   window.location.href = 'checkout.html';
 }
 

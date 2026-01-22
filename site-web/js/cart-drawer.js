@@ -368,6 +368,13 @@ const CartDrawer = {
       this.closeCheckoutModal(modal);
       // Fermer le tiroir d'abord
       this.close();
+      // Sauvegarder le panier pour la page checkout
+      try {
+        const cart = store?.getCart ? store.getCart() : [];
+        sessionStorage.setItem('checkoutCart', JSON.stringify(cart));
+      } catch (e) {
+        // Ignorer si sessionStorage indisponible
+      }
       // Rediriger vers checkout (chemin relatif adaptatif)
       setTimeout(() => {
         const currentPath = window.location.pathname;
