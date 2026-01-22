@@ -9,6 +9,7 @@ const CartDrawer = {
   drawer: null,
   content: null,
   footer: null,
+  isReady: false,
 
   init() {
     this.createDrawerHTML();
@@ -23,6 +24,8 @@ const CartDrawer = {
 
     // Empêcher la propagation des clics sur le drawer
     this.drawer?.addEventListener('click', (e) => e.stopPropagation());
+
+    this.isReady = Boolean(this.overlay && this.drawer && this.content && this.footer);
   },
 
   createDrawerHTML() {
@@ -71,6 +74,10 @@ const CartDrawer = {
   },
 
   open() {
+    // Sécuriser l'initialisation (au cas où DOMContentLoaded est déjà passé)
+    if (!this.isReady) {
+      this.init();
+    }
     this.render();
     this.overlay?.classList.add('active');
     this.drawer?.classList.add('active');
@@ -294,10 +301,21 @@ const CartDrawer = {
   }
 };
 
-// Initialiser le tiroir au chargement
-document.addEventListener('DOMContentLoaded', () => {
-  CartDrawer.init();
-});
-
-// Rendre le CartDrawer accessible globalement
+// Rendre le CartDrawer accessible globalement (même avant init)
 window.CartDrawer = CartDrawer;
+
+// Initialiser le tiroir dès que possible (même si DOMContentLoaded est déjà passé)
+const bootstrapCartDrawer = () => {
+  try {
+    CartDrawer.init();
+  } catch (e) {
+    // Ne pas bloquer le site si le drawer échoue, mais log pour debug
+    console.error('[CartDrawer] init failed', e);
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrapCartDrawer);
+} else {
+  bootstrapCartDrawer();
+}
