@@ -101,6 +101,84 @@ document.querySelector('.promo-btn')?.addEventListener('click', function() {
   }
 });
 
+// Popup de confirmation
+function showCheckoutModal() {
+  const modal = document.createElement('div');
+  modal.className = 'checkout-modal';
+  modal.innerHTML = `
+    <div class="checkout-modal-overlay"></div>
+    <div class="checkout-modal-content">
+      <div class="checkout-modal-icon">
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 16v-4"></path>
+          <path d="M12 8h.01"></path>
+        </svg>
+      </div>
+      <h2>⚡ Paiement à la livraison</h2>
+      <div class="checkout-modal-message">
+        <p class="greeting">✨ <strong>Bonjour Madame</strong>,</p>
+        <p>Nous vous proposons de <strong>magnifiques tenues</strong>, confectionnées avec soin et de belles finitions.</p>
+        <div class="delivery-info">
+          <div class="info-badge">
+            <span class="icon">⏱️</span>
+            <span><strong>Délai</strong> : confection + livraison en <strong>3 jours ouvrables</strong></span>
+          </div>
+          <div class="info-badge">
+            <span class="icon">💰</span>
+            <span><strong>Paiement uniquement à la livraison</strong></span>
+          </div>
+          <div class="info-badge">
+            <span class="icon">✨</span>
+            <span>Rendu élégant, bien fini et de qualité</span>
+          </div>
+        </div>
+        <p class="note">Votre commande sera traitée par notre atelier, puis livrée à votre adresse.</p>
+      </div>
+      <div class="checkout-modal-actions">
+        <button class="btn-cancel" onclick="closeCheckoutModal()">Annuler</button>
+        <button class="btn-continue" onclick="proceedToCheckout()">Continuer →</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Animation d'entrée
+  setTimeout(() => {
+    modal.querySelector('.checkout-modal-overlay').style.opacity = '1';
+    modal.querySelector('.checkout-modal-content').style.opacity = '1';
+    modal.querySelector('.checkout-modal-content').style.transform = 'translateY(0) scale(1)';
+  }, 10);
+}
+
+function closeCheckoutModal() {
+  const modal = document.querySelector('.checkout-modal');
+  if (modal) {
+    modal.querySelector('.checkout-modal-overlay').style.opacity = '0';
+    modal.querySelector('.checkout-modal-content').style.opacity = '0';
+    modal.querySelector('.checkout-modal-content').style.transform = 'translateY(-20px) scale(0.95)';
+    setTimeout(() => modal.remove(), 300);
+  }
+}
+
+function proceedToCheckout() {
+  // Sauvegarder le panier dans localStorage
+  const cartItems = [];
+  document.querySelectorAll('.cart-item').forEach(item => {
+    cartItems.push({
+      name: item.querySelector('.item-details h3').textContent,
+      size: item.querySelector('.item-size').textContent,
+      color: item.querySelector('.item-color').textContent,
+      price: item.querySelector('.item-price').textContent,
+      qty: item.querySelector('.qty-input').value
+    });
+  });
+  localStorage.setItem('cartItems', JSON.stringify(cartItems));
+  
+  // Redirection vers la page de commande
+  window.location.href = '../pages/checkout.html';
+}
+
 // Bouton checkout
 document.querySelector('.checkout-btn')?.addEventListener('click', function() {
   const itemCount = document.querySelectorAll('.cart-item').length;
@@ -110,6 +188,5 @@ document.querySelector('.checkout-btn')?.addEventListener('click', function() {
     return;
   }
 
-  // Redirection vers une page de paiement (à implémenter)
-  alert('Redirection vers le paiement...');
+  showCheckoutModal();
 });
