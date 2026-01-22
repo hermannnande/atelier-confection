@@ -74,6 +74,12 @@ const SiteStore = (() => {
 
     saveCart(cart);
     updateBadges();
+    
+    // Ouvrir le tiroir panier
+    if (window.CartDrawer) {
+      window.CartDrawer.open();
+    }
+    
     return cart;
   };
 
