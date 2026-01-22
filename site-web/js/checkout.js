@@ -23,16 +23,33 @@ const readCheckoutCart = () => {
 // Charger les articles du panier depuis localStorage
 function loadCartSummary() {
   const sessionCart = readCheckoutCart();
+  const localCart = readCartFallback();
+  const storeCart = store?.getCart ? store.getCart() : [];
+  
+  console.log('🔍 DEBUG CHECKOUT:');
+  console.log('  sessionStorage.checkoutCart:', sessionCart);
+  console.log('  localStorage.atelier-cart:', localCart);
+  console.log('  SiteStore.getCart():', storeCart);
+  
   const cartItems = sessionCart.length
     ? sessionCart
-    : (store?.getCart ? store.getCart() : readCartFallback());
+    : (storeCart.length ? storeCart : localCart);
+  
+  console.log('  ✅ Panier final utilisé:', cartItems);
+  
   const summaryItemsContainer = document.getElementById('summaryItems');
   
   if (cartItems.length === 0) {
     summaryItemsContainer.innerHTML = `
-      <div class="summary-empty">
-        <p>Votre panier est vide.</p>
-        <a href="panier.html" class="summary-empty-link">Retour au panier</a>
+      <div class="summary-empty" style="padding: 40px; text-align: center; background: #fff3cd; border-radius: 12px;">
+        <h3 style="color: #856404; margin-bottom: 12px;">⚠️ Panier vide</h3>
+        <p style="color: #856404; margin-bottom: 20px;">
+          Aucun article détecté.<br>
+          <small>Vérifiez la console (F12) pour plus de détails.</small>
+        </p>
+        <a href="panier.html" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
+          Retour au panier
+        </a>
       </div>
     `;
     document.getElementById('summarySubtotal').textContent = '0 FCFA';
