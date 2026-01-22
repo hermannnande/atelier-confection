@@ -121,6 +121,7 @@ const addToCartFallback = (item) => {
 // Gestion du bouton ajouter au panier
 const addCartBtn = document.querySelector('.btn-add-cart');
 if (addCartBtn && productData) {
+  window.__ProductAddToCartBound = true;
   addCartBtn.addEventListener('click', function() {
     const selectedSize = getSelectedSize();
     const selectedColor = getSelectedColor();

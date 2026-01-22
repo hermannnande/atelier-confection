@@ -194,6 +194,75 @@ const SiteStore = (() => {
 
 window.SiteStore = SiteStore;
 
+// Fallback: gestion ajout panier sur page produit si produit.js ne charge pas
+const bindProductAddToCartFallback = () => {
+  if (window.__ProductAddToCartFallbackBound) return;
+  if (window.__ProductAddToCartBound) return;
+
+  const productRoot = document.querySelector(".product-page");
+  const addBtn = document.querySelector(".btn-add-cart");
+
+  if (!productRoot || !addBtn) return;
+
+  const getSelectedSize = () =>
+    document.querySelector(".size-btn.active")?.dataset.size;
+  const getSelectedColor = () =>
+    document.querySelector(".color-btn.active")?.dataset.color;
+
+  addBtn.addEventListener("click", () => {
+    if (window.__ProductAddToCartBound) return;
+    const size = getSelectedSize();
+    const color = getSelectedColor();
+
+    if (!size || !color) {
+      SiteStore.showToast?.("Veuillez sélectionner une taille et une couleur");
+      return;
+    }
+
+    const payload = {
+      id: productRoot.dataset.id,
+      name: productRoot.dataset.name,
+      category: productRoot.dataset.category,
+      price: SiteStore.parsePrice(productRoot.dataset.price),
+      image: productRoot.dataset.image,
+      size,
+      color,
+      qty: 1,
+    };
+
+    if (SiteStore?.addToCart) {
+      SiteStore.addToCart(payload);
+    } else {
+      // Fallback localStorage si SiteStore indisponible
+      const cart = (() => {
+        try {
+          const raw = localStorage.getItem("atelier-cart");
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      })();
+
+      const existing = cart.find(
+        (item) => item.id === payload.id && item.size === size && item.color === color
+      );
+
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push(payload);
+      }
+
+      localStorage.setItem("atelier-cart", JSON.stringify(cart));
+      SiteStore.updateBadges?.();
+    }
+
+    window.CartDrawer?.open();
+  });
+
+  window.__ProductAddToCartFallbackBound = true;
+};
+
 // Intersection Observer pour animer les catégories au scroll
 const observeCategories = () => {
   const cards = document.querySelectorAll('.category-card');
@@ -218,5 +287,6 @@ const observeCategories = () => {
 window.addEventListener("load", () => {
   updateHeader();
   observeCategories();
+  bindProductAddToCartFallback();
   SiteStore.updateBadges();
 });
