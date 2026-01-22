@@ -226,7 +226,7 @@ function proceedToCheckout() {
     store.showToast('Votre panier est vide');
     return;
   }
-  window.location.href = '../pages/checkout.html';
+  window.location.href = 'checkout.html';
 }
 
 // Bouton checkout

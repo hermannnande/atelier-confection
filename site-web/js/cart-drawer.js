@@ -368,9 +368,12 @@ const CartDrawer = {
       this.closeCheckoutModal(modal);
       // Fermer le tiroir d'abord
       this.close();
-      // Rediriger vers checkout
+      // Rediriger vers checkout (chemin relatif adaptatif)
       setTimeout(() => {
-        window.location.href = 'pages/checkout.html';
+        const currentPath = window.location.pathname;
+        const isInPagesFolder = currentPath.includes('/pages/');
+        const checkoutUrl = isInPagesFolder ? 'checkout.html' : 'pages/checkout.html';
+        window.location.href = checkoutUrl;
       }, 300);
     });
     modal.querySelector('.checkout-modal-overlay')?.addEventListener('click', () => {
