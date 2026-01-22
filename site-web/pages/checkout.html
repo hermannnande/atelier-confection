@@ -74,21 +74,21 @@
           <div class="welcome-message">
             <div class="welcome-icon">✨</div>
             <h2>Bonjour Madame,</h2>
-            <p>Nous vous proposons de <strong>magnifiques tenues</strong>, confectionnées avec soin et de belles finitions.</p>
+            <p>Nous vous proposons de <strong style="color: #d4af37;">magnifiques tenues</strong>, confectionnées avec soin.</p>
             
             <div class="delivery-promise">
               <div class="promise-item">
                 <span class="icon">⏱️</span>
                 <div>
                   <strong>Délai</strong><br>
-                  <span>Confection + livraison en <strong>3 jours ouvrables</strong></span>
+                  <span>Confection + livraison en <strong style="color: #d4af37;">3 jours ouvrables</strong></span>
                 </div>
               </div>
               <div class="promise-item">
                 <span class="icon">✨</span>
                 <div>
                   <strong>Qualité garantie</strong><br>
-                  <span>Rendu élégant, bien fini et de qualité avant expédition</span>
+                  <span>Rendu <strong style="color: #d4af37;">élégant, bien fini et de qualité</strong></span>
                 </div>
               </div>
             </div>
@@ -126,33 +126,13 @@
               <label for="city">
                 Ville / Commune <span class="required">*</span>
               </label>
-              <select id="city" name="city" required>
-                <option value="">Sélectionnez votre ville</option>
-                <option value="Abidjan">Abidjan</option>
-                <option value="Abobo">Abobo</option>
-                <option value="Adjamé">Adjamé</option>
-                <option value="Attecoubé">Attecoubé</option>
-                <option value="Cocody">Cocody</option>
-                <option value="Koumassi">Koumassi</option>
-                <option value="Marcory">Marcory</option>
-                <option value="Plateau">Plateau</option>
-                <option value="Port-Bouët">Port-Bouët</option>
-                <option value="Treichville">Treichville</option>
-                <option value="Yopougon">Yopougon</option>
-                <option value="Autre">Autre ville</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="address">
-                Adresse de livraison (optionnel)
-              </label>
-              <textarea 
-                id="address" 
-                name="address" 
-                rows="3"
-                placeholder="Précisez votre adresse (quartier, rue, points de repère...)"
-              ></textarea>
+              <input 
+                type="text" 
+                id="city" 
+                name="city" 
+                placeholder="Ex: Cocody, Yopougon, Abobo..."
+                required
+              >
             </div>
 
             <div class="form-group">

@@ -51,7 +51,6 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     client: formData.get('fullname'),
     phone: formData.get('phone'),
     ville: formData.get('city'),
-    address: formData.get('address') || '',
     notes: formData.get('notes') || '',
     items: store.getCart(),
     total: document.getElementById('summaryTotal').textContent,
