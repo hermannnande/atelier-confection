@@ -1,5 +1,6 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
+import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
 
@@ -95,6 +96,25 @@ router.post('/public', async (req, res) => {
     }
 
     console.log('✅ Commande web créée:', data.numero_commande);
+
+    // 📱 Envoyer SMS automatique "Commande reçue" au client
+    try {
+      console.log('🔍 Vérification envoi SMS automatique pour commande_recue (commande web)...');
+      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_recue');
+      console.log('📊 Auto-send activé:', autoSendEnabled);
+      
+      if (autoSendEnabled) {
+        console.log('📱 Tentative d\'envoi SMS "Commande reçue" au client web...');
+        await smsService.sendCommandeNotification('commande_recue', data, null); // null = pas d'utilisateur (commande web)
+        console.log('✅ SMS "Commande reçue" envoyé avec succès au client');
+      } else {
+        console.log('⏸️  Envoi automatique SMS désactivé pour commande_recue');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+      console.error('Stack:', smsError.stack);
+      // Ne pas bloquer la création si SMS échoue
+    }
     
     res.status(201).json({
       success: true,
