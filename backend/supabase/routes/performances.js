@@ -44,11 +44,33 @@ router.get('/overview', authenticate, authorize('gestionnaire', 'administrateur'
 
 router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
-    const [{ data: appelants }, { data: commandes }] = await Promise.all([
-      supabase.from('users').select('id, nom, email, actif').eq('role', 'appelant').eq('actif', true),
-      supabase.from('commandes').select('id, appelant_id, statut, urgence, prix'),
-    ]);
+    
+    // Récupérer les appelants
+    const { data: appelants } = await supabase
+      .from('users')
+      .select('id, nom, email, actif')
+      .eq('role', 'appelant')
+      .eq('actif', true);
+
+    // Construire la requête des commandes avec filtres de date
+    let commandesQuery = supabase
+      .from('commandes')
+      .select('id, appelant_id, statut, urgence, prix, created_at');
+    
+    // Appliquer les filtres de date si présents
+    if (dateDebut) {
+      commandesQuery = commandesQuery.gte('created_at', dateDebut);
+    }
+    if (dateFin) {
+      // Ajouter un jour pour inclure toute la journée de fin
+      const dateFin23h59 = new Date(dateFin);
+      dateFin23h59.setHours(23, 59, 59, 999);
+      commandesQuery = commandesQuery.lte('created_at', dateFin23h59.toISOString());
+    }
+    
+    const { data: commandes } = await commandesQuery;
 
     const commandesByAppelant = new Map();
     for (const c of commandes || []) {
@@ -60,13 +82,18 @@ router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur
 
     const performances = (appelants || []).map((a) => {
       const list = commandesByAppelant.get(a.id) || [];
-      const commandesValidees = list.filter((c) =>
-        ['validee', 'en_decoupe', 'en_couture', 'en_stock', 'en_livraison', 'livree'].includes(c.statut)
-      ).length;
+      
+      // ✅ CORRECTION : Une commande est validée uniquement si elle est "confirmee" (confirmée par l'appelant)
+      const commandesValidees = list.filter((c) => c.statut === 'confirmee').length;
+      
       const commandesAnnulees = list.filter((c) => c.statut === 'annulee').length;
       const commandesEnAttente = list.filter((c) => c.statut === 'en_attente_paiement').length;
       const commandesUrgentes = list.filter((c) => c.urgence).length;
+      
+      // Taux de validation basé sur les commandes non annulées
       const tauxValidation = list.length > 0 ? (((list.filter((c) => c.statut !== 'annulee').length / list.length) * 100).toFixed(2)) : 0;
+      
+      // CA des commandes livrées
       const chiffreAffaires = list.filter((c) => c.statut === 'livree').reduce((sum, c) => sum + Number(c.prix || 0), 0);
 
       return {
@@ -90,11 +117,30 @@ router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur
 
 router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
-    const [{ data: stylistes }, { data: commandes }] = await Promise.all([
-      supabase.from('users').select('id, nom, email, actif').eq('role', 'styliste').eq('actif', true),
-      supabase.from('commandes').select('id, styliste_id, statut'),
-    ]);
+    
+    const { data: stylistes } = await supabase
+      .from('users')
+      .select('id, nom, email, actif')
+      .eq('role', 'styliste')
+      .eq('actif', true);
+    
+    // Construire la requête avec filtres de date
+    let commandesQuery = supabase
+      .from('commandes')
+      .select('id, styliste_id, statut, created_at');
+    
+    if (dateDebut) {
+      commandesQuery = commandesQuery.gte('created_at', dateDebut);
+    }
+    if (dateFin) {
+      const dateFin23h59 = new Date(dateFin);
+      dateFin23h59.setHours(23, 59, 59, 999);
+      commandesQuery = commandesQuery.lte('created_at', dateFin23h59.toISOString());
+    }
+    
+    const { data: commandes } = await commandesQuery;
 
     const commandesByStyliste = new Map();
     for (const c of commandes || []) {
@@ -125,11 +171,30 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
 
 router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
-    const [{ data: couturiers }, { data: commandes }] = await Promise.all([
-      supabase.from('users').select('id, nom, email, actif').eq('role', 'couturier').eq('actif', true),
-      supabase.from('commandes').select('id, couturier_id, statut, created_at, date_couture'),
-    ]);
+    
+    const { data: couturiers } = await supabase
+      .from('users')
+      .select('id, nom, email, actif')
+      .eq('role', 'couturier')
+      .eq('actif', true);
+    
+    // Construire la requête avec filtres de date
+    let commandesQuery = supabase
+      .from('commandes')
+      .select('id, couturier_id, statut, created_at, date_couture');
+    
+    if (dateDebut) {
+      commandesQuery = commandesQuery.gte('created_at', dateDebut);
+    }
+    if (dateFin) {
+      const dateFin23h59 = new Date(dateFin);
+      dateFin23h59.setHours(23, 59, 59, 999);
+      commandesQuery = commandesQuery.lte('created_at', dateFin23h59.toISOString());
+    }
+    
+    const { data: commandes } = await commandesQuery;
 
     const commandesByCouturier = new Map();
     for (const c of commandes || []) {
@@ -173,11 +238,32 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
 
 router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
+    const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
-    const [{ data: livreurs }, { data: livraisons }, { data: commandes }] = await Promise.all([
-      supabase.from('users').select('id, nom, telephone, actif').eq('role', 'livreur').eq('actif', true),
-      supabase.from('livraisons').select('id, livreur_id, statut, commande_id'),
-      supabase.from('commandes').select('id, prix'),
+    
+    const { data: livreurs } = await supabase
+      .from('users')
+      .select('id, nom, telephone, actif')
+      .eq('role', 'livreur')
+      .eq('actif', true);
+    
+    // Construire la requête des livraisons avec filtres de date
+    let livraisonsQuery = supabase
+      .from('livraisons')
+      .select('id, livreur_id, statut, commande_id, created_at');
+    
+    if (dateDebut) {
+      livraisonsQuery = livraisonsQuery.gte('created_at', dateDebut);
+    }
+    if (dateFin) {
+      const dateFin23h59 = new Date(dateFin);
+      dateFin23h59.setHours(23, 59, 59, 999);
+      livraisonsQuery = livraisonsQuery.lte('created_at', dateFin23h59.toISOString());
+    }
+    
+    const [{ data: livraisons }, { data: commandes }] = await Promise.all([
+      livraisonsQuery,
+      supabase.from('commandes').select('id, prix')
     ]);
 
     const prixByCommande = new Map((commandes || []).map((c) => [c.id, Number(c.prix || 0)]));

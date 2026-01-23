@@ -275,3 +275,14 @@ Si vous voulez ajouter d'autres couleurs plus tard, il suffit de modifier **2 fi
 **Couleurs disponibles** : 21 partout où nécessaire  
 **Modifications requises** : ❌ Aucune
 
+
+
+
+
+
+
+
+
+
+
+

@@ -360,3 +360,14 @@ Les gestionnaires peuvent maintenant :
 **Fichiers modifiés** : 1 (`CaisseLivreurs.jsx`)  
 **Migration requise** : ❌ Non (utilise les données existantes)
 
+
+
+
+
+
+
+
+
+
+
+

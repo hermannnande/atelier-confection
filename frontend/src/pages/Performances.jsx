@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { BarChart3, TrendingUp, Users, Award } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Award, Calendar, Filter, X } from 'lucide-react';
 
 const Performances = () => {
   const { user } = useAuthStore();
@@ -10,6 +10,11 @@ const Performances = () => {
   const [couturiers, setCouturiers] = useState([]);
   const [stylistes, setStylistes] = useState([]);
   const [livreurs, setLivreurs] = useState([]);
+  
+  // Filtre de date
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   
   // Définir l'onglet actif par défaut selon le rôle
   const getDefaultTab = () => {
@@ -26,15 +31,20 @@ const Performances = () => {
 
   useEffect(() => {
     fetchPerformances();
-  }, []);
+  }, [dateDebut, dateFin]);
 
   const fetchPerformances = async () => {
     try {
+      // Construire les query params pour le filtre de date
+      const params = {};
+      if (dateDebut) params.dateDebut = dateDebut;
+      if (dateFin) params.dateFin = dateFin;
+      
       const [appelRes, coutRes, stylRes, livrRes] = await Promise.all([
-        api.get('/performances/appelants'),
-        api.get('/performances/couturiers'),
-        api.get('/performances/stylistes'),
-        api.get('/performances/livreurs')
+        api.get('/performances/appelants', { params }),
+        api.get('/performances/couturiers', { params }),
+        api.get('/performances/stylistes', { params }),
+        api.get('/performances/livreurs', { params })
       ]);
 
       // Filtrer les performances selon le rôle de l'utilisateur
@@ -88,26 +98,104 @@ const Performances = () => {
   
   const tabs = getAllTabs();
 
+  const resetFilters = () => {
+    setDateDebut('');
+    setDateFin('');
+  };
+
+  const hasActiveFilters = dateDebut || dateFin;
+
   return (
     <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full px-2 sm:px-4">
       {/* En-tête */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 sm:p-6 lg:p-8 text-white max-w-full overflow-hidden">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <BarChart3 size={28} className="flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">
-              {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-                ? 'Tableau de Bord des Performances' 
-                : 'Mes Performances'}
-            </h1>
-            <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">
-              {user?.role === 'administrateur' || user?.role === 'gestionnaire'
-                ? 'Suivez les performances de votre équipe'
-                : 'Consultez vos statistiques personnelles'}
-            </p>
+        <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <BarChart3 size={28} className="flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">
+                {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
+                  ? 'Tableau de Bord des Performances' 
+                  : 'Mes Performances'}
+              </h1>
+              <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">
+                {user?.role === 'administrateur' || user?.role === 'gestionnaire'
+                  ? 'Suivez les performances de votre équipe'
+                  : 'Consultez vos statistiques personnelles'}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`btn-secondary flex items-center gap-2 flex-shrink-0 ${showFilters ? 'bg-white' : ''}`}
+          >
+            <Filter size={18} />
+            <span className="hidden sm:inline">Filtres</span>
+            {hasActiveFilters && (
+              <span className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {(dateDebut ? 1 : 0) + (dateFin ? 1 : 0)}
+              </span>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Filtres de date */}
+      {showFilters && (
+        <div className="card animate-slide-up">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="text-purple-600" size={20} />
+              <h3 className="font-semibold text-gray-900">Filtrer par période</h3>
+            </div>
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1 font-medium"
+              >
+                <X size={16} />
+                Réinitialiser
+              </button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">
+                Date de début
+              </label>
+              <input
+                type="date"
+                value={dateDebut}
+                onChange={(e) => setDateDebut(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="label">
+                Date de fin
+              </label>
+              <input
+                type="date"
+                value={dateFin}
+                onChange={(e) => setDateFin(e.target.value)}
+                className="input"
+              />
+            </div>
+          </div>
+          
+          {hasActiveFilters && (
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-sm text-purple-800">
+                <span className="font-semibold">Période active :</span> {' '}
+                {dateDebut && `Du ${new Date(dateDebut).toLocaleDateString('fr-FR')}`}
+                {dateDebut && dateFin && ' '}
+                {dateFin && `au ${new Date(dateFin).toLocaleDateString('fr-FR')}`}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="card max-w-full overflow-hidden">

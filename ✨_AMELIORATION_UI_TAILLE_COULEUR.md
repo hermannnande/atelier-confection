@@ -317,3 +317,14 @@ transition-all duration-300  // Tout est fluide
 **Lignes ajoutées** : ~150  
 **Impact** : Amélioration majeure de l'UX ✨
 
+
+
+
+
+
+
+
+
+
+
+

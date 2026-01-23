@@ -230,3 +230,14 @@ Voici un aperçu visuel des couleurs (pour référence) :
 **Nouvelles couleurs** : 8  
 **Fichiers modifiés** : 1
 
+
+
+
+
+
+
+
+
+
+
+

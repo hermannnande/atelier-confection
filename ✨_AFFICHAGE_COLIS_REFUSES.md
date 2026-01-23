@@ -246,3 +246,14 @@ Le gestionnaire voit maintenant **3 compteurs distincts** :
 **Fichiers modifiés** : 2  
 **Migration requise** : ❌ Non
 
+
+
+
+
+
+
+
+
+
+
+
