@@ -187,8 +187,14 @@ const Appel = () => {
           // Si pas urgent mais il y a une note, la sauvegarder
           await api.put(`/commandes/${commandeId}`, { noteAppelant: noteAppelant.trim() });
         }
+      } else if (action === 'attente') {
+        // Pour attente, utiliser la route /attente-depot qui déclenche le SMS
+        await api.post(`/commandes/${commandeId}/attente-depot`);
+        if (noteAppelant.trim()) {
+          await api.put(`/commandes/${commandeId}`, { noteAppelant: noteAppelant.trim() });
+        }
       } else {
-        // Pour les autres actions (attente, annuler), utiliser PUT classique
+        // Pour les autres actions (annuler, etc.), utiliser PUT classique
         const payload = { statut: newStatut };
         payload.noteAppelant = noteAppelant.trim();
         await api.put(`/commandes/${commandeId}`, payload);

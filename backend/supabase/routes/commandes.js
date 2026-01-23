@@ -309,6 +309,55 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
   }
 });
 
+// 📱 Route : Mettre en attente de dépôt et envoyer SMS demande d'avance
+router.post('/:id/attente-depot', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
+    if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+
+    const historique = Array.isArray(existing.historique) ? existing.historique : [];
+    historique.push({
+      action: 'Mise en attente de dépôt',
+      statut: 'en_attente_paiement',
+      utilisateur: req.userId,
+      date: new Date().toISOString(),
+    });
+
+    const { data, error } = await supabase
+      .from('commandes')
+      .update({ statut: 'en_attente_paiement', historique })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) return res.status(500).json({ message: 'Erreur lors de la mise en attente', error: error.message });
+
+    // 📱 Envoyer SMS automatique "Demande d'avance"
+    try {
+      console.log('🔍 Vérification envoi SMS automatique pour attente_depot...');
+      const autoSendEnabled = await smsService.isAutoSendEnabled('attente_depot');
+      console.log('📊 Auto-send activé:', autoSendEnabled);
+      
+      if (autoSendEnabled) {
+        console.log('📱 Tentative d\'envoi SMS "Demande d\'avance"...');
+        await smsService.sendCommandeNotification('attente_depot', data, req.userId);
+        console.log('✅ SMS "Demande d\'avance" envoyé avec succès');
+      } else {
+        console.log('⏸️  Envoi automatique SMS désactivé pour attente_depot');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+      console.error('Stack:', smsError.stack);
+      // Ne pas bloquer la mise en attente si SMS échoue
+    }
+
+    return res.json({ message: 'Commande mise en attente de dépôt', commande: mapCommande(data) });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la mise en attente', error: error.message });
+  }
+});
+
 router.post('/:id/decoupe', authenticate, authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
