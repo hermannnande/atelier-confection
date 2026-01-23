@@ -324,9 +324,18 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
       date: new Date().toISOString(),
     });
 
+    const update = {
+      statut: 'en_couture',
+      historique,
+      styliste_id: existing.styliste_id ?? req.userId,
+    };
+    if (!existing.date_decoupe) {
+      update.date_decoupe = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('commandes')
-      .update({ statut: 'en_couture', historique })
+      .update(update)
       .eq('id', req.params.id)
       .select('*')
       .single();

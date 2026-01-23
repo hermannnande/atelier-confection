@@ -49,6 +49,8 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
   try {
     const couturiers = await User.find({ role: 'couturier', actif: true });
     
+    const commandesEnCoursTotal = await Commande.countDocuments({ statut: 'en_couture' });
+
     const performances = await Promise.all(couturiers.map(async (couturier) => {
       const commandes = await Commande.find({ couturier: couturier._id });
       
@@ -56,7 +58,7 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
         ['en_stock', 'en_livraison', 'livree'].includes(c.statut)
       );
 
-      const commandesEnCours = commandes.filter(c => c.statut === 'en_couture');
+      const commandesEnCours = commandesEnCoursTotal;
 
       // Calculer le temps moyen de confection (si les dates sont disponibles)
       let tempsMoyenConfection = 0;
@@ -98,6 +100,8 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
   try {
     const stylistes = await User.find({ role: 'styliste', actif: true });
     
+    const commandesEnCoursTotal = await Commande.countDocuments({ statut: 'en_decoupe' });
+
     const performances = await Promise.all(stylistes.map(async (styliste) => {
       const commandes = await Commande.find({ styliste: styliste._id });
       
@@ -105,7 +109,7 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
         ['en_couture', 'en_stock', 'en_livraison', 'livree'].includes(c.statut)
       );
 
-      const commandesEnCours = commandes.filter(c => c.statut === 'en_decoupe');
+      const commandesEnCours = commandesEnCoursTotal;
 
       const stats = {
         styliste: {

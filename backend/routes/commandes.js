@@ -218,6 +218,12 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
     }
 
     commande.statut = 'en_couture';
+    if (!commande.styliste) {
+      commande.styliste = req.userId;
+    }
+    if (!commande.dateDecoupe) {
+      commande.dateDecoupe = new Date();
+    }
     commande.historique.push({
       action: 'Envoyé en couture',
       statut: 'en_couture',

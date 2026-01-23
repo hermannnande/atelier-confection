@@ -15,9 +15,21 @@
       "config": {
         "distDir": "dist"
       }
+    },
+    {
+      "src": "site-web/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/site-web/?",
+      "dest": "/site-web/index.html"
+    },
+    {
+      "src": "/site-web/(.*)",
+      "dest": "/site-web/$1"
+    },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.js"
