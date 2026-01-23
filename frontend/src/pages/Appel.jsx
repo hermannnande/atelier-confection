@@ -176,16 +176,23 @@ const Appel = () => {
           break;
       }
 
-      const payload = { statut: newStatut };
-      if (action === 'urgent') {
-        payload.urgence = true;
+      // Pour confirmer ou urgent, utiliser la route /valider qui déclenche le SMS
+      if (action === 'confirmer' || action === 'urgent') {
+        await api.post(`/commandes/${commandeId}/valider`);
+        
+        // Si urgent, mettre à jour le flag urgence séparément
+        if (action === 'urgent') {
+          await api.put(`/commandes/${commandeId}`, { urgence: true, noteAppelant: noteAppelant.trim() });
+        } else if (noteAppelant.trim()) {
+          // Si pas urgent mais il y a une note, la sauvegarder
+          await api.put(`/commandes/${commandeId}`, { noteAppelant: noteAppelant.trim() });
+        }
+      } else {
+        // Pour les autres actions (attente, annuler), utiliser PUT classique
+        const payload = { statut: newStatut };
+        payload.noteAppelant = noteAppelant.trim();
+        await api.put(`/commandes/${commandeId}`, payload);
       }
-      
-      // Toujours envoyer la note de l'appelant (même si vide)
-      // Si vide, cela efface la note automatique générée par le système
-      payload.noteAppelant = noteAppelant.trim();
-
-      await api.put(`/commandes/${commandeId}`, payload);
       
       toast.success(message);
       

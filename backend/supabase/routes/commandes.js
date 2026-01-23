@@ -177,6 +177,26 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
 
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
     const commande = mapCommande(attachUsers(data, usersById));
+
+    // 📱 Envoyer SMS automatique "Commande reçue"
+    try {
+      console.log('🔍 Vérification envoi SMS automatique pour commande_recue...');
+      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_recue');
+      console.log('📊 Auto-send activé:', autoSendEnabled);
+      
+      if (autoSendEnabled) {
+        console.log('📱 Tentative d\'envoi SMS "Commande reçue"...');
+        await smsService.sendCommandeNotification('commande_recue', data, req.userId);
+        console.log('✅ SMS "Commande reçue" envoyé avec succès');
+      } else {
+        console.log('⏸️  Envoi automatique SMS désactivé pour commande_recue');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+      console.error('Stack:', smsError.stack);
+      // Ne pas bloquer la création si SMS échoue
+    }
+
     return res.status(201).json({ message: 'Commande créée avec succès', commande });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
@@ -266,13 +286,20 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
 
     // 📱 Envoyer SMS automatique "Commande validée"
     try {
+      console.log('🔍 Vérification envoi SMS automatique pour commande_validee...');
       const autoSendEnabled = await smsService.isAutoSendEnabled('commande_validee');
+      console.log('📊 Auto-send activé:', autoSendEnabled);
+      
       if (autoSendEnabled) {
+        console.log('📱 Tentative d\'envoi SMS "Commande validée"...');
         await smsService.sendCommandeNotification('commande_validee', data, req.userId);
-        console.log('✅ SMS "Commande validée" envoyé');
+        console.log('✅ SMS "Commande validée" envoyé avec succès');
+      } else {
+        console.log('⏸️  Envoi automatique SMS désactivé pour commande_validee');
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+      console.error('Stack:', smsError.stack);
       // Ne pas bloquer la validation si SMS échoue
     }
 
