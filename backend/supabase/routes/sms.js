@@ -325,6 +325,7 @@ router.put('/config/:key', async (req, res) => {
 router.post('/test', async (req, res) => {
   try {
     const { phone } = req.body;
+    const userId = req.user?.id;
     
     if (!phone) {
       return res.status(400).json({ 
@@ -338,6 +339,21 @@ router.post('/test', async (req, res) => {
                        `Envoyé le ${new Date().toLocaleString('fr-FR')}`;
 
     const result = await smsService.sendSMS(phone, testMessage);
+
+    // Logger le SMS de test dans l'historique
+    await smsService.logSMS({
+      commandeId: null,
+      numeroCommande: null,
+      destinataireNom: 'Test',
+      destinataireTelephone: smsService.formatPhoneNumber(phone),
+      message: testMessage,
+      templateCode: 'test',
+      statut: result.success ? 'envoye' : 'echoue',
+      responseApi: result.response || null,
+      messageId: result.message_id,
+      envoyePar: userId,
+      estTest: true
+    });
 
     res.json({ 
       success: true, 
