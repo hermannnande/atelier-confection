@@ -19,7 +19,8 @@ import {
   PhoneCall,
   History,
   Wallet,
-  Shield
+  Shield,
+  MessageSquare
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -41,6 +42,7 @@ const Layout = () => {
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
     { name: 'Caisse Livreurs', href: '/caisse-livreurs', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Gestion Avancée', href: '/gestion-commandes', icon: Shield, roles: ['administrateur', 'gestionnaire'], gradient: 'from-red-500 to-pink-600' },
+    { name: 'Notifications SMS', href: '/notifications-sms', icon: MessageSquare, roles: ['administrateur', 'gestionnaire'], gradient: 'from-green-500 to-emerald-500' },
     { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur'], gradient: 'from-violet-500 to-purple-500' },
     { name: 'Utilisateurs', href: '/utilisateurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-cyan-500 to-blue-500' },
   ];

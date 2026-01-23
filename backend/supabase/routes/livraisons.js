@@ -2,6 +2,7 @@ import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
+import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
 
@@ -134,6 +135,26 @@ router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur
         })
         .eq('id', stockItem.id);
       if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
+    }
+
+    // 📱 Envoyer SMS automatique "Livraison dans 24h"
+    try {
+      const autoSendEnabled = await smsService.isAutoSendEnabled('en_livraison');
+      if (autoSendEnabled) {
+        // Récupérer la commande mise à jour
+        const { data: updatedCommande } = await supabase
+          .from('commandes')
+          .select('*')
+          .eq('id', commandeId)
+          .single();
+        
+        if (updatedCommande) {
+          await smsService.sendCommandeNotification('en_livraison', updatedCommande, req.userId);
+          console.log('✅ SMS "Livraison dans 24h" envoyé');
+        }
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
     }
 
     return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(livraison) });

@@ -2,6 +2,7 @@ import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { mapCommande, mapUser } from '../map.js';
+import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
 
@@ -262,6 +263,19 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
       .single();
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
+
+    // 📱 Envoyer SMS automatique "Commande validée"
+    try {
+      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_validee');
+      if (autoSendEnabled) {
+        await smsService.sendCommandeNotification('commande_validee', data, req.userId);
+        console.log('✅ SMS "Commande validée" envoyé');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+      // Ne pas bloquer la validation si SMS échoue
+    }
+
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
@@ -318,6 +332,18 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
       .single();
 
     if (error) return res.status(500).json({ message: 'Erreur', error: error.message });
+
+    // 📱 Envoyer SMS automatique "En cours de confection"
+    try {
+      const autoSendEnabled = await smsService.isAutoSendEnabled('en_couture');
+      if (autoSendEnabled) {
+        await smsService.sendCommandeNotification('en_couture', data, req.userId);
+        console.log('✅ SMS "En cours de confection" envoyé');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+    }
+
     return res.json({ message: 'Commande envoyée en couture', commande: mapCommande(data) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
@@ -409,6 +435,17 @@ router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'gesti
         image: existing.modele?.image,
         mouvements,
       });
+    }
+
+    // 📱 Envoyer SMS automatique "Confection terminée"
+    try {
+      const autoSendEnabled = await smsService.isAutoSendEnabled('confectionnee');
+      if (autoSendEnabled) {
+        await smsService.sendCommandeNotification('confectionnee', updatedCommande, req.userId);
+        console.log('✅ SMS "Confection terminée" envoyé');
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
     }
 
     return res.json({ message: 'Commande terminée et ajoutée au stock', commande: mapCommande(updatedCommande) });

@@ -20,6 +20,7 @@ import CaisseLivreurs from './pages/CaisseLivreurs';
 import Performances from './pages/Performances';
 import Utilisateurs from './pages/Utilisateurs';
 import GestionCommandes from './pages/GestionCommandes';
+import NotificationsSMS from './pages/NotificationsSMS';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -169,6 +170,13 @@ function App() {
           <Route path="gestion-commandes" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <GestionCommandes />
+            </ProtectedRoute>
+          } />
+          
+          {/* Notifications SMS - Admin et Gestionnaire */}
+          <Route path="notifications-sms" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <NotificationsSMS />
             </ProtectedRoute>
           } />
         </Route>
