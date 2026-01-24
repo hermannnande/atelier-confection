@@ -39,7 +39,12 @@ class SMSService {
     if (!phone) return null;
     
     // Nettoyer le numéro
-    let cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+    // - retire espaces/parenthèses/points/tirets
+    // - garde uniquement chiffres et +
+    let cleaned = String(phone).trim();
+    if (cleaned.toLowerCase().startsWith('tel:')) cleaned = cleaned.slice(4);
+    cleaned = cleaned.replace(/[\s\-\(\)\.]/g, '');
+    cleaned = cleaned.replace(/[^\d+]/g, '');
     
     // Si commence par +, c'est bon
     if (cleaned.startsWith('+')) {
@@ -50,18 +55,34 @@ class SMSService {
     if (cleaned.startsWith('00')) {
       return '+' + cleaned.substring(2);
     }
-    
-    // Si commence par 0 (numéro local Côte d'Ivoire), ajouter +225
-    if (cleaned.startsWith('0')) {
-      return '+225' + cleaned.substring(1);
+
+    // Si commence par 225 (sans +), normaliser
+    if (cleaned.startsWith('225')) {
+      return '+' + cleaned;
     }
-    
-    // Si ne commence pas par +, ajouter +225 (par défaut Côte d'Ivoire)
-    if (!cleaned.startsWith('+')) {
-      return '+225' + cleaned;
+
+    // Côte d'Ivoire (par défaut)
+    // IMPORTANT: depuis la réforme, les numéros sont souvent en 10 chiffres et commencent par 0 (ex: 07xxxxxxxx).
+    // Le 0 fait partie du numéro national, donc en E.164 c'est bien +22507xxxxxxxx (on ne retire pas le 0).
+    const digits = cleaned.replace(/\D/g, '');
+
+    // 10 chiffres et commence par 0 -> +225 + 10 chiffres
+    if (digits.length === 10 && digits.startsWith('0')) {
+      return '+225' + digits;
     }
-    
-    return cleaned;
+
+    // 9 chiffres (souvent sans le 0 initial) -> on ajoute un 0 devant
+    if (digits.length === 9) {
+      return '+2250' + digits;
+    }
+
+    // 8 chiffres (ancien format possible) -> +225 + 8 chiffres
+    if (digits.length === 8) {
+      return '+225' + digits;
+    }
+
+    // Fallback: on préfixe +225
+    return '+225' + digits;
   }
 
   /**
