@@ -209,6 +209,7 @@ class SMSService {
       
       // SMS8.io retourne: {success: true, data: {messages: [...]}}
       const messageData = result.data?.messages?.[0] || {};
+      const sms8StatusRaw = messageData.status || messageData.Status || null;
       
       return {
         success: true,
@@ -216,6 +217,7 @@ class SMSService {
         phone: formattedPhone,
         message: message,
         message_id: messageData.ID || messageData.id || `msg_${Date.now()}`,
+        sms8_status: sms8StatusRaw,
         // garder la réponse complète (debug prod/vercel)
         response: result
       };
@@ -336,6 +338,15 @@ class SMSService {
         at: new Date().toISOString(),
       };
 
+      // Le statut "envoye" dans notre DB doit refléter au minimum "accepté & envoyé" côté SMS8.
+      // Si SMS8 renvoie Pending/Queued/etc, on garde "en_attente" (sinon l'admin croit que c'est parti).
+      const sms8Status = String(result.sms8_status || '').toLowerCase();
+      const shouldBePending =
+        !result.test_mode &&
+        result.success &&
+        sms8Status &&
+        (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
+
       // Logger dans l'historique
       await this.logSMS({
         commandeId: commande.id,
@@ -344,7 +355,7 @@ class SMSService {
         destinataireTelephone: this.formatPhoneNumber(phone),
         message: message,
         templateCode: templateCode,
-        statut: result.success ? 'envoye' : 'echoue',
+        statut: result.success ? (shouldBePending ? 'en_attente' : 'envoye') : 'echoue',
         responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
         messageId: result.message_id,
         envoyePar: userId,

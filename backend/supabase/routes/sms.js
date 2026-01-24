@@ -203,6 +203,13 @@ router.post('/send', async (req, res) => {
       at: new Date().toISOString(),
     };
 
+    const sms8Status = String(result.sms8_status || '').toLowerCase();
+    const shouldBePending =
+      !result.test_mode &&
+      result.success &&
+      sms8Status &&
+      (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
+
     // Logger
     await smsService.logSMS({
       commandeId: commandeId || null,
@@ -210,7 +217,7 @@ router.post('/send', async (req, res) => {
       destinataireTelephone: smsService.formatPhoneNumber(phone),
       message: message,
       templateCode: 'manuel',
-      statut: result.success ? 'envoye' : 'echoue',
+      statut: result.success ? (shouldBePending ? 'en_attente' : 'envoye') : 'echoue',
       responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
       messageId: result.message_id,
       envoyePar: userId,
@@ -350,6 +357,13 @@ router.post('/test', async (req, res) => {
       at: new Date().toISOString(),
     };
 
+    const sms8Status = String(result.sms8_status || '').toLowerCase();
+    const shouldBePending =
+      !result.test_mode &&
+      result.success &&
+      sms8Status &&
+      (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
+
     // Logger le SMS de test dans l'historique
     await smsService.logSMS({
       commandeId: null,
@@ -358,7 +372,7 @@ router.post('/test', async (req, res) => {
       destinataireTelephone: smsService.formatPhoneNumber(phone),
       message: testMessage,
       templateCode: 'test',
-      statut: result.success ? 'envoye' : 'echoue',
+      statut: result.success ? (shouldBePending ? 'en_attente' : 'envoye') : 'echoue',
       responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
       messageId: result.message_id,
       envoyePar: userId,
