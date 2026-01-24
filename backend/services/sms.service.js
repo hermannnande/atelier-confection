@@ -12,6 +12,27 @@ class SMSService {
   }
 
   /**
+   * Normaliser le paramètre `devices` pour l'endpoint legacy `services/send.php`.
+   * Important: cet endpoint accepte `0` (device principal) ou des IDs numériques.
+   * Les IDs du type `dev_...` peuvent provoquer "Invalid request format."
+   */
+  normalizeDevicesParam() {
+    const raw = String(this.deviceId ?? '0').trim();
+    if (!raw) return { raw: '0', used: '0', note: 'empty->0' };
+
+    // OK: "0" ou numérique
+    if (raw === '0' || /^\d+$/.test(raw)) return { raw, used: raw, note: null };
+
+    // ID "dev_..." (souvent montré dans l'app) -> pour send.php on force 0
+    if (raw.startsWith('dev_')) {
+      return { raw, used: '0', note: 'dev_->0 (send.php expects numeric/0)' };
+    }
+
+    // Fallback safe
+    return { raw, used: '0', note: 'unsupported->0' };
+  }
+
+  /**
    * Formater le numéro de téléphone au format international
    */
   formatPhoneNumber(phone) {
@@ -113,7 +134,9 @@ class SMSService {
 
       // Envoi réel via SMS8.io
       console.log(`📱 Envoi SMS à ${formattedPhone}...`);
-      console.log(`   Device: ${String(this.deviceId)}`);
+      const device = this.normalizeDevicesParam();
+      console.log(`   Device(config): ${device.raw}`);
+      console.log(`   Device(used):   ${device.used}${device.note ? ` (${device.note})` : ''}`);
       console.log(`   API Key: ${this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'missing'}`);
 
       // Utiliser URLSearchParams pour format application/x-www-form-urlencoded
@@ -121,7 +144,7 @@ class SMSService {
       params.append('key', this.apiKey);
       params.append('number', formattedPhone);
       params.append('message', message);
-      params.append('devices', String(this.deviceId ?? '0')); // 0 = appareil principal
+      params.append('devices', device.used); // 0 = appareil principal
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -149,7 +172,9 @@ class SMSService {
           request: {
             url: this.apiUrl,
             number: formattedPhone,
-            devices: String(this.deviceId ?? '0'),
+            devices: device.used,
+            devicesConfigured: device.raw,
+            devicesNote: device.note,
             // On tronque le message pour éviter un JSON énorme (mais assez pour diagnostiquer)
             messagePreview: String(message || '').slice(0, 200),
           },
@@ -376,6 +401,7 @@ class SMSService {
       configured: !!this.apiKey,
       apiKey: this.apiKey ? `${this.apiKey.substring(0, 10)}...` : null,
       deviceId: this.deviceId || '0 (Primary device)',
+      deviceUsed: this.normalizeDevicesParam().used,
       senderPhone: this.senderPhone,
       configError: error ? error.message : null,
       config: config
