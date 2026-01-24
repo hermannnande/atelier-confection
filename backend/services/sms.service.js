@@ -6,6 +6,7 @@ class SMSService {
     this.apiKey = process.env.SMS8_API_KEY;
     // SMS8 accepte soit "0" (device principal) soit un device id type "dev_xxx"
     this.deviceId = process.env.SMS8_DEVICE_ID ?? '0';
+    this.simSlot = process.env.SMS8_SIM_SLOT; // optionnel: "1" ou "2"
     this.senderPhone = process.env.SMS8_SENDER_PHONE;
     this.enabled = process.env.SMS_ENABLED === 'true';
     this.apiUrl = 'https://app.sms8.io/services/send.php';
@@ -30,6 +31,16 @@ class SMSService {
 
     // Fallback safe
     return { raw, used: '0', note: 'unsupported->0' };
+  }
+
+  /**
+   * Normaliser le slot SIM (1 ou 2). Retourne null si invalide.
+   */
+  normalizeSimSlot() {
+    const raw = String(this.simSlot ?? '').trim();
+    if (!raw) return null;
+    if (raw === '1' || raw === '2') return raw;
+    return null;
   }
 
   /**
@@ -166,6 +177,11 @@ class SMSService {
       params.append('number', formattedPhone);
       params.append('message', message);
       params.append('devices', device.used); // 0 = appareil principal
+      const simSlot = this.normalizeSimSlot();
+      if (simSlot) {
+        // Paramètre SIM pour send.php (documenté côté SMS8)
+        params.append('sim', simSlot);
+      }
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -196,6 +212,7 @@ class SMSService {
             devices: device.used,
             devicesConfigured: device.raw,
             devicesNote: device.note,
+            sim: this.normalizeSimSlot(),
             // On tronque le message pour éviter un JSON énorme (mais assez pour diagnostiquer)
             messagePreview: String(message || '').slice(0, 200),
           },
@@ -457,6 +474,7 @@ class SMSService {
       apiKey: this.apiKey ? `${this.apiKey.substring(0, 10)}...` : null,
       deviceId: this.deviceId || '0 (Primary device)',
       deviceUsed: this.normalizeDevicesParam().used,
+      simSlot: this.normalizeSimSlot(),
       senderPhone: this.senderPhone,
       configError: error ? error.message : null,
       config: config
