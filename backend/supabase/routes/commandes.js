@@ -253,6 +253,35 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
     const { data, error } = await supabase.from('commandes').update(update).eq('id', req.params.id).select('*').single();
     if (error) return res.status(500).json({ message: 'Erreur lors de la modification', error: error.message });
 
+    // 📱 Robustesse: si le statut a changé via PUT, déclencher le SMS correspondant
+    // (certaines pages changent le statut via PUT et ne passent pas par les routes spécialisées).
+    try {
+      const statutAvant = existing.statut;
+      const statutApres = data?.statut;
+
+      if (statutApres && statutApres !== statutAvant) {
+        const statutToTemplate = {
+          en_attente_paiement: 'attente_depot',
+          en_couture: 'en_couture',
+          en_stock: 'confectionnee', // couture terminée => mise en stock
+          en_livraison: 'en_livraison',
+        };
+
+        const templateCode = statutToTemplate[statutApres];
+        if (templateCode) {
+          const autoSendEnabled = await smsService.isAutoSendEnabled(templateCode);
+          if (autoSendEnabled) {
+            const alreadySent = await smsService.hasAlreadySent(data.id, templateCode);
+            if (!alreadySent) {
+              await smsService.sendCommandeNotification(templateCode, data, req.userId);
+            }
+          }
+        }
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS (PUT statut) non bloquant:', smsError.message);
+    }
+
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
     const commande = mapCommande(attachUsers(data, usersById));
     return res.json({ message: 'Commande modifiée avec succès', commande });
