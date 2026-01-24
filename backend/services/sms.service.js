@@ -142,7 +142,21 @@ class SMSService {
 
       if (!response.ok || !result.success) {
         const errorMsg = result.error?.message || result.error || `Erreur HTTP ${response.status}`;
-        throw new Error(errorMsg);
+        const err = new Error(errorMsg);
+        // Attacher un debug exploitable dans l'historique (sans exposer la clé API)
+        err.sms8_debug = {
+          http: { status: response.status, ok: response.ok },
+          request: {
+            url: this.apiUrl,
+            number: formattedPhone,
+            devices: String(this.deviceId ?? '0'),
+            // On tronque le message pour éviter un JSON énorme (mais assez pour diagnostiquer)
+            messagePreview: String(message || '').slice(0, 200),
+          },
+          raw: String(rawText || '').slice(0, 4000),
+          parsed: result,
+        };
+        throw err;
       }
 
       console.log(`✅ SMS envoyé avec succès à ${formattedPhone}`);
@@ -271,16 +285,34 @@ class SMSService {
       return result;
 
     } catch (error) {
+      const meta = {
+        runtime: process.env.VERCEL ? 'vercel' : 'local',
+        deviceId: String(this.deviceId ?? '0'),
+        at: new Date().toISOString(),
+      };
+
+      // On essaye de reconstruire le message tenté (utile pour diagnostiquer)
+      let attemptedMessage = '';
+      try {
+        if (commande) {
+          const template = await this.getTemplate(templateCode);
+          attemptedMessage = this.replaceVariables(template.message, commande);
+        }
+      } catch {
+        // ignorer: on loggue quand même l'erreur principale
+      }
+
       // Logger l'échec
       await this.logSMS({
         commandeId: commande.id,
         numeroCommande: commande.numero_commande || commande.numeroCommande,
         destinataireNom: commande.client?.nom || 'Client',
         destinataireTelephone: commande.client?.contact || commande.clientPhone || '',
-        message: '',
+        message: attemptedMessage || '',
         templateCode: templateCode,
         statut: 'echoue',
         erreur: error.message,
+        responseApi: { meta, sms8: error?.sms8_debug || null },
         envoyePar: userId,
         estTest: !this.enabled
       });
