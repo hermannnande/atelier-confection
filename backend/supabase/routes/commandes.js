@@ -284,11 +284,20 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
 
-    // ℹ️ Workflow NousUnique:
-    // - SMS "Commande reçue" → à la création (web / admin)
-    // - SMS "Demande avance" → quand on met en attente de dépôt (route /attente-depot)
-    // - SMS "En couture" → quand on passe en couture
-    // Donc la validation (validee) ne déclenche pas de SMS ici.
+    // ✅ Nouveau: si l'appelant confirme directement (sans "attente avance"),
+    // on envoie aussi le SMS "Commande Validée - En Confection" (template: en_couture).
+    // On évite les doublons via l'historique.
+    try {
+      const autoSendEnabled = await smsService.isAutoSendEnabled('en_couture');
+      if (autoSendEnabled) {
+        const alreadySent = await smsService.hasAlreadySent(data.id, 'en_couture');
+        if (!alreadySent) {
+          await smsService.sendCommandeNotification('en_couture', data, req.userId);
+        }
+      }
+    } catch (smsError) {
+      console.error('⚠️ Erreur envoi SMS en_couture après validation (non bloquant):', smsError.message);
+    }
 
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });
   } catch (error) {
@@ -409,8 +418,13 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
     try {
       const autoSendEnabled = await smsService.isAutoSendEnabled('en_couture');
       if (autoSendEnabled) {
-        await smsService.sendCommandeNotification('en_couture', data, req.userId);
-        console.log('✅ SMS "En cours de confection" envoyé');
+        const alreadySent = await smsService.hasAlreadySent(data.id, 'en_couture');
+        if (!alreadySent) {
+          await smsService.sendCommandeNotification('en_couture', data, req.userId);
+          console.log('✅ SMS "En cours de confection" envoyé');
+        } else {
+          console.log('ℹ️ SMS en_couture déjà envoyé, on évite le doublon');
+        }
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);

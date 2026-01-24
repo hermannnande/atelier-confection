@@ -284,6 +284,29 @@ class SMSService {
   }
 
   /**
+   * Vérifier si un SMS a déjà été envoyé (pour éviter les doublons)
+   */
+  async hasAlreadySent(commandeId, templateCode) {
+    try {
+      if (!commandeId || !templateCode) return false;
+      const supabase = getSupabaseAdmin();
+
+      const { data, error } = await supabase
+        .from('sms_historique')
+        .select('id')
+        .eq('commande_id', commandeId)
+        .eq('template_code', templateCode)
+        .eq('statut', 'envoye')
+        .limit(1);
+
+      if (error) return false;
+      return Array.isArray(data) && data.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Envoyer un SMS de notification de commande
    * @param {string} templateCode - Code du template ('commande_validee', 'en_couture', etc.)
    * @param {object} commande - Données de la commande
