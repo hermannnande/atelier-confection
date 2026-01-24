@@ -313,19 +313,18 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
 
-    // ✅ Nouveau: si l'appelant confirme directement (sans "attente avance"),
-    // on envoie aussi le SMS "Commande Validée - En Confection" (template: en_couture).
-    // On évite les doublons via l'historique.
+    // ✅ SMS étape 2: envoyé uniquement lors de la confirmation
+    // (et non quand l'appelant clique "En attente").
     try {
-      const autoSendEnabled = await smsService.isAutoSendEnabled('en_couture');
+      const autoSendEnabled = await smsService.isAutoSendEnabled('attente_depot');
       if (autoSendEnabled) {
-        const alreadySent = await smsService.hasAlreadySent(data.id, 'en_couture');
+        const alreadySent = await smsService.hasAlreadySent(data.id, 'attente_depot');
         if (!alreadySent) {
-          await smsService.sendCommandeNotification('en_couture', data, req.userId);
+          await smsService.sendCommandeNotification('attente_depot', data, req.userId);
         }
       }
     } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS en_couture après validation (non bloquant):', smsError.message);
+      console.error('⚠️ Erreur envoi SMS attente_depot après validation (non bloquant):', smsError.message);
     }
 
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });
@@ -358,24 +357,7 @@ router.post('/:id/attente-depot', authenticate, authorize('appelant', 'gestionna
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la mise en attente', error: error.message });
 
-    // 📱 Envoyer SMS automatique "Demande d'avance"
-    try {
-      console.log('🔍 Vérification envoi SMS automatique pour attente_depot...');
-      const autoSendEnabled = await smsService.isAutoSendEnabled('attente_depot');
-      console.log('📊 Auto-send activé:', autoSendEnabled);
-      
-      if (autoSendEnabled) {
-        console.log('📱 Tentative d\'envoi SMS "Demande d\'avance"...');
-        await smsService.sendCommandeNotification('attente_depot', data, req.userId);
-        console.log('✅ SMS "Demande d\'avance" envoyé avec succès');
-      } else {
-        console.log('⏸️  Envoi automatique SMS désactivé pour attente_depot');
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-      console.error('Stack:', smsError.stack);
-      // Ne pas bloquer la mise en attente si SMS échoue
-    }
+    // ℹ️ Pas d'envoi SMS ici: l'étape 2 est désormais déclenchée à la confirmation.
 
     return res.json({ message: 'Commande mise en attente de dépôt', commande: mapCommande(data) });
   } catch (error) {
