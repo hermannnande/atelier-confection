@@ -284,24 +284,11 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
 
-    // 📱 Envoyer SMS automatique "Commande validée"
-    try {
-      console.log('🔍 Vérification envoi SMS automatique pour commande_validee...');
-      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_validee');
-      console.log('📊 Auto-send activé:', autoSendEnabled);
-      
-      if (autoSendEnabled) {
-        console.log('📱 Tentative d\'envoi SMS "Commande validée"...');
-        await smsService.sendCommandeNotification('commande_validee', data, req.userId);
-        console.log('✅ SMS "Commande validée" envoyé avec succès');
-      } else {
-        console.log('⏸️  Envoi automatique SMS désactivé pour commande_validee');
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-      console.error('Stack:', smsError.stack);
-      // Ne pas bloquer la validation si SMS échoue
-    }
+    // ℹ️ Workflow NousUnique:
+    // - SMS "Commande reçue" → à la création (web / admin)
+    // - SMS "Demande avance" → quand on met en attente de dépôt (route /attente-depot)
+    // - SMS "En couture" → quand on passe en couture
+    // Donc la validation (validee) ne déclenche pas de SMS ici.
 
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });
   } catch (error) {

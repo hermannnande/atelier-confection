@@ -4,7 +4,8 @@ import { getSupabaseAdmin } from '../supabase/client.js';
 class SMSService {
   constructor() {
     this.apiKey = process.env.SMS8_API_KEY;
-    this.deviceId = process.env.SMS8_DEVICE_ID || 0; // 0 = use primary device
+    // SMS8 accepte soit "0" (device principal) soit un device id type "dev_xxx"
+    this.deviceId = process.env.SMS8_DEVICE_ID ?? '0';
     this.senderPhone = process.env.SMS8_SENDER_PHONE;
     this.enabled = process.env.SMS_ENABLED === 'true';
     this.apiUrl = 'https://app.sms8.io/services/send.php';
@@ -112,23 +113,32 @@ class SMSService {
 
       // Envoi réel via SMS8.io
       console.log(`📱 Envoi SMS à ${formattedPhone}...`);
+      console.log(`   Device: ${String(this.deviceId)}`);
+      console.log(`   API Key: ${this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'missing'}`);
 
       // Utiliser URLSearchParams pour format application/x-www-form-urlencoded
       const params = new URLSearchParams();
       params.append('key', this.apiKey);
       params.append('number', formattedPhone);
       params.append('message', message);
-      params.append('devices', this.deviceId || 0); // 0 = appareil principal
+      params.append('devices', String(this.deviceId ?? '0')); // 0 = appareil principal
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
         },
         body: params.toString()
       });
 
-      const result = await response.json();
+      // SMS8 peut répondre en JSON (attendu) mais on rend le parsing robuste
+      const rawText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        result = { success: false, error: `Réponse non-JSON: ${rawText}` };
+      }
 
       if (!response.ok || !result.success) {
         const errorMsg = result.error?.message || result.error || `Erreur HTTP ${response.status}`;
@@ -146,7 +156,8 @@ class SMSService {
         phone: formattedPhone,
         message: message,
         message_id: messageData.ID || messageData.id || `msg_${Date.now()}`,
-        response: result.data
+        // garder la réponse complète (debug prod/vercel)
+        response: result
       };
 
     } catch (error) {
@@ -184,6 +195,7 @@ class SMSService {
   async logSMS(data) {
     try {
       const supabase = getSupabaseAdmin();
+      const statutFinal = data.estTest ? 'test' : (data.statut || 'envoye');
       const { error } = await supabase
         .from('sms_historique')
         .insert({
@@ -193,13 +205,13 @@ class SMSService {
           destinataire_telephone: data.destinataireTelephone,
           message: data.message,
           template_code: data.templateCode,
-          statut: data.statut || 'envoye',
+          statut: statutFinal,
           response_api: data.responseApi || null,
           message_id: data.messageId || null,
           erreur: data.erreur || null,
           envoye_par: data.envoyePar || null,
           est_test: data.estTest || false,
-          sent_at: data.statut === 'envoye' ? new Date().toISOString() : null
+          sent_at: statutFinal === 'envoye' ? new Date().toISOString() : null
         });
 
       if (error) {
@@ -235,6 +247,12 @@ class SMSService {
       // Envoyer le SMS
       const result = await this.sendSMS(phone, message);
 
+      const meta = {
+        runtime: process.env.VERCEL ? 'vercel' : 'local',
+        deviceId: String(this.deviceId ?? '0'),
+        at: new Date().toISOString(),
+      };
+
       // Logger dans l'historique
       await this.logSMS({
         commandeId: commande.id,
@@ -244,10 +262,10 @@ class SMSService {
         message: message,
         templateCode: templateCode,
         statut: result.success ? 'envoye' : 'echoue',
-        responseApi: result.response || null,
+        responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
         messageId: result.message_id,
         envoyePar: userId,
-        estTest: result.test_mode || false
+        estTest: !!result.test_mode
       });
 
       return result;
@@ -277,14 +295,22 @@ class SMSService {
   async isAutoSendEnabled(templateCode) {
     try {
       const supabase = getSupabaseAdmin();
+      // Toggle global: si sms_enabled=false en DB, on coupe tous les auto-send
+      const globalKey = 'sms_enabled';
       const configKey = `auto_send_${templateCode}`;
-      const { data } = await supabase
-        .from('sms_config')
-        .select('valeur')
-        .eq('cle', configKey)
-        .single();
 
-      return data?.valeur === 'true';
+      const { data, error } = await supabase
+        .from('sms_config')
+        .select('cle, valeur')
+        .in('cle', [globalKey, configKey]);
+
+      if (error) throw error;
+
+      const byKey = new Map((data || []).map((r) => [r.cle, r.valeur]));
+      const globalEnabled = byKey.has(globalKey) ? byKey.get(globalKey) === 'true' : true;
+      if (!globalEnabled) return false;
+
+      return byKey.has(configKey) ? byKey.get(configKey) === 'true' : true;
     } catch (error) {
       // Par défaut, activé
       return true;
@@ -296,23 +322,30 @@ class SMSService {
    */
   async getSystemStatus() {
     const supabase = getSupabaseAdmin();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('sms_config')
       .select('*');
 
     const config = {};
-    if (data) {
+    if (data && !error) {
       data.forEach(item => {
         config[item.cle] = item.valeur;
       });
     }
 
+    const dbSmsEnabled = config.sms_enabled !== undefined ? config.sms_enabled === 'true' : true;
+    const envEnabled = this.enabled;
+    const effectiveEnabled = envEnabled && dbSmsEnabled;
+
     return {
-      enabled: this.enabled,
+      enabled: envEnabled,
+      dbEnabled: dbSmsEnabled,
+      effectiveEnabled,
       configured: !!this.apiKey,
       apiKey: this.apiKey ? `${this.apiKey.substring(0, 10)}...` : null,
       deviceId: this.deviceId || '0 (Primary device)',
       senderPhone: this.senderPhone,
+      configError: error ? error.message : null,
       config: config
     };
   }

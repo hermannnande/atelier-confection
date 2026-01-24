@@ -197,6 +197,11 @@ router.post('/send', async (req, res) => {
 
     // Envoyer le SMS
     const result = await smsService.sendSMS(phone, message);
+    const meta = {
+      runtime: process.env.VERCEL ? 'vercel' : 'local',
+      deviceId: String(smsService.deviceId ?? '0'),
+      at: new Date().toISOString(),
+    };
 
     // Logger
     await smsService.logSMS({
@@ -206,10 +211,10 @@ router.post('/send', async (req, res) => {
       message: message,
       templateCode: 'manuel',
       statut: result.success ? 'envoye' : 'echoue',
-      responseApi: result.response || null,
+      responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
       messageId: result.message_id,
       envoyePar: userId,
-      estTest: result.test_mode || false
+      estTest: !!result.test_mode
     });
 
     res.json({ 
@@ -339,6 +344,11 @@ router.post('/test', async (req, res) => {
                        `Envoyé le ${new Date().toLocaleString('fr-FR')}`;
 
     const result = await smsService.sendSMS(phone, testMessage);
+    const meta = {
+      runtime: process.env.VERCEL ? 'vercel' : 'local',
+      deviceId: String(smsService.deviceId ?? '0'),
+      at: new Date().toISOString(),
+    };
 
     // Logger le SMS de test dans l'historique
     await smsService.logSMS({
@@ -349,7 +359,7 @@ router.post('/test', async (req, res) => {
       message: testMessage,
       templateCode: 'test',
       statut: result.success ? 'envoye' : 'echoue',
-      responseApi: result.response || null,
+      responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
       messageId: result.message_id,
       envoyePar: userId,
       estTest: true

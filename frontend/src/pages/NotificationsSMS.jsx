@@ -25,6 +25,7 @@ export default function NotificationsSMS() {
   const [loading, setLoading] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [testPhone, setTestPhone] = useState('');
+  const [selectedSms, setSelectedSms] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -355,6 +356,7 @@ export default function NotificationsSMS() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destinataire</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Détails</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -372,6 +374,17 @@ export default function NotificationsSMS() {
                     </td>
                     <td className="px-4 py-3">
                       {getStatutBadge(sms.statut)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSms(sms)}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        title="Voir les détails (message_id / réponse SMS8)"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Voir
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -501,6 +514,79 @@ export default function NotificationsSMS() {
                 >
                   Annuler
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Détails SMS */}
+      {selectedSms && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedSms(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold">Détails SMS</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {new Date(selectedSms.created_at).toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSms(null)}
+                  className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 font-semibold"
+                >
+                  Fermer
+                </button>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Destinataire</p>
+                  <p className="font-semibold text-gray-900 mt-1">{selectedSms.destinataire_nom}</p>
+                  <p className="text-sm text-gray-700">{selectedSms.destinataire_telephone}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Statut</p>
+                  <div className="mt-2">{getStatutBadge(selectedSms.statut)}</div>
+                  <p className="text-xs text-gray-500 mt-3 uppercase font-semibold">Template</p>
+                  <p className="text-sm font-mono text-gray-900 mt-1">{selectedSms.template_code || '—'}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 md:col-span-2">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Message</p>
+                  <pre className="mt-2 text-sm text-gray-800 whitespace-pre-wrap font-mono">{selectedSms.message}</pre>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">message_id</p>
+                  <p className="text-sm font-mono text-gray-900 mt-1 break-all">{selectedSms.message_id || '—'}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Erreur</p>
+                  <p className="text-sm text-gray-900 mt-1 break-words">{selectedSms.erreur || '—'}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 md:col-span-2">
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Réponse API (SMS8)</p>
+                  <pre className="mt-2 text-xs text-gray-800 whitespace-pre-wrap font-mono">
+                    {selectedSms.response_api
+                      ? JSON.stringify(selectedSms.response_api, null, 2)
+                      : '—'}
+                  </pre>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Astuce: cherche <span className="font-mono">meta.runtime</span> (= vercel/local) et <span className="font-mono">sms8</span>.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
