@@ -362,7 +362,8 @@ router.post('/test', async (req, res) => {
       responseApi: result.response ? { meta, sms8: result.response } : { meta, sms8: null },
       messageId: result.message_id,
       envoyePar: userId,
-      estTest: true
+      // est_test = vrai seulement si le backend est en "test mode" (SMS_ENABLED=false)
+      estTest: !!result.test_mode
     });
 
     res.json({ 
