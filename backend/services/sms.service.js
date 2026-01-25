@@ -315,7 +315,9 @@ class SMSService {
         .select('id')
         .eq('commande_id', commandeId)
         .eq('template_code', templateCode)
-        .eq('statut', 'envoye')
+        // Considérer "en_attente" comme déjà parti (accepté par SMS8),
+        // sinon on risque de renvoyer en boucle quand SMS8 répond Pending.
+        .in('statut', ['envoye', 'en_attente'])
         .limit(1);
 
       if (error) return false;

@@ -102,6 +102,17 @@ export default function NotificationsSMS() {
     }
   };
 
+  const handleToggleGlobalSmsEnabled = async (currentValue) => {
+    try {
+      const newValue = currentValue === 'true' ? 'false' : 'true';
+      await api.put(`/sms/config/sms_enabled`, { valeur: newValue });
+      toast.success('Configuration mise à jour');
+      loadData();
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
   const getStatutBadge = (statut) => {
     const styles = {
       envoye: 'bg-green-100 text-green-800',
@@ -245,7 +256,7 @@ export default function NotificationsSMS() {
             <h3 className="text-lg font-semibold mb-4">Statut du Système</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">État</p>
+                <p className="text-sm text-gray-600">Envoi (ENV)</p>
                 <p className="font-semibold">
                   {status.enabled ? (
                     <span className="text-green-600">✅ Activé</span>
@@ -255,7 +266,27 @@ export default function NotificationsSMS() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Configuration</p>
+                <p className="text-sm text-gray-600">Auto-send (DB)</p>
+                <p className="font-semibold">
+                  {status.dbEnabled ? (
+                    <span className="text-green-600">✅ Activé</span>
+                  ) : (
+                    <span className="text-orange-600">⏸️ Désactivé</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Effectif (ENV + DB)</p>
+                <p className="font-semibold">
+                  {status.effectiveEnabled ? (
+                    <span className="text-green-600">✅ Envoi réel + auto-send</span>
+                  ) : (
+                    <span className="text-orange-600">⚠️ Auto-send coupé ou mode test</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Configuration API</p>
                 <p className="font-semibold">
                   {status.configured ? (
                     <span className="text-green-600">✅ Configuré</span>
@@ -272,7 +303,22 @@ export default function NotificationsSMS() {
                 <p className="text-sm text-gray-600">Téléphone Émetteur</p>
                 <p className="font-semibold">{status.senderPhone || 'Non défini'}</p>
               </div>
+              <div>
+                <p className="text-sm text-gray-600">Device (config → used)</p>
+                <p className="font-mono text-sm">
+                  {String(status.deviceId || '—')} → {String(status.deviceUsed || '—')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">SIM Slot</p>
+                <p className="font-semibold">{status.simSlot ? `SIM${status.simSlot}` : 'Auto'}</p>
+              </div>
             </div>
+            {status.configError && (
+              <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                <strong>Erreur config DB:</strong> {status.configError}
+              </div>
+            )}
           </div>
 
           {/* Test SMS */}
@@ -403,6 +449,28 @@ export default function NotificationsSMS() {
               Activez ou désactivez l'envoi automatique de SMS pour chaque étape
             </p>
             <div className="space-y-4">
+              {/* Toggle global */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div>
+                  <p className="font-medium">SMS_ENABLED (DB - auto-send global)</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Si désactivé, aucun SMS automatique ne part, même si les auto_send_* sont à true.
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleToggleGlobalSmsEnabled(status.config?.sms_enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    status.config?.sms_enabled === 'true' ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      status.config?.sms_enabled === 'true' ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
               {Object.entries(status.config || {}).filter(([key]) => key.startsWith('auto_send_')).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>

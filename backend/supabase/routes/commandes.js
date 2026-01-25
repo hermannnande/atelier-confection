@@ -261,7 +261,9 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
 
       if (statutApres && statutApres !== statutAvant) {
         const statutToTemplate = {
-          en_attente_paiement: 'attente_depot',
+          // ⚠️ Étape 2 ("attente_depot") doit partir UNIQUEMENT à la confirmation (validee),
+          // pas quand l'appelant met "En attente" (en_attente_paiement).
+          validee: 'attente_depot',
           en_couture: 'en_couture',
           en_stock: 'confectionnee', // couture terminée => mise en stock
           en_livraison: 'en_livraison',
@@ -538,8 +540,13 @@ router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'gesti
     try {
       const autoSendEnabled = await smsService.isAutoSendEnabled('confectionnee');
       if (autoSendEnabled) {
-        await smsService.sendCommandeNotification('confectionnee', updatedCommande, req.userId);
-        console.log('✅ SMS "Confection terminée" envoyé');
+        const alreadySent = await smsService.hasAlreadySent(updatedCommande.id, 'confectionnee');
+        if (!alreadySent) {
+          await smsService.sendCommandeNotification('confectionnee', updatedCommande, req.userId);
+          console.log('✅ SMS "Confection terminée" envoyé');
+        } else {
+          console.log('ℹ️ SMS confectionnee déjà envoyé, on évite le doublon');
+        }
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
