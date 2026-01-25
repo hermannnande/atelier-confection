@@ -21,6 +21,12 @@
       "use": "@vercel/static"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/sms/cron/rappel-en-couture",
+      "schedule": "0 10 * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/site-web/?",

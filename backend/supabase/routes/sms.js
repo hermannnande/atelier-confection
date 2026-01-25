@@ -6,6 +6,55 @@ import smsService from '../../services/sms.service.js';
 const router = express.Router();
 const supabase = getSupabaseAdmin();
 
+function isCronAuthorized(req) {
+  // Vercel Cron ajoute ce header
+  const vercelCron = req.headers['x-vercel-cron'];
+  if (vercelCron === '1' || vercelCron === 1) return true;
+
+  // Autoriser un déclenchement manuel via secret (optionnel)
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  const provided = req.query?.cron_secret || req.headers['x-cron-secret'];
+  return String(provided || '') === String(secret);
+}
+
+function parsePositiveInt(value, fallback) {
+  const n = Number.parseInt(String(value ?? ''), 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return fallback;
+}
+
+function getEnteredCoutureAt(commande) {
+  // On cherche dans l'historique la dernière transition vers en_couture.
+  const hist = Array.isArray(commande?.historique) ? commande.historique : [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const h = hist[i];
+    if (h?.statut === 'en_couture' && h?.date) {
+      const d = new Date(h.date);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+  }
+  // Fallback: updated_at / created_at
+  const fallback = commande?.updated_at || commande?.created_at;
+  const d = fallback ? new Date(fallback) : null;
+  return d && !Number.isNaN(d.getTime()) ? d : new Date();
+}
+
+async function getConfigValue(key, fallback) {
+  try {
+    const { data, error } = await supabase
+      .from('sms_config')
+      .select('valeur')
+      .eq('cle', key)
+      .maybeSingle();
+    if (error) return fallback;
+    if (!data || data.valeur === null || data.valeur === undefined) return fallback;
+    return data.valeur;
+  } catch {
+    return fallback;
+  }
+}
+
 // ========================================
 // GET /api/sms/status
 // Obtenir le statut du système SMS
@@ -393,6 +442,98 @@ router.post('/test', async (req, res) => {
       message: 'Erreur lors du test',
       error: error.message 
     });
+  }
+});
+
+// ========================================
+// GET /api/sms/cron/rappel-en-couture
+// Cron: envoyer des rappels tant que la commande est en couture
+// ========================================
+router.get('/cron/rappel-en-couture', async (req, res) => {
+  try {
+    if (!isCronAuthorized(req)) {
+      return res.status(401).json({ success: false, message: 'Unauthorized cron' });
+    }
+
+    // Vérifier les toggles (DB global + auto_send_rappel_en_couture)
+    const autoSendEnabled = await smsService.isAutoSendEnabled('rappel_en_couture');
+    if (!autoSendEnabled) {
+      return res.json({ success: true, skipped: true, reason: 'auto_send_rappel_en_couture disabled (or sms_enabled=false)' });
+    }
+
+    const intervalHours = parsePositiveInt(await getConfigValue('rappel_en_couture_interval_hours', '24'), 24);
+    const minAgeHours = parsePositiveInt(await getConfigValue('rappel_en_couture_min_age_hours', '24'), 24);
+    const batchLimit = parsePositiveInt(await getConfigValue('rappel_en_couture_batch_limit', '50'), 50);
+
+    const now = new Date();
+    const minAgeMs = minAgeHours * 60 * 60 * 1000;
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+
+    const { data: commandes, error } = await supabase
+      .from('commandes')
+      .select('*')
+      .eq('statut', 'en_couture')
+      .order('updated_at', { ascending: true })
+      .limit(batchLimit);
+
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Erreur récupération commandes', error: error.message });
+    }
+
+    let processed = 0;
+    let sent = 0;
+    let skipped = 0;
+    let failed = 0;
+    const details = [];
+
+    for (const commande of commandes || []) {
+      processed++;
+
+      // Ne pas spammer: attendre minAge après entrée en couture
+      const enteredAt = getEnteredCoutureAt(commande);
+      if (now.getTime() - enteredAt.getTime() < minAgeMs) {
+        skipped++;
+        continue;
+      }
+
+      // Dernier rappel envoyé?
+      const { data: lastRows } = await supabase
+        .from('sms_historique')
+        .select('created_at, statut')
+        .eq('commande_id', commande.id)
+        .eq('template_code', 'rappel_en_couture')
+        .not('statut', 'eq', 'echoue')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const lastAt = lastRows?.[0]?.created_at ? new Date(lastRows[0].created_at) : null;
+      if (lastAt && !Number.isNaN(lastAt.getTime()) && now.getTime() - lastAt.getTime() < intervalMs) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await smsService.sendCommandeNotification('rappel_en_couture', commande, null);
+        sent++;
+      } catch (e) {
+        failed++;
+        details.push({ commande_id: commande.id, numero_commande: commande.numero_commande, error: e?.message || String(e) });
+      }
+    }
+
+    return res.json({
+      success: true,
+      meta: {
+        at: now.toISOString(),
+        intervalHours,
+        minAgeHours,
+        batchLimit,
+      },
+      stats: { processed, sent, skipped, failed },
+      details,
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur cron rappel-en-couture', error: err.message });
   }
 });
 
