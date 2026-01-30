@@ -17,11 +17,9 @@ import {
   Users,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
   TrendingUp,
   Download,
-  Search,
   Filter,
   Loader2
 } from 'lucide-react';
@@ -45,6 +43,16 @@ export default function HistoriquePresences() {
     total: 0,
     totalPages: 0
   });
+
+  const getInitials = (fullName) => {
+    if (!fullName) return '??';
+    return fullName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('');
+  };
 
   useEffect(() => {
     loadData();
@@ -310,12 +318,12 @@ export default function HistoriquePresences() {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
                           <span className="text-indigo-600 font-semibold text-sm">
-                            {attendance.user?.prenom?.[0]}{attendance.user?.nom?.[0]}
+                            {getInitials(attendance.user?.nom)}
                           </span>
                         </div>
                         <div className="ml-3">
                           <p className="text-sm font-medium text-gray-900">
-                            {attendance.user?.prenom} {attendance.user?.nom}
+                            {attendance.user?.nom || 'Utilisateur'}
                           </p>
                           <p className="text-xs text-gray-500 capitalize">
                             {attendance.user?.role}
@@ -416,7 +424,7 @@ export default function HistoriquePresences() {
                 {statistics.map((stat) => (
                   <tr key={stat.user_id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">{stat.prenom} {stat.nom}</div>
+                      <div className="font-medium text-gray-900">{stat.nom}</div>
                       <div className="text-xs text-gray-500 capitalize">{stat.role}</div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">{stat.total_presences || 0}</td>

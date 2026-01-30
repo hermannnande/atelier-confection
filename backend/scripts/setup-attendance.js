@@ -51,8 +51,8 @@ async function setupAttendanceConfig() {
     // 3. Clic-droit sur l'emplacement exact
     // 4. Copier les coordonnées (ex: 5.353021, -3.870182)
     
-    latitude: 5.353021,   // ⚠️ EXEMPLE - REMPLACEZ PAR VOTRE LATITUDE
-    longitude: -3.870182, // ⚠️ EXEMPLE - REMPLACEZ PAR VOTRE LONGITUDE
+    latitude: 5.353859,   // Coordonnées atelier (mise à jour)
+    longitude: -3.868327, // Coordonnées atelier (mise à jour)
     
     // PARAMÈTRES DE VALIDATION
     rayon_tolerance: 50,     // Rayon en mètres (50m recommandé)
@@ -75,20 +75,6 @@ async function setupAttendanceConfig() {
   console.log('   └─ Tolérance retard : ' + config.tolerance_retard + ' minutes');
   console.log('');
 
-  // Avertissement si coordonnées par défaut
-  if (config.latitude === 5.353021 && config.longitude === -3.870182) {
-    console.log('⚠️  ATTENTION : Vous utilisez les coordonnées d\'EXEMPLE !');
-    console.log('   Modifiez les valeurs dans backend/scripts/setup-attendance.js');
-    console.log('   avec les coordonnées GPS réelles de votre atelier.');
-    console.log('');
-    console.log('💡 Comment obtenir vos coordonnées GPS :');
-    console.log('   1. Ouvrir https://www.google.com/maps');
-    console.log('   2. Rechercher votre adresse');
-    console.log('   3. Clic-droit sur l\'emplacement exact');
-    console.log('   4. Copier les coordonnées affichées');
-    console.log('');
-  }
-
   // ========================================================================
   // Insertion/mise à jour dans la base de données
   // ========================================================================
@@ -100,7 +86,7 @@ async function setupAttendanceConfig() {
     const { data: existing, error: checkError } = await supabase
       .from('store_config')
       .select('*')
-      .single();
+      .maybeSingle();
 
     let result;
 

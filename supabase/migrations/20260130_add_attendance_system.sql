@@ -9,8 +9,8 @@
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS attendances (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
     
     -- Date et heures
     date DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -127,8 +127,8 @@ INSERT INTO store_config (
 ) VALUES (
     'Atelier de Confection Principal',
     'À configurer - Utilisez le script setup-attendance.js',
-    5.353021,  -- ⚠️ EXEMPLE : Coordonnées Abidjan - À MODIFIER
-    -3.870182, -- ⚠️ EXEMPLE : Coordonnées Abidjan - À MODIFIER
+    5.353859,  -- Coordonnées Atelier (mise à jour)
+    -3.868327, -- Coordonnées Atelier (mise à jour)
     50,        -- 50 mètres de rayon
     '08:00',   -- Ouverture à 8h
     '18:00',   -- Fermeture à 18h
@@ -181,7 +181,6 @@ CREATE OR REPLACE VIEW v_attendances_today AS
 SELECT 
     a.id,
     a.user_id,
-    u.prenom,
     u.nom,
     u.role,
     a.date,
@@ -208,7 +207,6 @@ ORDER BY a.heure_arrivee DESC;
 CREATE OR REPLACE VIEW v_attendance_stats AS
 SELECT 
     u.id AS user_id,
-    u.prenom,
     u.nom,
     u.role,
     COUNT(a.id) AS total_presences,
@@ -227,8 +225,8 @@ FROM users u
 LEFT JOIN attendances a ON u.id = a.user_id 
     AND a.date >= CURRENT_DATE - INTERVAL '30 days'
 WHERE u.role IN ('gestionnaire', 'appelant', 'styliste', 'couturier')
-GROUP BY u.id, u.prenom, u.nom, u.role
-ORDER BY u.nom, u.prenom;
+GROUP BY u.id, u.nom, u.role
+ORDER BY u.nom;
 
 -- ============================================================================
 -- PERMISSIONS RLS (Row Level Security)
@@ -240,7 +238,7 @@ ALTER TABLE attendances ENABLE ROW LEVEL SECURITY;
 -- Politique : Les utilisateurs peuvent voir leurs propres pointages
 CREATE POLICY "Users can view own attendances"
     ON attendances FOR SELECT
-    USING (auth.uid()::text = user_id::text);
+    USING (auth.uid() = user_id);
 
 -- Politique : Les admins et gestionnaires peuvent tout voir
 CREATE POLICY "Admins and managers can view all attendances"
@@ -248,20 +246,20 @@ CREATE POLICY "Admins and managers can view all attendances"
     USING (
         EXISTS (
             SELECT 1 FROM users
-            WHERE id = auth.uid()::integer
-            AND role IN ('admin', 'gestionnaire')
+            WHERE id = auth.uid()::uuid
+            AND role IN ('administrateur', 'gestionnaire')
         )
     );
 
 -- Politique : Les utilisateurs peuvent créer leurs propres pointages
 CREATE POLICY "Users can create own attendances"
     ON attendances FOR INSERT
-    WITH CHECK (auth.uid()::text = user_id::text);
+    WITH CHECK (auth.uid() = user_id);
 
 -- Politique : Les utilisateurs peuvent modifier leurs propres pointages
 CREATE POLICY "Users can update own attendances"
     ON attendances FOR UPDATE
-    USING (auth.uid()::text = user_id::text);
+    USING (auth.uid() = user_id);
 
 -- Activer RLS sur store_config
 ALTER TABLE store_config ENABLE ROW LEVEL SECURITY;
@@ -277,8 +275,8 @@ CREATE POLICY "Only admins can update store config"
     USING (
         EXISTS (
             SELECT 1 FROM users
-            WHERE id = auth.uid()::integer
-            AND role = 'admin'
+            WHERE id = auth.uid()::uuid
+            AND role = 'administrateur'
         )
     );
 

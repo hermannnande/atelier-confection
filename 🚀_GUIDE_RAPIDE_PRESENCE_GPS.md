@@ -26,7 +26,7 @@ Success. Tables créées : attendances, store_config
 1. Ouvrir : https://www.google.com/maps
 2. Rechercher votre atelier
 3. Clic-droit sur l'emplacement exact
-4. Copier les coordonnées (ex: `5.353021, -3.870182`)
+4. Copier les coordonnées (ex: `5.353859, -3.868327`)
 
 **Noter :**
 - Latitude : `________`
@@ -41,8 +41,8 @@ Success. Tables créées : attendances, store_config
 1. Ouvrir : `backend/scripts/setup-attendance.js`
 2. Lignes 37-38, remplacer par vos coordonnées :
    ```javascript
-   latitude: 5.353021,   // ← VOTRE LATITUDE
-   longitude: -3.870182, // ← VOTRE LONGITUDE
+   latitude: 5.353859,   // ← VOTRE LATITUDE
+   longitude: -3.868327, // ← VOTRE LONGITUDE
    ```
 3. Optionnel - Ligne 40-43 (paramètres) :
    ```javascript

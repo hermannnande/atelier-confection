@@ -92,11 +92,11 @@ Vues créées : v_attendances_today, v_attendance_stats
 2. **Rechercher** votre adresse (atelier/bureau)
 3. **Clic-droit** sur l'emplacement exact de votre bâtiment
 4. **Cliquer** sur les coordonnées qui apparaissent en haut
-5. **Copier** (format : `5.353021, -3.870182`)
+5. **Copier** (format : `5.353859, -3.868327`)
 
 Exemple pour Abidjan, Côte d'Ivoire :
-- Latitude : `5.353021`
-- Longitude : `-3.870182`
+- Latitude : `5.353859`
+- Longitude : `-3.868327`
 
 #### Méthode 2 : GPS du Téléphone
 
@@ -116,8 +116,8 @@ Exemple pour Abidjan, Côte d'Ivoire :
 
 2. **Modifier les lignes 37-38** avec vos vraies coordonnées :
    ```javascript
-   latitude: 5.353021,   // ⚠️ REMPLACEZ PAR VOTRE LATITUDE
-   longitude: -3.870182, // ⚠️ REMPLACEZ PAR VOTRE LONGITUDE
+   latitude: 5.353859,   // ⚠️ REMPLACEZ PAR VOTRE LATITUDE
+   longitude: -3.868327, // ⚠️ REMPLACEZ PAR VOTRE LONGITUDE
    ```
 
 3. **Optionnel** : Modifier les paramètres
@@ -145,8 +145,8 @@ Exemple pour Abidjan, Côte d'Ivoire :
 ✨ Le système de pointage GPS est maintenant configuré !
 
 📊 Paramètres appliqués :
-   ✓ Latitude : 5.353021
-   ✓ Longitude : -3.870182
+   ✓ Latitude : 5.353859
+   ✓ Longitude : -3.868327
    ✓ Rayon de validation : 50m
    ✓ Horaires : 08:00 - 18:00
    ✓ Tolérance retard : 15 min

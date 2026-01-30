@@ -2,7 +2,7 @@
  * ============================================================================
  * ROUTES : SYSTÈME DE POINTAGE PAR GÉOLOCALISATION GPS
  * ============================================================================
- * 
+ *
  * Fonctionnalités :
  * ✅ Pointage arrivée avec validation GPS (refus si hors zone + réessai)
  * ✅ Pointage départ avec GPS
@@ -11,14 +11,18 @@
  * ✅ Historique des présences
  * ✅ Statistiques de présence
  * ✅ Configuration de l'atelier (coordonnées GPS)
- * 
+ *
  * Rôles concernés : gestionnaire, appelant, styliste, couturier
- * Exclus : admin, livreur
+ * Exclus : administrateur, livreur
  */
 
-const express = require('express');
+import express from 'express';
+import { getSupabaseAdmin } from '../client.js';
+import { authenticate, authorize } from '../middleware/auth.js';
+import { mapUser } from '../map.js';
+
 const router = express.Router();
-const { supabase } = require('../supabaseClient');
+const ATTENDANCE_ROLES = ['gestionnaire', 'appelant', 'styliste', 'couturier'];
 
 // ============================================================================
 // FORMULE DE HAVERSINE : Calculer la distance entre deux coordonnées GPS
@@ -49,41 +53,14 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 // ============================================================================
-// MIDDLEWARE : Vérifier que l'utilisateur peut utiliser le système de pointage
-// ============================================================================
-
-function checkAttendanceRole(req, res, next) {
-  const userRole = req.user.role;
-  
-  // Les admin et livreurs ne pointent pas
-  if (userRole === 'admin' || userRole === 'livreur') {
-    return res.status(403).json({
-      error: 'Système de pointage non applicable',
-      message: `Les ${userRole}s ne sont pas concernés par le système de pointage`
-    });
-  }
-
-  // Rôles autorisés : gestionnaire, appelant, styliste, couturier
-  const allowedRoles = ['gestionnaire', 'appelant', 'styliste', 'couturier'];
-  
-  if (!allowedRoles.includes(userRole)) {
-    return res.status(403).json({
-      error: 'Rôle non autorisé',
-      message: 'Votre rôle ne vous permet pas d\'utiliser le système de pointage'
-    });
-  }
-
-  next();
-}
-
-// ============================================================================
 // ROUTE 1 : 📍 MARQUER SON ARRIVÉE (avec validation GPS)
 // ============================================================================
 
-router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
+router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async (req, res) => {
   try {
     const { latitude, longitude, note } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
+    const supabase = getSupabaseAdmin();
 
     // Validation des coordonnées
     if (!latitude || !longitude) {
@@ -101,7 +78,14 @@ router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
       .select('*')
       .eq('user_id', userId)
       .eq('date', today)
-      .single();
+      .maybeSingle();
+
+    if (checkError) {
+      return res.status(500).json({
+        error: 'Erreur lors de la vérification',
+        message: checkError.message
+      });
+    }
 
     if (existingAttendance) {
       return res.status(400).json({
@@ -115,7 +99,7 @@ router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
     const { data: storeConfig, error: configError } = await supabase
       .from('store_config')
       .select('*')
-      .single();
+      .maybeSingle();
 
     if (configError || !storeConfig) {
       return res.status(500).json({
@@ -134,7 +118,7 @@ router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
 
     const distanceRounded = Math.round(distance);
 
-    console.log(`📍 Tentative de pointage - ${req.user.prenom} ${req.user.nom} - Distance: ${distanceRounded}m`);
+    console.log(`📍 Tentative de pointage - ${req.user?.nom || 'Utilisateur'} - Distance: ${distanceRounded}m`);
 
     // ❌ REFUSER si hors de la zone (possibilité de réessayer)
     if (distance > storeConfig.rayon_tolerance) {
@@ -194,13 +178,14 @@ router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
     }
 
     // Récupérer les infos utilisateur pour la réponse
-    const { data: user } = await supabase
+    const { data: userRow } = await supabase
       .from('users')
-      .select('id, nom, prenom, role')
+      .select('id, nom, role, email, telephone, actif, created_at, updated_at')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+    const user = mapUser(userRow);
 
-    console.log(`✅ ACCEPTÉ - ${user.prenom} ${user.nom} - ${validation} - ${distanceRounded}m`);
+    console.log(`✅ ACCEPTÉ - ${user?.nom || 'Utilisateur'} - ${validation} - ${distanceRounded}m`);
 
     res.json({
       success: true,
@@ -231,10 +216,11 @@ router.post('/mark-arrival', checkAttendanceRole, async (req, res) => {
 // ROUTE 2 : 👋 MARQUER SON DÉPART
 // ============================================================================
 
-router.post('/mark-departure', checkAttendanceRole, async (req, res) => {
+router.post('/mark-departure', authenticate, authorize(...ATTENDANCE_ROLES), async (req, res) => {
   try {
     const { latitude, longitude, note } = req.body;
-    const userId = req.user.id;
+    const userId = req.userId;
+    const supabase = getSupabaseAdmin();
 
     // Validation des coordonnées
     if (!latitude || !longitude) {
@@ -252,7 +238,7 @@ router.post('/mark-departure', checkAttendanceRole, async (req, res) => {
       .select('*')
       .eq('user_id', userId)
       .eq('date', today)
-      .single();
+      .maybeSingle();
 
     if (findError || !attendance) {
       return res.status(400).json({
@@ -272,7 +258,14 @@ router.post('/mark-departure', checkAttendanceRole, async (req, res) => {
     const { data: storeConfig } = await supabase
       .from('store_config')
       .select('*')
-      .single();
+      .maybeSingle();
+
+    if (!storeConfig) {
+      return res.status(500).json({
+        error: 'Configuration manquante',
+        message: 'La configuration GPS de l\'atelier n\'est pas définie. Contactez l\'administrateur.'
+      });
+    }
 
     const distance = calculateDistance(
       parseFloat(latitude),
@@ -306,13 +299,14 @@ router.post('/mark-departure', checkAttendanceRole, async (req, res) => {
     }
 
     // Récupérer les infos utilisateur
-    const { data: user } = await supabase
+    const { data: userRow } = await supabase
       .from('users')
-      .select('id, nom, prenom, role')
+      .select('id, nom, role, email, telephone, actif, created_at, updated_at')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+    const user = mapUser(userRow);
 
-    console.log(`👋 Départ enregistré - ${user.prenom} ${user.nom} - ${new Date().toLocaleTimeString('fr-FR')}`);
+    console.log(`👋 Départ enregistré - ${user?.nom || 'Utilisateur'} - ${new Date().toLocaleTimeString('fr-FR')}`);
 
     res.json({
       success: true,
@@ -337,13 +331,14 @@ router.post('/mark-departure', checkAttendanceRole, async (req, res) => {
 // ROUTE 3 : 📊 OBTENIR MA PRÉSENCE DU JOUR
 // ============================================================================
 
-router.get('/my-attendance-today', async (req, res) => {
+router.get('/my-attendance-today', authenticate, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     const userRole = req.user.role;
+    const supabase = getSupabaseAdmin();
 
     // Les admins et livreurs n'ont pas de pointage
-    if (userRole === 'admin' || userRole === 'livreur') {
+    if (userRole === 'administrateur' || userRole === 'livreur') {
       return res.json({
         attendance: null,
         message: 'Le système de pointage ne s\'applique pas à votre rôle'
@@ -357,10 +352,10 @@ router.get('/my-attendance-today', async (req, res) => {
       .select('*')
       .eq('user_id', userId)
       .eq('date', today)
-      .single();
+      .maybeSingle();
 
     // Pas d'erreur si aucun pointage (null c'est normal)
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       console.error('Erreur récupération présence:', error);
       return res.status(500).json({
         error: 'Erreur serveur',
@@ -369,11 +364,12 @@ router.get('/my-attendance-today', async (req, res) => {
     }
 
     // Récupérer les infos utilisateur
-    const { data: user } = await supabase
+    const { data: userRow } = await supabase
       .from('users')
-      .select('id, nom, prenom, role')
+      .select('id, nom, role, email, telephone, actif, created_at, updated_at')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+    const user = mapUser(userRow);
 
     res.json({
       attendance: attendance ? { ...attendance, user } : null
@@ -392,17 +388,9 @@ router.get('/my-attendance-today', async (req, res) => {
 // ROUTE 4 : 📋 HISTORIQUE DES PRÉSENCES (Admin/Gestionnaire)
 // ============================================================================
 
-router.get('/history', async (req, res) => {
+router.get('/history', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
-    const userRole = req.user.role;
-
-    // Seuls admin et gestionnaire peuvent voir l'historique
-    if (userRole !== 'admin' && userRole !== 'gestionnaire') {
-      return res.status(403).json({
-        error: 'Accès refusé',
-        message: 'Vous n\'avez pas l\'autorisation de voir l\'historique'
-      });
-    }
+    const supabase = getSupabaseAdmin();
 
     const { 
       userId, 
@@ -422,14 +410,13 @@ router.get('/history', async (req, res) => {
         user:users (
           id,
           nom,
-          prenom,
           role
         )
       `, { count: 'exact' });
 
     // Filtres
     if (userId) {
-      query = query.eq('user_id', parseInt(userId));
+      query = query.eq('user_id', userId);
     }
 
     // Filtre par date unique
@@ -494,18 +481,9 @@ router.get('/history', async (req, res) => {
 // ROUTE 5 : 📊 STATISTIQUES DE PRÉSENCE (Admin/Gestionnaire)
 // ============================================================================
 
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
-    const userRole = req.user.role;
-
-    // Seuls admin et gestionnaire
-    if (userRole !== 'admin' && userRole !== 'gestionnaire') {
-      return res.status(403).json({
-        error: 'Accès refusé',
-        message: 'Vous n\'avez pas l\'autorisation'
-      });
-    }
-
+    const supabase = getSupabaseAdmin();
     const { data: stats, error } = await supabase
       .from('v_attendance_stats')
       .select('*')
@@ -534,12 +512,13 @@ router.get('/statistics', async (req, res) => {
 // ROUTE 6 : 🏢 RÉCUPÉRER LA CONFIGURATION DE L'ATELIER
 // ============================================================================
 
-router.get('/store-config', async (req, res) => {
+router.get('/store-config', authenticate, async (req, res) => {
   try {
+    const supabase = getSupabaseAdmin();
     const { data: config, error } = await supabase
       .from('store_config')
       .select('*')
-      .single();
+      .maybeSingle();
 
     if (error || !config) {
       return res.status(404).json({
@@ -563,17 +542,9 @@ router.get('/store-config', async (req, res) => {
 // ROUTE 7 : 🔧 METTRE À JOUR LA CONFIGURATION (Admin uniquement)
 // ============================================================================
 
-router.put('/store-config', async (req, res) => {
+router.put('/store-config', authenticate, authorize('administrateur'), async (req, res) => {
   try {
-    const userRole = req.user.role;
-
-    // Seuls les admins peuvent modifier la config
-    if (userRole !== 'admin') {
-      return res.status(403).json({
-        error: 'Accès refusé',
-        message: 'Seuls les administrateurs peuvent modifier la configuration'
-      });
-    }
+    const supabase = getSupabaseAdmin();
 
     const {
       nom,
@@ -601,7 +572,7 @@ router.put('/store-config', async (req, res) => {
     const { data: existingConfig } = await supabase
       .from('store_config')
       .select('id')
-      .single();
+      .maybeSingle();
 
     let result;
     if (existingConfig) {
@@ -629,7 +600,7 @@ router.put('/store-config', async (req, res) => {
       });
     }
 
-    console.log(`🔧 Configuration mise à jour par ${req.user.prenom} ${req.user.nom}`);
+    console.log(`🔧 Configuration mise à jour par ${req.user?.nom || 'Administrateur'}`);
 
     res.json({
       success: true,
@@ -650,23 +621,16 @@ router.put('/store-config', async (req, res) => {
 // ROUTE 8 : 🗑️ SUPPRIMER UN POINTAGE (Admin uniquement)
 // ============================================================================
 
-router.delete('/attendances/:id', async (req, res) => {
+router.delete('/attendances/:id', authenticate, authorize('administrateur'), async (req, res) => {
   try {
-    const userRole = req.user.role;
-
-    if (userRole !== 'admin') {
-      return res.status(403).json({
-        error: 'Accès refusé',
-        message: 'Seuls les administrateurs peuvent supprimer des pointages'
-      });
-    }
+    const supabase = getSupabaseAdmin();
 
     const { id } = req.params;
 
     const { error } = await supabase
       .from('attendances')
       .delete()
-      .eq('id', parseInt(id));
+      .eq('id', id);
 
     if (error) {
       console.error('Erreur suppression:', error);
@@ -676,7 +640,7 @@ router.delete('/attendances/:id', async (req, res) => {
       });
     }
 
-    console.log(`🗑️ Pointage #${id} supprimé par ${req.user.prenom} ${req.user.nom}`);
+    console.log(`🗑️ Pointage #${id} supprimé par ${req.user?.nom || 'Administrateur'}`);
 
     res.json({
       success: true,
@@ -692,5 +656,5 @@ router.delete('/attendances/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
 
