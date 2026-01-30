@@ -56,8 +56,8 @@ async function setupAttendanceConfig() {
     
     // PARAMÈTRES DE VALIDATION
     rayon_tolerance: 50,     // Rayon en mètres (50m recommandé)
-    heure_ouverture: '08:00', // Heure d'ouverture
-    heure_fermeture: '18:00', // Heure de fermeture
+    heure_ouverture: '08:30', // Heure d'ouverture
+    heure_fermeture: '17:30', // Heure de fermeture
     tolerance_retard: 15      // Tolérance de retard en minutes
   };
 
