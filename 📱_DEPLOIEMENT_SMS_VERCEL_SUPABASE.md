@@ -623,3 +623,8 @@ Pour la production, utilisez un téléphone dédié :
 **Suivez les étapes ci-dessus et vos clients recevront des SMS automatiques ! 🎉**
 
 
+
+
+
+
+

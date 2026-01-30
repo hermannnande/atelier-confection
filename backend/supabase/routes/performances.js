@@ -4,6 +4,21 @@ import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
+const isDateInRange = (value, dateDebut, dateFin) => {
+  if (!value) return false;
+  const date = new Date(value);
+  if (dateDebut) {
+    const start = new Date(dateDebut);
+    if (date < start) return false;
+  }
+  if (dateFin) {
+    const end = new Date(dateFin);
+    end.setHours(23, 59, 59, 999);
+    if (date > end) return false;
+  }
+  return true;
+};
+
 router.get('/overview', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -126,20 +141,11 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
       .eq('role', 'styliste')
       .eq('actif', true);
     
-    // Construire la requête avec filtres de date
-    let commandesQuery = supabase
+    // Récupérer les commandes pour calculer par date_decoupe
+    const commandesQuery = supabase
       .from('commandes')
-      .select('id, styliste_id, statut, created_at');
-    
-    if (dateDebut) {
-      commandesQuery = commandesQuery.gte('created_at', dateDebut);
-    }
-    if (dateFin) {
-      const dateFin23h59 = new Date(dateFin);
-      dateFin23h59.setHours(23, 59, 59, 999);
-      commandesQuery = commandesQuery.lte('created_at', dateFin23h59.toISOString());
-    }
-    
+      .select('id, styliste_id, statut, created_at, date_decoupe');
+
     const { data: commandes } = await commandesQuery;
 
     const commandesByStyliste = new Map();
@@ -152,8 +158,14 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
 
     const performances = (stylistes || []).map((s) => {
       const list = commandesByStyliste.get(s.id) || [];
-      const commandesDecoupees = list.filter((c) => ['en_couture', 'en_stock', 'en_livraison', 'livree'].includes(c.statut)).length;
-      const commandesEnCours = list.filter((c) => c.statut === 'en_decoupe').length;
+      const commandesDecoupees = list.filter((c) =>
+        ['en_couture', 'en_stock', 'en_livraison', 'livree'].includes(c.statut) &&
+        isDateInRange(c.date_decoupe, dateDebut, dateFin)
+      ).length;
+      const commandesEnCours = list.filter((c) =>
+        c.statut === 'en_decoupe' &&
+        isDateInRange(c.date_decoupe, dateDebut, dateFin)
+      ).length;
       return {
         styliste: { id: s.id, nom: s.nom, email: s.email },
         totalCommandesTraitees: commandesDecoupees,
@@ -180,20 +192,11 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
       .eq('role', 'couturier')
       .eq('actif', true);
     
-    // Construire la requête avec filtres de date
-    let commandesQuery = supabase
+    // Récupérer les commandes pour calculer par date_couture
+    const commandesQuery = supabase
       .from('commandes')
       .select('id, couturier_id, statut, created_at, date_couture');
-    
-    if (dateDebut) {
-      commandesQuery = commandesQuery.gte('created_at', dateDebut);
-    }
-    if (dateFin) {
-      const dateFin23h59 = new Date(dateFin);
-      dateFin23h59.setHours(23, 59, 59, 999);
-      commandesQuery = commandesQuery.lte('created_at', dateFin23h59.toISOString());
-    }
-    
+
     const { data: commandes } = await commandesQuery;
 
     const commandesByCouturier = new Map();
@@ -206,8 +209,14 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
 
     const performances = (couturiers || []).map((c) => {
       const list = commandesByCouturier.get(c.id) || [];
-      const commandesTerminees = list.filter((x) => ['en_stock', 'en_livraison', 'livree'].includes(x.statut));
-      const commandesEnCours = list.filter((x) => x.statut === 'en_couture');
+      const commandesTerminees = list.filter((x) =>
+        ['en_stock', 'en_livraison', 'livree'].includes(x.statut) &&
+        isDateInRange(x.date_couture, dateDebut, dateFin)
+      );
+      const commandesEnCours = list.filter((x) =>
+        x.statut === 'en_couture' &&
+        isDateInRange(x.date_couture, dateDebut, dateFin)
+      );
 
       let tempsMoyenConfection = 0;
       if (commandesTerminees.length > 0) {

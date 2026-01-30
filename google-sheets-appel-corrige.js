@@ -347,3 +347,8 @@ function nettoyerColonnesStatutSync() {
 
 
 
+
+
+
+
+

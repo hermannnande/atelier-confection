@@ -111,3 +111,8 @@ Une fois configuré :
 **🎊 Configuration Supabase prête en 2 minutes ! 🚀**
 
 
+
+
+
+
+

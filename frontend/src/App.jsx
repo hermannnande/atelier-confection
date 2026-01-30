@@ -21,6 +21,8 @@ import Performances from './pages/Performances';
 import Utilisateurs from './pages/Utilisateurs';
 import GestionCommandes from './pages/GestionCommandes';
 import NotificationsSMS from './pages/NotificationsSMS';
+import Presence from './pages/Presence';
+import HistoriquePresences from './pages/HistoriquePresences';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -177,6 +179,20 @@ function App() {
           <Route path="notifications-sms" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <NotificationsSMS />
+            </ProtectedRoute>
+          } />
+          
+          {/* Système de Présence GPS - Gestionnaire, Appelant, Styliste, Couturier */}
+          <Route path="presence" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'appelant', 'styliste', 'couturier']}>
+              <Presence />
+            </ProtectedRoute>
+          } />
+          
+          {/* Historique des Présences - Admin et Gestionnaire uniquement */}
+          <Route path="historique-presences" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <HistoriquePresences />
             </ProtectedRoute>
           } />
         </Route>

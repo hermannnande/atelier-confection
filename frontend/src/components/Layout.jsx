@@ -20,7 +20,9 @@ import {
   History,
   Wallet,
   Shield,
-  MessageSquare
+  MessageSquare,
+  MapPin,
+  Calendar
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -31,10 +33,12 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'], gradient: 'from-blue-500 to-cyan-500' },
+    { name: 'Pointage GPS', href: '/presence', icon: MapPin, roles: ['gestionnaire', 'appelant', 'styliste', 'couturier'], gradient: 'from-teal-500 to-green-500' },
     { name: 'Appel', href: '/appel', icon: PhoneCall, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-red-500' },
     { name: 'Commandes', href: '/commandes', icon: ShoppingBag, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-pink-500' },
     { name: 'Préparation Colis', href: '/preparation-colis', icon: Package, roles: ['administrateur', 'gestionnaire'], gradient: 'from-purple-500 to-indigo-500' },
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
+    { name: 'Historique Présences', href: '/historique-presences', icon: Calendar, roles: ['administrateur', 'gestionnaire'], gradient: 'from-lime-500 to-green-500' },
     { name: 'Bibliothèque Modèles', href: '/modeles', icon: Palette, roles: ['administrateur'], gradient: 'from-fuchsia-500 to-pink-500' },
     { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
