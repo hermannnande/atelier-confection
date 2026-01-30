@@ -47,8 +47,8 @@ Success. Tables créées : attendances, store_config
 3. Optionnel - Ligne 40-43 (paramètres) :
    ```javascript
    rayon_tolerance: 50,      // Rayon en mètres
-   heure_ouverture: '08:00', // Heure d'ouverture
-   heure_fermeture: '18:00', // Heure de fermeture
+   heure_ouverture: '08:30', // Heure d'ouverture
+   heure_fermeture: '17:30', // Heure de fermeture
    tolerance_retard: 15      // Minutes de tolérance
    ```
 

@@ -15,11 +15,13 @@ import {
   ArrowUpRight,
   BarChart3
 } from 'lucide-react';
+import Presence from './Presence';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const attendanceRoles = ['gestionnaire', 'appelant', 'styliste', 'couturier'];
 
   useEffect(() => {
     fetchStats();
@@ -182,6 +184,13 @@ const Dashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Pointage GPS directement sur le dashboard */}
+      {attendanceRoles.includes(user?.role) && (
+        <div className="animate-slide-up max-w-full">
+          <Presence />
+        </div>
+      )}
 
       {/* Statistiques principales avec glassmorphism */}
       <div className="animate-slide-up max-w-full">

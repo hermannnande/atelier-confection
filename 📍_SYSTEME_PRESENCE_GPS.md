@@ -125,8 +125,8 @@ Exemple pour Abidjan, Côte d'Ivoire :
    nom: 'Atelier de Confection Principal',
    adresse: 'Votre adresse complète',
    rayon_tolerance: 50,      // 50 mètres (recommandé)
-   heure_ouverture: '08:00', // 8h du matin
-   heure_fermeture: '18:00', // 18h
+   heure_ouverture: '08:30', // 8h30 du matin
+   heure_fermeture: '17:30', // 17h30
    tolerance_retard: 15      // 15 minutes de tolérance
    ```
 
@@ -148,7 +148,7 @@ Exemple pour Abidjan, Côte d'Ivoire :
    ✓ Latitude : 5.353859
    ✓ Longitude : -3.868327
    ✓ Rayon de validation : 50m
-   ✓ Horaires : 08:00 - 18:00
+   ✓ Horaires : 08:30 - 17:30
    ✓ Tolérance retard : 15 min
 ```
 
@@ -303,8 +303,8 @@ WHERE id = 1;
 ```sql
 UPDATE store_config 
 SET 
-  heure_ouverture = '07:30',
-  heure_fermeture = '19:00',
+  heure_ouverture = '08:30',
+  heure_fermeture = '17:30',
   tolerance_retard = 20  -- 20 minutes de tolérance
 WHERE id = 1;
 ```

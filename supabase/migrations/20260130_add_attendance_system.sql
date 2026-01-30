@@ -85,8 +85,8 @@ CREATE TABLE IF NOT EXISTS store_config (
     rayon_tolerance INTEGER DEFAULT 50,
     
     -- Horaires de travail
-    heure_ouverture TIME DEFAULT '08:00',
-    heure_fermeture TIME DEFAULT '18:00',
+    heure_ouverture TIME DEFAULT '08:30',
+    heure_fermeture TIME DEFAULT '17:30',
     
     -- Tolérance de retard en minutes (par défaut 15 min)
     tolerance_retard INTEGER DEFAULT 15,
@@ -130,8 +130,8 @@ INSERT INTO store_config (
     5.353859,  -- Coordonnées Atelier (mise à jour)
     -3.868327, -- Coordonnées Atelier (mise à jour)
     50,        -- 50 mètres de rayon
-    '08:00',   -- Ouverture à 8h
-    '18:00',   -- Fermeture à 18h
+    '08:30',   -- Ouverture à 8h30
+    '17:30',   -- Fermeture à 17h30
     15         -- 15 minutes de tolérance pour les retards
 )
 ON CONFLICT DO NOTHING;
