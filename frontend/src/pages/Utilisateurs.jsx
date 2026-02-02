@@ -62,6 +62,29 @@ const Utilisateurs = () => {
     }
   };
 
+  const handleDelete = async (id, nom) => {
+    if (!window.confirm(`Voulez-vous vraiment supprimer ${nom} ?`)) return;
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success('Utilisateur supprimé');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const handleDeleteUser = async (id, nom) => {
+    const confirmed = window.confirm(`Supprimer ${nom} ? Cette action désactive le compte.`);
+    if (!confirmed) return;
+    try {
+      await api.delete(`/users/${id}`);
+      toast.success('Utilisateur supprimé');
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur');
+    }
+  };
+
   const getRoleBadgeColor = (role) => {
     const colors = {
       administrateur: 'badge-primary',
@@ -166,9 +189,20 @@ const Utilisateurs = () => {
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <button className="btn btn-secondary btn-sm">
-                      <Edit size={14} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button className="btn btn-secondary btn-sm">
+                        <Edit size={14} />
+                      </button>
+                      {currentUser?.role === 'administrateur' && (
+                        <button
+                          onClick={() => handleDeleteUser(user._id, user.nom)}
+                          className="btn btn-danger btn-sm"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
