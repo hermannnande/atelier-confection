@@ -14,7 +14,7 @@ const NouvelleCommande = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Listes complètes des tailles et couleurs disponibles
-  const taillesDisponibles = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
+  const taillesDisponibles = ['Standard', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
   const couleursDisponibles = [
     'Blanc',
     'Noir',

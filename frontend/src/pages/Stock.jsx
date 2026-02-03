@@ -22,7 +22,7 @@ const Stock = () => {
   const [newCouleur, setNewCouleur] = useState('');
   
   // Suggestions
-  const taillesSuggestions = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
+  const taillesSuggestions = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
   const couleursSuggestions = [
     'Blanc',
     'Noir',

@@ -62,17 +62,6 @@ const Utilisateurs = () => {
     }
   };
 
-  const handleDelete = async (id, nom) => {
-    if (!window.confirm(`Voulez-vous vraiment supprimer ${nom} ?`)) return;
-    try {
-      await api.delete(`/users/${id}`);
-      toast.success('Utilisateur supprimé');
-      fetchUsers();
-    } catch (error) {
-      toast.error('Erreur lors de la suppression');
-    }
-  };
-
   const handleDeleteUser = async (id, nom) => {
     const confirmed = window.confirm(`Supprimer ${nom} ? Cette action désactive le compte.`);
     if (!confirmed) return;
