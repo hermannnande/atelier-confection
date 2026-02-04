@@ -404,10 +404,17 @@
 
   <!-- Cloudinary Upload Widget -->
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <script>
+    // Config Cloudinary (compte + preset)
+    window.CLOUDINARY_CONFIG = {
+      cloudName: 'devydnm2d',
+      uploadPreset: 'atelier_unsigned'
+    };
+  </script>
   
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/products-manager.js"></script>
-  <script src="js/cloudinary-upload.js"></script>
+  <script src="js/cloudinary-upload.js?v=20260205-111500"></script>
 </body>
 </html>
