@@ -348,6 +348,15 @@
               <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
                 5 images maximum - Ces images apparaîtront sur la page détail du produit
               </p>
+              
+              <!-- Bouton Upload Cloudinary -->
+              <button type="button" class="btn btn-primary" onclick="openGalleryWidget()" style="width: 100%; margin-bottom: 12px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
+                  <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                </svg>
+                Uploader Images (Cloudinary)
+              </button>
+              
               <div class="image-upload-area" id="productImagesUpload" onclick="document.getElementById('productImages').click()">
                 <svg viewBox="0 0 24 24" width="48" height="48" style="color: #9ca3af; margin-bottom: 12px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
@@ -383,6 +392,15 @@
               <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
                 <strong>IMPORTANT :</strong> Image carrée 600×600 px - Apparaîtra sur la page boutique
               </p>
+              
+              <!-- Bouton Upload Cloudinary avec Crop -->
+              <button type="button" class="btn btn-primary" onclick="openThumbnailWidget()" style="width: 100%; margin-bottom: 12px; background: #667eea;">
+                <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
+                  <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+                </svg>
+                Uploader Vignette 600×600 (Cloudinary)
+              </button>
+              
               <div class="image-upload-area" id="productThumbnailUpload" onclick="document.getElementById('productThumbnailFile').click()" style="border-color: #667eea;">
                 <svg viewBox="0 0 24 24" width="48" height="48" style="color: #667eea; margin-bottom: 12px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
@@ -410,8 +428,12 @@
     </div>
   </div>
 
+  <!-- Cloudinary Upload Widget -->
+  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/products-manager.js"></script>
+  <script src="js/cloudinary-upload.js"></script>
 </body>
 </html>

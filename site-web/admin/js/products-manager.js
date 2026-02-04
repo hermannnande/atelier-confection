@@ -208,6 +208,16 @@ function addImageUrl() {
   urlInput.value = '';
 }
 
+// Fonction globale pour ajouter une image depuis Cloudinary
+window.addCloudinaryImageToGallery = function(url) {
+  if (currentImages.length >= 5) {
+    alert('Maximum 5 images pour la galerie produit');
+    return;
+  }
+  currentImages.push(url);
+  updatePreviewImages();
+};
+
 // Ajouter une image boutique par URL (600x600)
 function addThumbnailUrl() {
   const urlInput = document.getElementById('productThumbnailUrl');
@@ -227,6 +237,12 @@ function addThumbnailUrl() {
     urlInput.value = '';
   });
 }
+
+// Fonction globale pour ajouter une vignette depuis Cloudinary
+window.addCloudinaryThumbnail = function(url) {
+  currentThumbnail = url;
+  updateThumbnailPreview();
+};
 
 // Mettre à jour l'aperçu des images galerie (portrait)
 function updatePreviewImages() {
