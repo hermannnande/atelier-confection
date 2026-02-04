@@ -125,6 +125,25 @@
   margin-bottom: 20px;
   color: #000;
   line-height: 1.2;
+  min-height: 1.3em;
+  display: flex;
+  align-items: center;
+}
+
+.product-title::after {
+  content: '|';
+  margin-left: 4px;
+  animation: blink 1s infinite;
+  font-weight: 400;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
 }
 
 .product-price {
@@ -314,6 +333,270 @@
   flex-shrink: 0;
 }
 
+/* Produits similaires */
+.similar-products {
+  padding: 80px 20px 40px;
+  background: #fafafa;
+}
+
+.similar-container {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.similar-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.similar-header h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 800;
+}
+
+.similar-header p {
+  margin: 0;
+  color: #666;
+  font-size: 15px;
+}
+
+.similar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.similar-card {
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.similar-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+
+.similar-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #f2f2f2;
+}
+
+.similar-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.similar-card:hover .similar-image img {
+  transform: scale(1.06);
+}
+
+.similar-info {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.similar-info h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.similar-info span {
+  font-size: 13px;
+  color: #666;
+}
+
+.similar-price {
+  font-weight: 800;
+  font-size: 16px;
+  color: #000;
+}
+
+/* Partage social */
+.product-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.share-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.share-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e0e0e0;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.share-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.share-btn[data-share="facebook"]:hover {
+  background: #1877f2;
+  border-color: #1877f2;
+  color: #fff;
+}
+
+.share-btn[data-share="whatsapp"]:hover {
+  background: #25d366;
+  border-color: #25d366;
+  color: #fff;
+}
+
+.share-btn[data-share="twitter"]:hover {
+  background: #1da1f2;
+  border-color: #1da1f2;
+  color: #fff;
+}
+
+.share-btn[data-share="copy"]:hover {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+
+.share-btn svg {
+  transition: all 0.2s ease;
+}
+
+.share-btn:hover svg {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Modal zoom image */
+.image-zoom-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.95);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.image-zoom-modal.active {
+  display: flex;
+  opacity: 1;
+}
+
+.zoom-modal-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.zoom-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.zoom-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.zoom-modal-close svg {
+  filter: invert(1);
+}
+
+.zoom-modal-image {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 2;
+  cursor: zoom-out;
+}
+
+.zoom-modal-nav {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.zoom-nav-btn {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  pointer-events: all;
+}
+
+.zoom-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.zoom-nav-btn svg {
+  filter: invert(1);
+}
+
+/* Améliorer le curseur sur les images de la galerie */
+.gallery-item {
+  cursor: zoom-in;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .product-container {
@@ -352,15 +635,48 @@
   }
 
   .product-actions {
-    flex-direction: column;
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    z-index: 200;
+    flex-direction: row;
+    align-items: center;
+    background: #fff;
+    padding: 10px;
+    border-radius: 16px;
+    margin-bottom: 0;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
   }
 
   .btn-favorite {
-    width: 100%;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 auto;
+    border-radius: 12px;
+  }
+
+  .btn-add-cart {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+
+  .product-info {
+    padding-bottom: 120px;
   }
 }
 
 @media (max-width: 480px) {
+  .product-actions {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+  }
+
+  .product-info {
+    padding-bottom: 130px;
+  }
+
   .size-grid {
     justify-content: space-between;
   }

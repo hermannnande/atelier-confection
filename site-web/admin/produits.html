@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Produits - Admin Atelier Confection</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <style>
+    .products-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .product-img-preview {
+      width: 60px;
+      height: 75px;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .modal-close:hover {
+      background: #f3f4f6;
+      color: #000;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-grid-full {
+      grid-column: 1 / -1;
+    }
+    .image-upload-area {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .image-upload-area.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f9fafb;
+      border-color: #cbd5f5;
+    }
+    .image-upload-area:hover {
+      border-color: #667eea;
+      background: #f9fafb;
+    }
+    .image-upload-area input {
+      display: none;
+    }
+    .preview-images {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .preview-image-item {
+      position: relative;
+      width: 100px;
+      height: 125px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e5e7eb;
+    }
+    .preview-image-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .remove-image {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 24px;
+      height: 24px;
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .color-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+      gap: 8px;
+    }
+    .color-option {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .color-option.selected {
+      border-color: #000;
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
+    }
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <svg viewBox="0 0 24 24" width="32" height="32">
+          <path fill="currentColor" d="M12 2l3.5 7H22l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h6.5L12 2z" />
+        </svg>
+        <span>Atelier Admin</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-item">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+        </svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="produits.html" class="nav-item active">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 00-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+        </svg>
+        <span>Produits</span>
+      </a>
+      <a href="categories.html" class="nav-item">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/>
+        </svg>
+        <span>Catégories</span>
+      </a>
+      <a href="commandes.html" class="nav-item">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+        </svg>
+        <span>Commandes</span>
+      </a>
+      <a href="parametres.html" class="nav-item">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+        <span>Paramètres</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="btnLogout">
+        <svg viewBox="0 0 24 24" width="20" height="20">
+          <path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+        </svg>
+        <span>Déconnexion</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <header class="admin-header">
+      <h1>Gestion des Produits</h1>
+      <div class="admin-user">
+        <span>Admin</span>
+        <div class="user-avatar">A</div>
+      </div>
+    </header>
+
+    <div class="admin-content">
+      <div class="products-header">
+        <div>
+          <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Tous les produits</h2>
+          <p style="color: #6b7280; font-size: 14px;" id="productsCount">0 produit(s)</p>
+        </div>
+        <button class="btn btn-primary" id="btnNewProduct">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          Nouveau Produit
+        </button>
+      </div>
+
+      <div class="section-card">
+        <div class="table-responsive">
+          <table class="data-table" id="productsTable">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Nom</th>
+                <th>Catégorie</th>
+                <th>Prix</th>
+                <th>Stock</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+                  Aucun produit. Cliquez sur "Nouveau Produit" pour commencer.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Produit -->
+  <div class="modal" id="productModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Nouveau Produit</h2>
+        <button class="modal-close" onclick="closeProductModal()">&times;</button>
+      </div>
+      <form id="productForm">
+        <div class="modal-body">
+          <input type="hidden" id="productId">
+          
+          <div class="form-grid">
+            <div class="form-group form-grid-full">
+              <label for="storageMode">Mode de stockage images</label>
+              <select id="storageMode">
+                <option value="url">Stockage illimité (URLs d’images)</option>
+                <option value="local">Stockage local (limité)</option>
+              </select>
+              <p style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                Pour un stockage illimité, utilisez des images hébergées (URLs). Les uploads locaux peuvent saturer le navigateur.
+              </p>
+            </div>
+            <div class="form-group form-grid-full">
+              <label for="productName">Nom du produit *</label>
+              <input type="text" id="productName" required placeholder="Ex: Robe Élégante Satin">
+            </div>
+            
+            <div class="form-group">
+              <label for="productCategory">Catégorie *</label>
+              <select id="productCategory" required>
+                <option value="">Sélectionner...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="productPrice">Prix (FCFA) *</label>
+              <input type="number" id="productPrice" required placeholder="45000" min="0">
+            </div>
+            
+            <div class="form-group">
+              <label for="productOriginalPrice">Prix original</label>
+              <input type="number" id="productOriginalPrice" placeholder="60000" min="0">
+            </div>
+            
+            <div class="form-group">
+              <label for="productStock">Stock *</label>
+              <input type="number" id="productStock" required placeholder="10" min="0" value="10">
+            </div>
+            
+            <div class="form-group form-grid-full">
+              <label for="productDescription">Description *</label>
+              <textarea id="productDescription" required rows="3" placeholder="Description du produit..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="productSizes">Tailles (séparées par virgule) *</label>
+              <input type="text" id="productSizes" required placeholder="S, M, L, XL">
+            </div>
+            
+            <div class="form-group">
+              <label for="productColors">Couleurs (séparées par virgule) *</label>
+              <input type="text" id="productColors" required placeholder="Noir, Blanc, Beige">
+            </div>
+            
+            <div class="form-group form-grid-full">
+              <label>📸 Images Galerie Produit (Format Portrait) *</label>
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                5 images maximum - Ces images apparaîtront sur la page détail du produit
+              </p>
+              <div class="image-upload-area" id="productImagesUpload" onclick="document.getElementById('productImages').click()">
+                <svg viewBox="0 0 24 24" width="48" height="48" style="color: #9ca3af; margin-bottom: 12px;">
+                  <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+                <p style="color: #6b7280; margin-bottom: 8px;">Cliquez pour ajouter images PORTRAIT</p>
+                <p style="font-size: 12px; color: #9ca3af;">Format recommandé : 600×800, 800×1000, etc.</p>
+                <input type="file" id="productImages" multiple accept="image/*">
+              </div>
+              <p id="galleryStorageNote" style="font-size: 12px; color: #b45309; margin-top: 8px; display: none;">
+                Mode URL uniquement : utilisez l’URL d’image ci‑dessous.
+              </p>
+              <div class="form-group" style="margin-top: 12px;">
+                <input type="url" id="productImageUrl" placeholder="URL d'image portrait (https://...)">
+                <button type="button" class="btn btn-sm" onclick="addImageUrl()" style="margin-top: 8px;">Ajouter URL Image</button>
+              </div>
+              <div class="preview-images" id="previewImages"></div>
+            </div>
+
+            <div class="form-group form-grid-full">
+              <label>🎥 Vidéo Produit (Optionnel)</label>
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                1 vidéo - Apparaîtra dans la galerie produit
+              </p>
+              <div class="form-group">
+                <input type="url" id="productVideoUrl" placeholder="URL de la vidéo (https://...)">
+                <button type="button" class="btn btn-sm" onclick="setVideoUrl()" style="margin-top: 8px;">Ajouter Vidéo</button>
+              </div>
+              <div class="preview-images" id="previewVideo"></div>
+            </div>
+
+            <div class="form-group form-grid-full" style="border-top: 2px dashed #e5e7eb; padding-top: 20px;">
+              <label>🔲 Vignette Boutique 600×600 (CARRÉ) *</label>
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                <strong>IMPORTANT :</strong> Image carrée 600×600 px - Apparaîtra sur la page boutique
+              </p>
+              <div class="image-upload-area" id="productThumbnailUpload" onclick="document.getElementById('productThumbnailFile').click()" style="border-color: #667eea;">
+                <svg viewBox="0 0 24 24" width="48" height="48" style="color: #667eea; margin-bottom: 12px;">
+                  <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+                <p style="color: #667eea; margin-bottom: 8px; font-weight: 600;">Cliquez pour ajouter vignette CARRÉE 600×600</p>
+                <p style="font-size: 12px; color: #9ca3af;">Format obligatoire : 600 × 600 px</p>
+                <input type="file" id="productThumbnailFile" accept="image/*">
+              </div>
+              <p id="thumbnailStorageNote" style="font-size: 12px; color: #b45309; margin-top: 8px; display: none;">
+                Mode URL uniquement : utilisez l’URL de vignette ci‑dessous.
+              </p>
+              <div class="form-group" style="margin-top: 12px;">
+                <input type="url" id="productThumbnailUrl" placeholder="URL de l'image 600×600 (https://...)">
+                <button type="button" class="btn btn-sm btn-primary" onclick="addThumbnailUrl()" style="margin-top: 8px;">Ajouter URL Vignette</button>
+              </div>
+              <div class="preview-images" id="previewThumbnail"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeProductModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/products-manager.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 /* Page Boutique */
 .shop-page {
-  padding: 100px 0 80px;
+  padding: 120px 0 80px;
   min-height: 100vh;
   background: #fafafa;
 }
@@ -11,6 +11,11 @@
   padding: 80px 20px;
   text-align: center;
   margin-bottom: 60px;
+}
+
+.shop-hero-content {
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .shop-hero-content h1 {
@@ -34,7 +39,7 @@
   margin-bottom: 40px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: sticky;
-  top: 80px;
+  top: 110px;
   z-index: 100;
 }
 
@@ -109,7 +114,7 @@
   max-width: 1600px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 32px;
 }
 
@@ -131,11 +136,16 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
 }
 
-/* Image produit */
+/* Image produit - CARRÉ pour vignette boutique */
 .product-image {
   position: relative;
   width: 100%;
-  padding-bottom: 133.33%; /* Ratio 3:4 */
+  /* IMPORTANT:
+     `style.css` définit `.product-image { padding-top: 133%; }` (portrait).
+     Ici on force le carré (1:1) uniquement pour la boutique. */
+  padding-top: 0;
+  padding-bottom: 0;
+  aspect-ratio: 1 / 1; /* Ratio 1:1 pour vignette 600×600 */
   background: #f5f5f5;
   overflow: hidden;
 }
@@ -358,7 +368,7 @@
 
 @media (max-width: 768px) {
   .shop-page {
-    padding: 80px 0 60px;
+    padding: 100px 0 60px;
   }
 
   .shop-hero {
@@ -367,7 +377,7 @@
   }
 
   .shop-filters {
-    top: 60px;
+    top: 90px;
     padding: 16px;
   }
 
@@ -424,6 +434,32 @@
   .pagination-number {
     width: 40px;
     height: 40px;
+  }
+}
+
+@media (max-width: 520px) {
+  .shop-hero {
+    padding: 48px 16px;
+  }
+
+  .filters-container {
+    gap: 12px;
+  }
+
+  .products-container {
+    grid-template-columns: 1fr;
+  }
+
+  .product-info {
+    padding: 14px;
+  }
+
+  .product-name {
+    font-size: 15px;
+  }
+
+  .price-current {
+    font-size: 16px;
   }
 }
 

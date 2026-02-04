@@ -6,6 +6,8 @@ const subtitle = document.querySelector('.page-subtitle');
 const buildWishlistItem = (item) => {
   const defaultSize = item.size || item.sizes?.[0] || 'M';
   const defaultColor = item.color || item.colors?.[0] || 'Standard';
+  const safeId = encodeURIComponent(item.id || store.slugify(item.name || ''));
+  const productUrl = `produit.html?id=${safeId}`;
 
   return `
     <div
@@ -18,11 +20,11 @@ const buildWishlistItem = (item) => {
       data-size="${defaultSize}"
       data-color="${defaultColor}"
     >
-      <a href="produit.html" class="item-image">
+      <a href="${productUrl}" class="item-image">
         <img src="${item.image}" alt="${item.name}" />
       </a>
       <div class="item-info">
-        <a href="produit.html" class="item-name">${item.name}</a>
+        <a href="${productUrl}" class="item-name">${item.name}</a>
         <p class="item-category">${item.category || ''}</p>
         <div class="item-price">
           <span class="price-current">${store.formatPrice(item.price)}</span>
