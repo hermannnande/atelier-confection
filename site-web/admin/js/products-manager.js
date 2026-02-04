@@ -6,7 +6,7 @@ let editingProductId = null;
 const STORAGE_MODE_KEY = 'atelier-admin-storage-mode';
 
 function getStorageMode() {
-  return localStorage.getItem(STORAGE_MODE_KEY) || 'url';
+  return localStorage.getItem(STORAGE_MODE_KEY) || 'local'; // Mode local par défaut
 }
 
 function setStorageMode(mode) {
@@ -21,14 +21,25 @@ function applyStorageMode() {
   const uploadThumbnail = document.getElementById('productThumbnailUpload');
   const galleryNote = document.getElementById('galleryStorageNote');
   const thumbNote = document.getElementById('thumbnailStorageNote');
+  const cloudinaryBtns = document.querySelectorAll('.btn-cloudinary-upload');
 
-  const disableUploads = mode === 'url';
-  if (fileInput) fileInput.disabled = disableUploads;
-  if (thumbInput) thumbInput.disabled = disableUploads;
-  if (uploadGallery) uploadGallery.classList.toggle('disabled', disableUploads);
-  if (uploadThumbnail) uploadThumbnail.classList.toggle('disabled', disableUploads);
-  if (galleryNote) galleryNote.style.display = disableUploads ? 'block' : 'none';
-  if (thumbNote) thumbNote.style.display = disableUploads ? 'block' : 'none';
+  // Mode local : uploads activés, Cloudinary masqué
+  // Mode URL : uploads désactivés, Cloudinary masqué
+  // Mode cloudinary : uploads désactivés, Cloudinary visible
+
+  const disableLocalUploads = mode === 'url' || mode === 'cloudinary';
+  const showCloudinaryBtns = mode === 'cloudinary';
+
+  if (fileInput) fileInput.disabled = disableLocalUploads;
+  if (thumbInput) thumbInput.disabled = disableLocalUploads;
+  if (uploadGallery) uploadGallery.classList.toggle('disabled', disableLocalUploads);
+  if (uploadThumbnail) uploadThumbnail.classList.toggle('disabled', disableLocalUploads);
+  if (galleryNote) galleryNote.style.display = (mode === 'url') ? 'block' : 'none';
+  if (thumbNote) thumbNote.style.display = (mode === 'url') ? 'block' : 'none';
+  
+  cloudinaryBtns.forEach(btn => {
+    btn.style.display = showCloudinaryBtns ? 'block' : 'none';
+  });
 }
 
 // Charger les catégories dans le select
@@ -437,13 +448,24 @@ if (productForm) {
       return;
     }
 
+    // Validation mode stockage
     if (storageMode === 'url') {
       const hasDataUrl =
         currentImages.some((img) => String(img || '').startsWith('data:')) ||
         String(currentThumbnail || '').startsWith('data:');
       if (hasDataUrl) {
-        alert('Mode URL uniquement : remplacez les images locales par des URLs hébergées.');
+        alert('Mode URL : remplacez les images locales par des URLs hébergées.');
         return;
+      }
+    }
+    
+    // Avertissement si images trop lourdes en mode local
+    if (storageMode === 'local') {
+      const estimatedSize = JSON.stringify({images: currentImages, thumbnail: currentThumbnail}).length;
+      if (estimatedSize > 500000) { // ~500KB
+        if (!confirm('Images volumineuses détectées. Cela peut saturer le stockage. Continuer ?')) {
+          return;
+        }
       }
     }
     
