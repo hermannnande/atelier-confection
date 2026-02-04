@@ -292,16 +292,6 @@
           
           <div class="form-grid">
             <div class="form-group form-grid-full">
-              <label for="storageMode">Mode de stockage images</label>
-              <select id="storageMode">
-                <option value="url">Stockage illimité (URLs d’images)</option>
-                <option value="local">Stockage local (limité)</option>
-              </select>
-              <p style="font-size: 12px; color: #6b7280; margin-top: 6px;">
-                Pour un stockage illimité, utilisez des images hébergées (URLs). Les uploads locaux peuvent saturer le navigateur.
-              </p>
-            </div>
-            <div class="form-group form-grid-full">
               <label for="productName">Nom du produit *</label>
               <input type="text" id="productName" required placeholder="Ex: Robe Élégante Satin">
             </div>
@@ -349,28 +339,20 @@
                 5 images maximum - Ces images apparaîtront sur la page détail du produit
               </p>
               
-              <!-- Bouton Upload Cloudinary (masqué par défaut) -->
-              <button type="button" class="btn btn-primary btn-cloudinary-upload" onclick="openGalleryWidget()" style="width: 100%; margin-bottom: 12px; display: none;">
+              <!-- Bouton Upload Cloudinary -->
+              <button type="button" class="btn btn-primary" onclick="openGalleryWidget()" style="width: 100%; margin-bottom: 12px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
                   <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                 </svg>
                 Uploader Images (Cloudinary)
               </button>
               
-              <div class="image-upload-area" id="productImagesUpload" onclick="document.getElementById('productImages').click()">
+              <div class="image-upload-area" id="productImagesUpload" onclick="openGalleryWidget()">
                 <svg viewBox="0 0 24 24" width="48" height="48" style="color: #9ca3af; margin-bottom: 12px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>
                 <p style="color: #6b7280; margin-bottom: 8px;">Cliquez pour ajouter images PORTRAIT</p>
                 <p style="font-size: 12px; color: #9ca3af;">Format recommandé : 600×800, 800×1000, etc.</p>
-                <input type="file" id="productImages" multiple accept="image/*">
-              </div>
-              <p id="galleryStorageNote" style="font-size: 12px; color: #b45309; margin-top: 8px; display: none;">
-                Mode URL uniquement : utilisez l’URL d’image ci‑dessous.
-              </p>
-              <div class="form-group" style="margin-top: 12px;">
-                <input type="url" id="productImageUrl" placeholder="URL d'image portrait (https://...)">
-                <button type="button" class="btn btn-sm" onclick="addImageUrl()" style="margin-top: 8px;">Ajouter URL Image</button>
               </div>
               <div class="preview-images" id="previewImages"></div>
             </div>
@@ -393,28 +375,20 @@
                 <strong>IMPORTANT :</strong> Image carrée 600×600 px - Apparaîtra sur la page boutique
               </p>
               
-              <!-- Bouton Upload Cloudinary avec Crop (masqué par défaut) -->
-              <button type="button" class="btn btn-primary btn-cloudinary-upload" onclick="openThumbnailWidget()" style="width: 100%; margin-bottom: 12px; background: #667eea; display: none;">
+              <!-- Bouton Upload Cloudinary avec Crop -->
+              <button type="button" class="btn btn-primary" onclick="openThumbnailWidget()" style="width: 100%; margin-bottom: 12px; background: #667eea;">
                 <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
                   <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                 </svg>
                 Uploader Vignette 600×600 (Cloudinary)
               </button>
               
-              <div class="image-upload-area" id="productThumbnailUpload" onclick="document.getElementById('productThumbnailFile').click()" style="border-color: #667eea;">
+              <div class="image-upload-area" id="productThumbnailUpload" onclick="openThumbnailWidget()" style="border-color: #667eea;">
                 <svg viewBox="0 0 24 24" width="48" height="48" style="color: #667eea; margin-bottom: 12px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>
                 <p style="color: #667eea; margin-bottom: 8px; font-weight: 600;">Cliquez pour ajouter vignette CARRÉE 600×600</p>
                 <p style="font-size: 12px; color: #9ca3af;">Format obligatoire : 600 × 600 px</p>
-                <input type="file" id="productThumbnailFile" accept="image/*">
-              </div>
-              <p id="thumbnailStorageNote" style="font-size: 12px; color: #b45309; margin-top: 8px; display: none;">
-                Mode URL uniquement : utilisez l’URL de vignette ci‑dessous.
-              </p>
-              <div class="form-group" style="margin-top: 12px;">
-                <input type="url" id="productThumbnailUrl" placeholder="URL de l'image 600×600 (https://...)">
-                <button type="button" class="btn btn-sm btn-primary" onclick="addThumbnailUrl()" style="margin-top: 8px;">Ajouter URL Vignette</button>
               </div>
               <div class="preview-images" id="previewThumbnail"></div>
             </div>

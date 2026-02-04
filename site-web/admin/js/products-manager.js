@@ -3,44 +3,6 @@ let currentImages = []; // Images galerie (portrait) - max 5
 let currentVideo = ''; // URL vidéo
 let currentThumbnail = ''; // Vignette boutique 600x600
 let editingProductId = null;
-const STORAGE_MODE_KEY = 'atelier-admin-storage-mode';
-
-function getStorageMode() {
-  return localStorage.getItem(STORAGE_MODE_KEY) || 'local'; // Mode local par défaut
-}
-
-function setStorageMode(mode) {
-  localStorage.setItem(STORAGE_MODE_KEY, mode);
-}
-
-function applyStorageMode() {
-  const mode = getStorageMode();
-  const fileInput = document.getElementById('productImages');
-  const thumbInput = document.getElementById('productThumbnailFile');
-  const uploadGallery = document.getElementById('productImagesUpload');
-  const uploadThumbnail = document.getElementById('productThumbnailUpload');
-  const galleryNote = document.getElementById('galleryStorageNote');
-  const thumbNote = document.getElementById('thumbnailStorageNote');
-  const cloudinaryBtns = document.querySelectorAll('.btn-cloudinary-upload');
-
-  // Mode local : uploads activés, Cloudinary masqué
-  // Mode URL : uploads désactivés, Cloudinary masqué
-  // Mode cloudinary : uploads désactivés, Cloudinary visible
-
-  const disableLocalUploads = mode === 'url' || mode === 'cloudinary';
-  const showCloudinaryBtns = mode === 'cloudinary';
-
-  if (fileInput) fileInput.disabled = disableLocalUploads;
-  if (thumbInput) thumbInput.disabled = disableLocalUploads;
-  if (uploadGallery) uploadGallery.classList.toggle('disabled', disableLocalUploads);
-  if (uploadThumbnail) uploadThumbnail.classList.toggle('disabled', disableLocalUploads);
-  if (galleryNote) galleryNote.style.display = (mode === 'url') ? 'block' : 'none';
-  if (thumbNote) thumbNote.style.display = (mode === 'url') ? 'block' : 'none';
-  
-  cloudinaryBtns.forEach(btn => {
-    btn.style.display = showCloudinaryBtns ? 'block' : 'none';
-  });
-}
 
 // Charger les catégories dans le select
 function loadCategories() {
@@ -146,7 +108,6 @@ function openProductModal() {
   if (previewThumbnail) previewThumbnail.innerHTML = '';
   document.getElementById('productModal').classList.add('active');
   loadCategories();
-  applyStorageMode();
 }
 
 // Fermer le modal
@@ -184,7 +145,6 @@ function editProduct(id) {
   
   document.getElementById('productModal').classList.add('active');
   loadCategories();
-  applyStorageMode();
 }
 
 // Supprimer un produit
@@ -199,26 +159,6 @@ function deleteProduct(id) {
   }
 }
 
-// Ajouter une image par URL (galerie portrait)
-function addImageUrl() {
-  const urlInput = document.getElementById('productImageUrl');
-  const url = urlInput.value.trim();
-  
-  if (!url || !url.startsWith('http')) {
-    alert('Veuillez entrer une URL valide (commençant par http ou https)');
-    return;
-  }
-  
-  if (currentImages.length >= 5) {
-    alert('Maximum 5 images pour la galerie produit');
-    return;
-  }
-  
-  currentImages.push(url);
-  updatePreviewImages();
-  urlInput.value = '';
-}
-
 // Fonction globale pour ajouter une image depuis Cloudinary
 window.addCloudinaryImageToGallery = function(url) {
   if (currentImages.length >= 5) {
@@ -228,26 +168,6 @@ window.addCloudinaryImageToGallery = function(url) {
   currentImages.push(url);
   updatePreviewImages();
 };
-
-// Ajouter une image boutique par URL (600x600)
-function addThumbnailUrl() {
-  const urlInput = document.getElementById('productThumbnailUrl');
-  const url = urlInput.value.trim();
-  if (!url || !url.startsWith('http')) {
-    alert('Veuillez entrer une URL valide (commençant par http ou https)');
-    return;
-  }
-
-  validateImageSize(url, (isValid, info) => {
-    if (!isValid) {
-      alert(`Image refusée : format ${info.width}x${info.height}px. Il faut 600x600px.`);
-      return;
-    }
-    currentThumbnail = url;
-    updateThumbnailPreview();
-    urlInput.value = '';
-  });
-}
 
 // Fonction globale pour ajouter une vignette depuis Cloudinary
 window.addCloudinaryThumbnail = function(url) {
@@ -341,88 +261,11 @@ function removeImage(index) {
   updatePreviewImages();
 }
 
-// Gérer l'upload de fichiers galerie (portrait)
-const fileInput = document.getElementById('productImages');
-if (fileInput) {
-  fileInput.addEventListener('change', (e) => {
-    if (getStorageMode() === 'url') {
-      alert('Mode URL uniquement : utilisez l’URL d’image pour un stockage illimité.');
-      fileInput.value = '';
-      return;
-    }
-    const files = Array.from(e.target.files);
-    const remaining = 5 - currentImages.length;
-    
-    if (files.length > remaining) {
-      alert(`Vous pouvez ajouter seulement ${remaining} image(s) de plus (max 5 au total)`);
-    }
-    
-    const filesToProcess = files.slice(0, remaining);
-    
-    filesToProcess.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          currentImages.push(event.target.result);
-          updatePreviewImages();
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-    
-    // Réinitialiser l'input
-    fileInput.value = '';
-  });
-}
-
-// Gérer l'upload de l'image boutique 600x600
-const thumbnailInput = document.getElementById('productThumbnailFile');
-if (thumbnailInput) {
-  thumbnailInput.addEventListener('change', (e) => {
-    if (getStorageMode() === 'url') {
-      alert('Mode URL uniquement : utilisez l’URL de vignette pour un stockage illimité.');
-      thumbnailInput.value = '';
-      return;
-    }
-    const file = e.target.files[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      validateImageSize(dataUrl, (isValid, info) => {
-        if (!isValid) {
-          alert(`Image refusée : format ${info.width}x${info.height}px. Il faut 600x600px.`);
-          return;
-        }
-        currentThumbnail = dataUrl;
-        updateThumbnailPreview();
-      });
-    };
-    reader.readAsDataURL(file);
-    thumbnailInput.value = '';
-  });
-}
-
-// Validation des dimensions
-function validateImageSize(src, callback) {
-  const img = new Image();
-  img.onload = () => {
-    const info = { width: img.naturalWidth, height: img.naturalHeight };
-    const isValid = info.width === 600 && info.height === 600;
-    callback(isValid, info);
-  };
-  img.onerror = () => callback(false, { width: 0, height: 0 });
-  img.src = src;
-}
-
 // Soumettre le formulaire
 const productForm = document.getElementById('productForm');
 if (productForm) {
   productForm.addEventListener('submit', (e) => {
     e.preventDefault();
-
-    const storageMode = getStorageMode();
     
     const productData = {
       name: document.getElementById('productName').value.trim(),
@@ -446,27 +289,6 @@ if (productForm) {
     if (!currentThumbnail) {
       alert('Veuillez ajouter la vignette boutique 600×600 (image CARRÉE obligatoire)');
       return;
-    }
-
-    // Validation mode stockage
-    if (storageMode === 'url') {
-      const hasDataUrl =
-        currentImages.some((img) => String(img || '').startsWith('data:')) ||
-        String(currentThumbnail || '').startsWith('data:');
-      if (hasDataUrl) {
-        alert('Mode URL : remplacez les images locales par des URLs hébergées.');
-        return;
-      }
-    }
-    
-    // Avertissement si images trop lourdes en mode local
-    if (storageMode === 'local') {
-      const estimatedSize = JSON.stringify({images: currentImages, thumbnail: currentThumbnail}).length;
-      if (estimatedSize > 500000) { // ~500KB
-        if (!confirm('Images volumineuses détectées. Cela peut saturer le stockage. Continuer ?')) {
-          return;
-        }
-      }
     }
     
     if (editingProductId) {
@@ -499,16 +321,6 @@ if (btnNewProduct) {
 // Charger au démarrage
 loadProducts();
 loadCategories();
-// Initialiser le mode stockage sur la page
-const storageModeSelect = document.getElementById('storageMode');
-if (storageModeSelect) {
-  storageModeSelect.value = getStorageMode();
-  storageModeSelect.addEventListener('change', (e) => {
-    setStorageMode(e.target.value);
-    applyStorageMode();
-  });
-  applyStorageMode();
-}
 if (new URLSearchParams(window.location.search).get('action') === 'new') {
   openProductModal();
 }

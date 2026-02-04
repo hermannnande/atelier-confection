@@ -18,7 +18,6 @@ function initCloudinaryWidgets() {
       multiple: true,
       maxFiles: 5,
       clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
-      maxImageFileSize: 5000000, // 5MB max
       resourceType: 'image',
       cropping: false,
       folder: 'atelier-products/gallery',
@@ -50,7 +49,6 @@ function initCloudinaryWidgets() {
       multiple: false,
       maxFiles: 1,
       clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
-      maxImageFileSize: 3000000, // 3MB max
       resourceType: 'image',
       cropping: true,
       croppingAspectRatio: 1,
