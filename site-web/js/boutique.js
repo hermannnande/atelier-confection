@@ -41,8 +41,11 @@ const buildColorDots = (colors) => {
     'bleu ciel': '#87ceeb',
     rouge: '#b91c1c',
     rose: '#f472b6',
+    orange: '#fb923c',
     vert: '#16a34a',
     jaune: '#facc15',
+    violet: '#9333ea',
+    bordeaux: '#7f1d1d',
     gris: '#6b7280',
     'gris fonce': '#333',
   };
@@ -376,6 +379,9 @@ function checkColorMatch(rgbColor, colorName) {
     'beige': ['210, 180, 140', '245, 245, 220'],
     'bleu': ['135, 206, 235', '70, 130, 180'],
     'bleu ciel': ['135, 206, 235'],
+    'orange': ['251, 146, 60', '255, 165, 0'],
+    'violet': ['147, 51, 234', '128, 0, 128'],
+    'bordeaux': ['127, 29, 29', '128, 0, 32'],
     'gris fonce': ['51, 51, 51']
   };
   

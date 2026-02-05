@@ -106,7 +106,12 @@ const getCategoryLabel = (slug) => {
   return cats.find((c) => c.slug === slug)?.name || slug || 'Produits';
 };
 
+const isHexColor = (value = '') => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value).trim());
+
 const colorToHex = (name = '') => {
+  const raw = String(name || '').trim();
+  if (isHexColor(raw)) return raw;
+
   const map = {
     noir: '#000000',
     blanc: '#ffffff',
@@ -114,14 +119,51 @@ const colorToHex = (name = '') => {
     marron: '#8b4513',
     rouge: '#b91c1c',
     rose: '#f472b6',
+    orange: '#fb923c',
     vert: '#16a34a',
     jaune: '#facc15',
     bleu: '#4682b4',
     'bleu ciel': '#87ceeb',
+    violet: '#9333ea',
+    bordeaux: '#7f1d1d',
     gris: '#6b7280',
     'gris fonce': '#333333',
   };
   return map[normalizeText(name)] || '#dddddd';
+};
+
+const normalizeColorList = (colors) => {
+  if (Array.isArray(colors)) {
+    return colors
+      .map((c) => String(c || '').trim())
+      .filter(Boolean);
+  }
+
+  if (typeof colors === 'string') {
+    const raw = colors.trim();
+    if (!raw) return [];
+
+    // Support JSON string: '["Noir","Blanc"]'
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((c) => String(c || '').trim())
+            .filter(Boolean);
+        }
+      } catch (e) {
+        // fallback split below
+      }
+    }
+
+    return raw
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 };
 
 // ===== TYPEWRITER =====
@@ -226,8 +268,9 @@ const renderSizes = (sizes) => {
 const renderColors = (colors) => {
   const container = document.querySelector('.color-grid');
   if (!container) return;
-  const list = Array.isArray(colors) && colors.length ? colors : ['Noir'];
-  container.innerHTML = list
+  const list = normalizeColorList(colors);
+  const finalList = list.length ? list : ['Noir'];
+  container.innerHTML = finalList
     .map((c, idx) => {
       const hex = colorToHex(c);
       const border = normalizeText(c) === 'blanc' ? 'border: 2px solid #ddd;' : '';
