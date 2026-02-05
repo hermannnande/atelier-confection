@@ -455,7 +455,8 @@
 
 @media (max-width: 768px) {
   .checkout-page {
-    padding: 80px 0 40px;
+    /* Aligne l'espacement avec le header fixe (announcement + site-header) */
+    padding: 100px 0 60px;
   }
 
   .checkout-container {
@@ -529,6 +530,15 @@
     font-size: 14px;
   }
 
+  /* Compact mobile: réduire les espaces verticaux */
+  .delivery-form {
+    gap: 16px;
+  }
+
+  .form-group textarea {
+    min-height: 84px;
+  }
+
   .order-summary-section {
     margin-top: 24px;
   }
@@ -583,7 +593,7 @@
 
 @media (max-width: 520px) {
   .checkout-page {
-    padding: 70px 0 30px;
+    padding: 92px 0 52px;
   }
 
   .checkout-container {
@@ -644,6 +654,10 @@
   .form-group select {
     padding: 10px 12px;
     font-size: 13px;
+  }
+
+  .delivery-form {
+    gap: 14px;
   }
 
   .submit-btn {
