@@ -694,8 +694,22 @@ a {
 }
 
 @media (max-width: 760px) {
+  .announcement-bar {
+    padding: 8px 0;
+    font-size: 12px;
+  }
+
+  .announcement-content {
+    gap: 12px;
+  }
+
+  .announcement-content span {
+    gap: 6px;
+  }
+
   .site-header {
     padding: 14px 20px;
+    top: 33px;
   }
   .header-inner {
     grid-template-columns: auto auto;

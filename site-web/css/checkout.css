@@ -456,31 +456,199 @@
 
 @media (max-width: 768px) {
   .checkout-page {
-    padding: 100px 0 60px;
+    padding: 80px 0 40px;
   }
 
   .checkout-container {
-    padding: 0 16px;
+    padding: 0 12px;
+  }
+
+  .breadcrumb {
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .page-title {
+    font-size: 24px;
+    margin-bottom: 20px;
   }
 
   .checkout-form-section {
-    padding: 32px 24px;
+    padding: 24px 16px;
+    border-radius: 16px;
   }
 
   .welcome-message {
-    padding: 24px;
+    padding: 20px 16px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+  }
+
+  .welcome-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
   }
 
   .welcome-message h2 {
-    font-size: 24px;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .welcome-message > p {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .welcome-features {
+    gap: 12px;
+  }
+
+  .feature-item {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+
+  .checkout-form h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-grid {
+    gap: 14px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .order-summary-section {
+    margin-top: 24px;
   }
 
   .order-summary-card {
-    padding: 24px;
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+
+  .summary-header h3 {
+    font-size: 18px;
+  }
+
+  .summary-item {
+    padding: 12px 0;
+  }
+
+  .summary-item-name {
+    font-size: 13px;
+  }
+
+  .summary-item-price {
+    font-size: 14px;
+  }
+
+  .summary-total {
+    padding: 16px 0;
+  }
+
+  .summary-total-label {
+    font-size: 16px;
+  }
+
+  .summary-total-value {
+    font-size: 20px;
   }
 
   .submit-btn {
-    font-size: 16px;
-    padding: 18px 28px;
+    font-size: 15px;
+    padding: 16px 24px;
+  }
+
+  .info-items {
+    gap: 10px;
+  }
+
+  .info-item {
+    font-size: 12px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 520px) {
+  .checkout-page {
+    padding: 70px 0 30px;
+  }
+
+  .checkout-container {
+    padding: 0 10px;
+  }
+
+  .breadcrumb {
+    margin-bottom: 12px;
+    font-size: 12px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  .checkout-form-section {
+    padding: 20px 14px;
+  }
+
+  .welcome-message {
+    padding: 16px 12px;
+    margin-bottom: 20px;
+  }
+
+  .welcome-icon {
+    font-size: 32px;
+  }
+
+  .welcome-message h2 {
+    font-size: 18px;
+  }
+
+  .welcome-message > p {
+    font-size: 13px;
+  }
+
+  .feature-item {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .checkout-form h3 {
+    font-size: 15px;
+    margin-bottom: 14px;
+  }
+
+  .form-grid {
+    gap: 12px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .submit-btn {
+    font-size: 14px;
+    padding: 14px 20px;
   }
 }
