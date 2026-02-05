@@ -680,3 +680,172 @@
     padding: 14px 24px;
   }
 }
+
+/* ===========================
+   MODAL DE CONFIRMATION SUPPRESSION
+   =========================== */
+
+.cart-confirm-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.cart-confirm-modal.active {
+  display: flex;
+}
+
+.cart-confirm-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.cart-confirm-dialog {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+  text-align: center;
+}
+
+.cart-confirm-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-confirm-icon svg {
+  width: 32px;
+  height: 32px;
+  stroke: #d97706;
+  stroke-width: 2.5;
+}
+
+.cart-confirm-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.cart-confirm-message {
+  font-size: 15px;
+  color: #6b7280;
+  margin: 0 0 28px 0;
+  line-height: 1.6;
+}
+
+.cart-confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.cart-confirm-btn {
+  flex: 1;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cart-confirm-cancel {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.cart-confirm-cancel:hover {
+  background: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.cart-confirm-delete {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.cart-confirm-delete:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.cart-confirm-delete:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .cart-confirm-dialog {
+    padding: 28px 24px;
+  }
+
+  .cart-confirm-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .cart-confirm-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .cart-confirm-title {
+    font-size: 20px;
+  }
+
+  .cart-confirm-message {
+    font-size: 14px;
+  }
+
+  .cart-confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .cart-confirm-btn {
+    padding: 12px 20px;
+  }
+}

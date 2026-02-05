@@ -21,6 +21,8 @@ const CartDrawer = {
   content: null,
   footer: null,
   isReady: false,
+  confirmModal: null,
+  confirmCallback: null,
 
   init() {
     this.createDrawerHTML();
@@ -28,6 +30,7 @@ const CartDrawer = {
     this.drawer = document.getElementById('cartDrawer');
     this.content = document.getElementById('cartDrawerContent');
     this.footer = document.getElementById('cartDrawerFooter');
+    this.confirmModal = document.getElementById('cartConfirmModal');
 
     // Événements
     this.overlay?.addEventListener('click', () => this.close());
@@ -36,7 +39,27 @@ const CartDrawer = {
     // Empêcher la propagation des clics sur le drawer
     this.drawer?.addEventListener('click', (e) => e.stopPropagation());
 
+    // Événements de la modal de confirmation
+    document.getElementById('cartConfirmCancel')?.addEventListener('click', () => this.hideConfirmModal());
+    document.getElementById('cartConfirmOverlay')?.addEventListener('click', () => this.hideConfirmModal());
+    document.getElementById('cartConfirmDelete')?.addEventListener('click', () => {
+      if (this.confirmCallback) {
+        this.confirmCallback();
+      }
+      this.hideConfirmModal();
+    });
+
     this.isReady = Boolean(this.overlay && this.drawer && this.content && this.footer);
+  },
+
+  showConfirmModal(callback) {
+    this.confirmCallback = callback;
+    this.confirmModal?.classList.add('active');
+  },
+
+  hideConfirmModal() {
+    this.confirmModal?.classList.remove('active');
+    this.confirmCallback = null;
   },
 
   createDrawerHTML() {
@@ -72,6 +95,26 @@ const CartDrawer = {
         <!-- Footer -->
         <div class="cart-drawer-footer" id="cartDrawerFooter">
           <!-- Le total et les boutons seront ajoutés dynamiquement -->
+        </div>
+      </div>
+
+      <!-- Modal de confirmation -->
+      <div class="cart-confirm-modal" id="cartConfirmModal">
+        <div class="cart-confirm-overlay" id="cartConfirmOverlay"></div>
+        <div class="cart-confirm-dialog">
+          <div class="cart-confirm-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <h3 class="cart-confirm-title">Retirer cet article ?</h3>
+          <p class="cart-confirm-message">Voulez-vous vraiment supprimer cet article de votre panier ?</p>
+          <div class="cart-confirm-actions">
+            <button class="cart-confirm-btn cart-confirm-cancel" id="cartConfirmCancel">Annuler</button>
+            <button class="cart-confirm-btn cart-confirm-delete" id="cartConfirmDelete">Retirer</button>
+          </div>
         </div>
       </div>
     `;
@@ -279,7 +322,7 @@ const CartDrawer = {
         const size = itemEl.dataset.size;
         const color = itemEl.dataset.color;
 
-        if (confirm('Retirer cet article du panier ?')) {
+        this.showConfirmModal(() => {
           if (store?.removeFromCart) {
             store.removeFromCart(id, size, color);
           } else {
@@ -289,7 +332,7 @@ const CartDrawer = {
             localStorage.setItem(CART_KEY, JSON.stringify(cart));
           }
           this.render();
-        }
+        });
       });
     });
   },
