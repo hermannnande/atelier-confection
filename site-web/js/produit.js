@@ -551,6 +551,9 @@ const bindAddToCartButton = () => {
 
   // État: est-ce que les options sont déjà affichées?
   let optionsVisible = false;
+  
+  // Sauvegarder le texte original du bouton UNE SEULE FOIS
+  const originalButtonHTML = addCartBtn.innerHTML;
 
   // Fonction pour afficher les options
   const showOptions = () => {
@@ -577,20 +580,33 @@ const bindAddToCartButton = () => {
       }, 100);
     }
   };
+  
+  // Fonction pour cacher les options
+  const hideOptions = () => {
+    productOptions.forEach(option => {
+      option.style.display = 'none';
+    });
+    addCartBtn.innerHTML = originalButtonHTML;
+    optionsVisible = false;
+  };
 
   addCartBtn.onclick = null;
-  addCartBtn.addEventListener('click', function () {
+  addCartBtn.addEventListener('click', function (e) {
+    // Empêcher toute propagation
+    e.stopPropagation();
+    e.preventDefault();
+    
     const store = getStore();
     const base = getProductDataFromRoot();
     if (!base?.id) return;
 
-    // Si les options ne sont pas encore visibles, les afficher
+    // ÉTAPE 1: Si les options ne sont pas encore visibles, les afficher UNIQUEMENT
     if (!optionsVisible) {
       showOptions();
-      return;
+      return; // ← IMPORTANT: On sort ici, panier ne s'ouvre PAS
     }
 
-    // Sinon, vérifier la sélection et ajouter au panier
+    // ÉTAPE 2: Vérifier la sélection et ajouter au panier
     const size = getSelectedSize();
     const color = getSelectedColor();
     if (!size || !color) {
@@ -598,18 +614,22 @@ const bindAddToCartButton = () => {
       return;
     }
 
+    // Ajouter au panier
     const payload = { ...base, size, color, qty: 1 };
     if (store?.addToCart) store.addToCart(payload);
     else addToCartFallback(payload);
 
-    window.CartDrawer?.open();
+    // MAINTENANT ouvrir le panier (seulement après ajout réussi)
+    setTimeout(() => {
+      window.CartDrawer?.open();
+    }, 200);
 
+    // Feedback visuel
     this.style.transform = 'scale(0.95)';
     setTimeout(() => {
       this.style.transform = 'scale(1)';
     }, 150);
 
-    const originalText = this.innerHTML;
     this.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
@@ -617,13 +637,10 @@ const bindAddToCartButton = () => {
       </svg>
       Ajouté au panier !
     `;
+    
+    // Reset après 2 secondes
     setTimeout(() => {
-      this.innerHTML = originalText;
-      // Cacher à nouveau les options après ajout réussi
-      productOptions.forEach(option => {
-        option.style.display = 'none';
-      });
-      optionsVisible = false;
+      hideOptions();
     }, 2000);
   });
 };
