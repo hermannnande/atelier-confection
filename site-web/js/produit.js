@@ -127,7 +127,9 @@ const colorToHex = (name = '') => {
 // ===== TYPEWRITER =====
 const typewriterEffect = () => {
   const titleElement = document.querySelector('.product-title');
-  if (!titleElement || titleElement.dataset.typewriterActive === 'true') return;
+  if (!titleElement) return;
+  // Éviter de relancer l'effet en boucle (et donc les reflows)
+  if (titleElement.dataset.typewriterActive === 'true' || titleElement.dataset.typewriterActive === 'done') return;
 
   const fullText = titleElement.dataset.fullText || titleElement.textContent.trim();
   if (!fullText) return;
@@ -136,31 +138,18 @@ const typewriterEffect = () => {
   titleElement.dataset.typewriterActive = 'true';
 
   let charIndex = 0;
-  let isDeleting = false;
 
   const type = () => {
-    if (!isDeleting && charIndex <= fullText.length) {
+    if (charIndex <= fullText.length) {
       titleElement.textContent = fullText.substring(0, charIndex);
       charIndex += 1;
-      setTimeout(type, 100);
+      setTimeout(type, 55);
       return;
     }
 
-    if (!isDeleting && charIndex > fullText.length) {
-      isDeleting = true;
-      setTimeout(type, 1800);
-      return;
-    }
-
-    if (isDeleting && charIndex > 0) {
-      charIndex -= 1;
-      titleElement.textContent = fullText.substring(0, charIndex);
-      setTimeout(type, 50);
-      return;
-    }
-
-    isDeleting = false;
-    setTimeout(type, 500);
+    // Fin: figer le titre (plus de suppression/re-écriture => plus de tremblement)
+    titleElement.textContent = fullText;
+    titleElement.dataset.typewriterActive = 'done';
   };
 
   type();
@@ -549,6 +538,17 @@ const bindAddToCartButton = () => {
   
   if (!addCartBtn) return;
 
+  // Indiquer à main.js (fallback) que produit.js gère l'ajout panier
+  window.__ProductAddToCartBound = true;
+
+  // Anti-double-binding (bindAddToCartButton peut être appelé plusieurs fois)
+  if (addCartBtn.__atelierAddToCartHandler) {
+    try {
+      addCartBtn.removeEventListener('click', addCartBtn.__atelierAddToCartHandler, true);
+    } catch (e) {}
+    addCartBtn.__atelierAddToCartHandler = null;
+  }
+
   // État: est-ce que les options sont déjà affichées?
   let optionsVisible = false;
   
@@ -591,8 +591,10 @@ const bindAddToCartButton = () => {
   };
 
   addCartBtn.onclick = null;
-  addCartBtn.addEventListener('click', function (e) {
+  const handler = function (e) {
     // Empêcher toute propagation
+    // - stopImmediatePropagation (capture) bloque aussi les listeners déjà attachés (ex: fallback main.js)
+    e.stopImmediatePropagation();
     e.stopPropagation();
     e.preventDefault();
     
@@ -642,7 +644,11 @@ const bindAddToCartButton = () => {
     setTimeout(() => {
       hideOptions();
     }, 2000);
-  });
+  };
+
+  // Capture pour passer AVANT les listeners bubble (fallback)
+  addCartBtn.__atelierAddToCartHandler = handler;
+  addCartBtn.addEventListener('click', handler, true);
 };
 
 // ===== PARTAGE SOCIAL =====

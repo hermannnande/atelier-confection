@@ -125,7 +125,8 @@
   margin-bottom: 20px;
   color: #000;
   line-height: 1.2;
-  min-height: 1.3em;
+  /* Empêche les sauts de layout pendant l'effet typewriter (description qui "tremble") */
+  min-height: 2.4em; /* ~2 lignes (1.2 * 2) */
   display: block;
   will-change: auto;
   transform: translateZ(0);
