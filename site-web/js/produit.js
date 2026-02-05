@@ -719,6 +719,25 @@ const bindAddToCartButton = () => {
       Confirmer l'ajout
     `;
     
+    // Ajouter un bouton de fermeture (X) en haut à droite du bloc options
+    if (optionsWrapper && !optionsWrapper.querySelector('.options-close-btn')) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'options-close-btn';
+      closeBtn.type = 'button';
+      closeBtn.setAttribute('aria-label', 'Fermer les options');
+      closeBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      `;
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        hideOptions();
+      };
+      optionsWrapper.appendChild(closeBtn);
+    }
+    
     optionsVisible = true;
     
     // Scroll vers les options sur mobile
@@ -735,6 +754,11 @@ const bindAddToCartButton = () => {
       option.style.display = 'none';
     });
     addCartBtn.innerHTML = originalButtonHTML;
+    
+    // Supprimer le bouton de fermeture (X)
+    const closeBtn = optionsWrapper?.querySelector('.options-close-btn');
+    if (closeBtn) closeBtn.remove();
+    
     optionsVisible = false;
   };
 

@@ -292,6 +292,41 @@
   padding: 16px 0;
   margin-top: auto;
   z-index: 50;
+  /* Position relative pour le bouton de fermeture absolu */
+  position: relative;
+}
+
+/* Bouton de fermeture des options (X) */
+.options-close-btn {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #e0e0e0;
+  background: white;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.options-close-btn:hover {
+  border-color: #ef4444;
+  background: #fef2f2;
+  transform: scale(1.1);
+}
+
+.options-close-btn svg {
+  color: #666;
+  transition: color 0.2s ease;
+}
+
+.options-close-btn:hover svg {
+  color: #ef4444;
 }
 
 /* Actions */
