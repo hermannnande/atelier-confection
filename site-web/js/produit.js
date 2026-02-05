@@ -4,7 +4,13 @@
    - Galerie: 5 images portrait + 1 vidéo (optionnelle)
    - Vignette boutique 600x600: utilisée uniquement sur boutique, pas ici */
 
-window.__PRODUIT_LOADED = true;
+if (window.__PRODUIT_JS_INIT) {
+  console.warn('produit.js déjà chargé, arrêt.');
+} else {
+  window.__PRODUIT_JS_INIT = true;
+  window.__PRODUIT_LOADED = true;
+
+  (function () {
 const getStore = () => window.SiteStore;
 const productRoot = document.querySelector('.product-page');
 
@@ -734,9 +740,11 @@ const boot = () => {
   showNotFoundState();
 };
 
-if (document.readyState === 'loading') {
-  window.addEventListener('DOMContentLoaded', boot);
-} else {
-  boot();
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
 }
 
