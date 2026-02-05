@@ -135,7 +135,23 @@ const colorToHex = (name = '') => {
 const normalizeColorList = (colors) => {
   if (Array.isArray(colors)) {
     return colors
-      .map((c) => String(c || '').trim())
+      .flatMap((c) => {
+        const raw = String(c || '').trim();
+        if (!raw) return [];
+
+        // Support format Postgres text[] sérialisé: "{Noir,Blanc}"
+        const unwrapped =
+          raw.startsWith('{') && raw.endsWith('}') ? raw.slice(1, -1) : raw;
+
+        // Support cas "Noir, Blanc" stocké dans UNE entrée
+        if (unwrapped.includes(',')) {
+          return unwrapped
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean);
+        }
+        return [unwrapped];
+      })
       .filter(Boolean);
   }
 
@@ -157,13 +173,68 @@ const normalizeColorList = (colors) => {
       }
     }
 
-    return raw
+    const unwrapped =
+      raw.startsWith('{') && raw.endsWith('}') ? raw.slice(1, -1) : raw;
+
+    return unwrapped
       .split(',')
       .map((c) => c.trim())
       .filter(Boolean);
   }
 
   return [];
+};
+
+const getUpdatedTs = (product) => {
+  const raw =
+    product?.updatedAt ||
+    product?.updated_at ||
+    product?.createdAt ||
+    product?.created_at;
+  const ts = Date.parse(String(raw || ''));
+  return Number.isFinite(ts) ? ts : 0;
+};
+
+const getColorsLen = (product) => normalizeColorList(product?.colors).length;
+
+const pickBestProduct = (a, b) => {
+  if (!a) return b || null;
+  if (!b) return a || null;
+
+  const aTs = getUpdatedTs(a);
+  const bTs = getUpdatedTs(b);
+  if (bTs !== aTs) return bTs > aTs ? b : a;
+
+  const aColors = getColorsLen(a);
+  const bColors = getColorsLen(b);
+  if (bColors !== aColors) return bColors > aColors ? b : a;
+
+  const aImages = Array.isArray(a?.images) ? a.images.length : 0;
+  const bImages = Array.isArray(b?.images) ? b.images.length : 0;
+  if (bImages !== aImages) return bImages > aImages ? b : a;
+
+  return a;
+};
+
+const persistSelectedProduct = (product) => {
+  if (!product?.id) return;
+  try {
+    sessionStorage.setItem('atelier-selected-product', JSON.stringify(product));
+    localStorage.setItem('atelier-selected-product', JSON.stringify(product));
+  } catch (e) {
+    // ignore
+  }
+};
+
+const upsertProductToStorageList = (key, product, max = 200) => {
+  if (!product?.id) return;
+  try {
+    const existing = readJsonArray(key);
+    const merged = [product, ...existing.filter((p) => String(p?.id) !== String(product.id))];
+    localStorage.setItem(key, JSON.stringify(merged.slice(0, max)));
+  } catch (e) {
+    // ignore
+  }
 };
 
 // ===== TYPEWRITER =====
@@ -981,36 +1052,45 @@ const boot = async () => {
   bindShareButtons();
   renderDebugPanel();
 
-  const selected = readSelectedProduct();
-  if (selected?.id) {
-    const id = getProductIdFromUrl();
-    if (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id)) {
-      applyProductToPage(selected);
-      return;
-    }
-  }
-
-  // priorité: id=...
   const id = getProductIdFromUrl();
+  const selected = readSelectedProduct();
+
+  const selectedMatchesId =
+    !!selected?.id &&
+    (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id));
+
+  // 1) Candidats locaux (pour affichage immédiat)
   const adminProduct = getAdminProductById(id);
-  if (adminProduct) {
-    applyProductToPage(adminProduct);
-    return;
+  let best = pickBestProduct(selectedMatchesId ? selected : null, adminProduct);
+  if (best) {
+    applyProductToPage(best);
   }
 
   // Fallback ONLINE: charger depuis l'API (permet mobile / autre appareil)
   if (id) {
     const apiProduct = await fetchEcommerceProductFromApi(id);
     if (apiProduct) {
-      try {
-        // cache local pour navigation/zoom/favoris
-        const existing = readJsonArray('atelier-products-cache');
-        const merged = [apiProduct, ...existing.filter((p) => String(p.id) !== String(apiProduct.id))];
-        localStorage.setItem('atelier-products-cache', JSON.stringify(merged.slice(0, 200)));
-      } catch (e) {}
-      applyProductToPage(apiProduct);
+      const finalProduct = pickBestProduct(best, apiProduct) || apiProduct;
+
+      // Si la version API apporte des données plus riches/récentes, on ré-applique.
+      const shouldReapply =
+        !best ||
+        getUpdatedTs(finalProduct) !== getUpdatedTs(best) ||
+        getColorsLen(finalProduct) !== getColorsLen(best);
+
+      if (shouldReapply) {
+        applyProductToPage(finalProduct);
+        best = finalProduct;
+      }
+
+      // Persister (évite de rester bloqué sur un vieux "selected" avec 1 couleur)
+      persistSelectedProduct(best);
+      upsertProductToStorageList('atelier-products-cache', best, 200);
+      upsertProductToStorageList('atelier-admin-products', best, 400);
       return;
     }
+    // Si on a déjà un produit local, on le garde même si l'API est indisponible
+    if (best) return;
   } else {
     // Sans id: si on n'a rien en local, on peut essayer de charger le catalogue online pour éviter "Introuvable"
     const apiProducts = await fetchEcommerceProductsFromApi();
@@ -1022,6 +1102,9 @@ const boot = async () => {
       return;
     }
   }
+
+  // Si un produit local est affiché, ne pas basculer en "Introuvable"
+  if (best) return;
 
   // Aucun produit trouvé: ne pas afficher l'ancien contenu statique
   showNotFoundState();

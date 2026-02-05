@@ -7,7 +7,21 @@ const AdminStore = (() => {
   const SETTINGS_KEY = 'atelier-admin-settings';
 
   // Sync catalogue e-commerce vers backend (Supabase via API Vercel)
-  const ECOMMERCE_SYNC_URL = '/api/ecommerce/products/sync';
+  // Important: si l'admin est ouvert en local (localhost), on synchronise vers la prod Vercel
+  // afin que le catalogue soit visible sur mobile / autres appareils.
+  const DEFAULT_ECOMMERCE_SYNC_ORIGIN = 'https://atelier-confection.vercel.app';
+  const resolveEcommerceSyncUrl = () => {
+    try {
+      const forcedOrigin = localStorage.getItem('atelier-ecom-sync-origin');
+      const isLocalhost =
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const origin = forcedOrigin || (isLocalhost ? DEFAULT_ECOMMERCE_SYNC_ORIGIN : window.location.origin);
+      return origin.replace(/\/$/, '') + '/api/ecommerce/products/sync';
+    } catch (e) {
+      return '/api/ecommerce/products/sync';
+    }
+  };
+  const ECOMMERCE_SYNC_URL = resolveEcommerceSyncUrl();
   const ECOMMERCE_SYNC_TOKEN = 'ATELIER_ECOM_2026';
 
   const syncProductsToServer = async (products) => {
