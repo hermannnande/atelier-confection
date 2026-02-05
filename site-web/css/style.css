@@ -2095,10 +2095,10 @@ a {
 
 @keyframes bounce {
   0%, 100% {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-10px) scale(1.03);
   }
 }
 
@@ -2108,20 +2108,20 @@ a {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   50% {
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    transform: scale(1.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   }
 }
 
 @keyframes shake {
   0%, 100% {
-    transform: translateX(0);
+    transform: translateX(0) rotate(0deg);
   }
   25% {
-    transform: translateX(-5px);
+    transform: translateX(-8px) rotate(-2deg);
   }
   75% {
-    transform: translateX(5px);
+    transform: translateX(8px) rotate(2deg);
   }
 }
 
@@ -2130,7 +2130,7 @@ a {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   50% {
-    box-shadow: 0 4px 24px rgba(212, 175, 55, 0.6);
+    box-shadow: 0 6px 30px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.5);
   }
 }
 
@@ -2140,7 +2140,7 @@ a {
 .submit-btn,
 .btn-continue,
 .checkout-btn {
-  animation: pulse 2s ease-in-out infinite;
+  animation: bounce 2s ease-in-out infinite;
 }
 
 .btn-add-to-cart:hover,
@@ -2148,23 +2148,22 @@ a {
 .submit-btn:hover,
 .btn-continue:hover,
 .checkout-btn:hover {
-  animation: bounce 0.6s ease;
+  animation: pulse 0.8s ease infinite;
 }
 
 /* Animation spéciale pour "Ajouter au panier" */
 .btn-add-cart {
-  transition: all 0.3s ease;
-  animation: pulse 3s ease-in-out infinite;
+  transition: background 0.3s ease, color 0.3s ease;
+  animation: shake 2.5s ease-in-out infinite;
 }
 
 .btn-add-cart:hover {
-  animation: shake 0.5s ease;
-  transform: scale(1.05);
+  animation: bounce 1.2s ease-in-out infinite;
 }
 
 /* Animation pour les boutons de procéder au paiement */
 button:has(> svg path[d*="M5 12h14"]) {
-  animation: glow 2.5s ease-in-out infinite;
+  animation: glow 2s ease-in-out infinite;
 }
 
 /* Animation au chargement de la page pour les CTA principaux */

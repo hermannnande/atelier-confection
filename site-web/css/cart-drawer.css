@@ -660,19 +660,18 @@
 }
 
 .btn-continue:hover {
-  transform: translateY(-2px);
+  animation: pulseGlow 1s ease-in-out infinite;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  animation: none;
 }
 
 @keyframes pulseGlow {
   0%, 100% {
-    transform: scale(1);
+    transform: scale(1) translateY(0);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   }
   50% {
-    transform: scale(1.02);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transform: scale(1.04) translateY(-4px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   }
 }
 
