@@ -431,8 +431,54 @@
     </div>
 
     <link rel="stylesheet" href="../css/cart-drawer.css">
-    <script src="../js/main.js?v=20260205-120000"></script>
-    <script src="../js/cart-drawer.js?v=20260205-120000"></script>
-    <script src="../js/produit.js?v=20260205-120000"></script>
+    <script src="../js/main.js?v=20260205-131500"></script>
+    <script src="../js/cart-drawer.js?v=20260205-131500"></script>
+    <script src="../js/produit.js?v=20260205-131500"></script>
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('debug') !== '1') return;
+        const safeParse = (key) => {
+          try {
+            const raw = localStorage.getItem(key);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (e) {
+            return [];
+          }
+        };
+        const admin = safeParse('atelier-admin-products');
+        const cache = safeParse('atelier-products-cache');
+        const selected = (() => {
+          try {
+            const raw =
+              localStorage.getItem('atelier-selected-product') ||
+              sessionStorage.getItem('atelier-selected-product');
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        })();
+        const panel = document.createElement('div');
+        panel.style.cssText =
+          'position:fixed;left:12px;bottom:12px;z-index:99999;background:#111;color:#fff;' +
+          'padding:10px 12px;border-radius:10px;font:12px/1.4 system-ui,Segoe UI,Arial;' +
+          'box-shadow:0 12px 30px rgba(0,0,0,.35);max-width:520px;opacity:.92';
+        const ids = (arr) => arr.slice(0, 5).map((p) => p?.id).filter(Boolean).join(', ');
+        panel.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+            <strong>DEBUG Produit</strong>
+            <button id="dbgClose" style="background:#333;color:#fff;border:0;border-radius:8px;padding:4px 8px;cursor:pointer;">Fermer</button>
+          </div>
+          <div><b>produit.js</b>: ${window.__PRODUIT_LOADED ? 'chargé' : 'NON chargé'}</div>
+          <div><b>id</b>: ${params.get('id') || '(vide)'}</div>
+          <div><b>atelier-admin-products</b>: ${admin.length} (ids: ${ids(admin) || '-'})</div>
+          <div><b>atelier-products-cache</b>: ${cache.length} (ids: ${ids(cache) || '-'})</div>
+          <div><b>selected</b>: ${selected?.id ? `${selected.id} (${selected.name || ''})` : '-'}</div>
+        `;
+        panel.querySelector('#dbgClose')?.addEventListener('click', () => panel.remove());
+        document.body.appendChild(panel);
+      })();
+    </script>
   </body>
 </html>

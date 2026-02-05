@@ -4,6 +4,7 @@
    - Galerie: 5 images portrait + 1 vidéo (optionnelle)
    - Vignette boutique 600x600: utilisée uniquement sur boutique, pas ici */
 
+window.__PRODUIT_LOADED = true;
 const getStore = () => window.SiteStore;
 const productRoot = document.querySelector('.product-page');
 
