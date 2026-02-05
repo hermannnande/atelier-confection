@@ -365,8 +365,9 @@
 
 .similar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 24px;
+  max-width: 1200px;
 }
 
 .similar-card {
@@ -377,6 +378,8 @@
   color: inherit;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  max-width: 300px;
+  margin: 0 auto;
 }
 
 .similar-card:hover {
@@ -387,7 +390,7 @@
 .similar-image {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: #f2f2f2;
 }
