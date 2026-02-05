@@ -544,7 +544,39 @@ const bindFavoriteButton = () => {
 
 const bindAddToCartButton = () => {
   const addCartBtn = document.querySelector('.btn-add-cart');
+  const optionsWrapper = document.querySelector('.product-options-wrapper');
+  const productOptions = document.querySelectorAll('.product-option');
+  
   if (!addCartBtn) return;
+
+  // État: est-ce que les options sont déjà affichées?
+  let optionsVisible = false;
+
+  // Fonction pour afficher les options
+  const showOptions = () => {
+    productOptions.forEach(option => {
+      option.style.display = 'flex';
+      option.style.animation = 'slideInUp 0.4s ease forwards';
+    });
+    
+    // Changer le texte du bouton
+    addCartBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+      Confirmer l'ajout
+    `;
+    
+    optionsVisible = true;
+    
+    // Scroll vers les options sur mobile
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        optionsWrapper?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
+    }
+  };
 
   addCartBtn.onclick = null;
   addCartBtn.addEventListener('click', function () {
@@ -552,6 +584,13 @@ const bindAddToCartButton = () => {
     const base = getProductDataFromRoot();
     if (!base?.id) return;
 
+    // Si les options ne sont pas encore visibles, les afficher
+    if (!optionsVisible) {
+      showOptions();
+      return;
+    }
+
+    // Sinon, vérifier la sélection et ajouter au panier
     const size = getSelectedSize();
     const color = getSelectedColor();
     if (!size || !color) {
@@ -580,6 +619,11 @@ const bindAddToCartButton = () => {
     `;
     setTimeout(() => {
       this.innerHTML = originalText;
+      // Cacher à nouveau les options après ajout réussi
+      productOptions.forEach(option => {
+        option.style.display = 'none';
+      });
+      optionsVisible = false;
     }, 2000);
   });
 };
