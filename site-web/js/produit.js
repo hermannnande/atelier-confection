@@ -150,20 +150,40 @@ const typewriterEffect = () => {
   }
 
   let charIndex = 0;
+  let isDeleting = false;
 
   const type = () => {
     if (runId !== __typewriterRunId) return;
-    if (charIndex <= fullText.length) {
+
+    // Phase d'écriture
+    if (!isDeleting && charIndex <= fullText.length) {
       titleElement.textContent = fullText.substring(0, charIndex);
       charIndex += 1;
       __typewriterTimeoutId = setTimeout(type, 55);
       return;
     }
 
-    // Fin: figer le titre (plus de suppression/re-écriture => plus de tremblement)
-    titleElement.textContent = fullText;
-    titleElement.dataset.typewriterActive = 'done';
-    __typewriterTimeoutId = null;
+    // Pause après avoir tout écrit
+    if (!isDeleting && charIndex > fullText.length) {
+      isDeleting = true;
+      __typewriterTimeoutId = setTimeout(type, 1800);
+      return;
+    }
+
+    // Phase de suppression
+    if (isDeleting && charIndex > 0) {
+      charIndex -= 1;
+      titleElement.textContent = fullText.substring(0, charIndex);
+      __typewriterTimeoutId = setTimeout(type, 40);
+      return;
+    }
+
+    // Pause avant de recommencer + boucle infinie
+    if (isDeleting && charIndex === 0) {
+      isDeleting = false;
+      __typewriterTimeoutId = setTimeout(type, 500);
+      return;
+    }
   };
 
   type();
