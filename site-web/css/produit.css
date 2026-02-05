@@ -276,6 +276,7 @@
   font-size: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
+  animation: addToCartPulse 2.5s ease-in-out infinite;
 }
 
 .btn-add-cart:hover {
@@ -283,6 +284,33 @@
   color: #000;
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  animation: addToCartBounce 0.6s ease;
+}
+
+@keyframes addToCartPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
+@keyframes addToCartBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-8px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  75% {
+    transform: translateY(-6px);
+  }
 }
 
 .btn-favorite {
