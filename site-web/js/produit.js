@@ -376,6 +376,86 @@ const renderGallery = (product) => {
   gallery.innerHTML = parts.join('');
 };
 
+// ===== PRODUITS SIMILAIRES =====
+const renderSimilarProducts = async (currentProduct) => {
+  const section = document.getElementById('similarProductsSection');
+  const grid = document.getElementById('similarProductsGrid');
+  
+  if (!section || !grid || !currentProduct) return;
+  
+  try {
+    // Récupérer tous les produits disponibles
+    let allProducts = [];
+    
+    // Essayer depuis l'API
+    try {
+      const apiProducts = await fetchEcommerceProductsFromApi();
+      if (apiProducts && apiProducts.length > 0) {
+        allProducts = apiProducts;
+      }
+    } catch (e) {
+      console.warn('API non disponible, utilisation du cache local');
+    }
+    
+    // Fallback sur localStorage
+    if (allProducts.length === 0) {
+      const cached = getStore(PRODUCTS_CACHE_KEY);
+      if (cached && Array.isArray(cached)) {
+        allProducts = cached;
+      }
+    }
+    
+    if (allProducts.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    // Filtrer: exclure le produit actuel
+    let similarProducts = allProducts.filter(p => p.id !== currentProduct.id && p.active !== false);
+    
+    // Prioriser les produits de la même catégorie
+    const sameCategory = similarProducts.filter(p => p.category === currentProduct.category);
+    const otherProducts = similarProducts.filter(p => p.category !== currentProduct.category);
+    
+    // Mélanger et prendre max 4 produits
+    similarProducts = [...sameCategory, ...otherProducts].slice(0, 4);
+    
+    if (similarProducts.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    // Générer le HTML
+    grid.innerHTML = similarProducts.map(product => {
+      const thumbnail = product.thumbnail || (product.images && product.images[0]) || '';
+      const price = (product.price || 0).toLocaleString('fr-FR');
+      const category = product.category || 'Collection';
+      
+      return `
+        <a href="produit.html?id=${product.id}" class="similar-card">
+          <div class="similar-image">
+            <img
+              src="${thumbnail}"
+              alt="${product.name || 'Produit'}"
+              loading="lazy"
+            />
+          </div>
+          <div class="similar-info">
+            <h3>${product.name || 'Produit'}</h3>
+            <span>${category}</span>
+            <span class="similar-price">${price} FCFA</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+    
+    section.style.display = 'block';
+  } catch (error) {
+    console.error('Erreur chargement produits similaires:', error);
+    section.style.display = 'none';
+  }
+};
+
 // ===== FAVORIS / PANIER =====
 const getProductDataFromRoot = () => {
   if (!productRoot) return null;
@@ -625,6 +705,9 @@ const applyProductToPage = (product) => {
   bindShareButtons();
 
   typewriterEffect();
+  
+  // Charger les produits similaires
+  renderSimilarProducts(product);
 };
 
 const showNotFoundState = () => {

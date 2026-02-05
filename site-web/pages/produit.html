@@ -249,73 +249,15 @@
       </div>
 
       <!-- Produits similaires -->
-      <section class="similar-products">
+      <section class="similar-products" id="similarProductsSection" style="display: none;">
         <div class="similar-container">
           <div class="similar-header">
             <h2>Produits similaires</h2>
             <p>Complétez votre look avec des modèles élégants.</p>
           </div>
 
-          <div class="similar-grid">
-            <a href="produit.html" class="similar-card">
-              <div class="similar-image">
-                <img
-                  src="https://obrille.com/wp-content/uploads/2026/01/A1.png"
-                  alt="Robe Blanche Élégante"
-                  loading="lazy"
-                />
-              </div>
-              <div class="similar-info">
-                <h3>Robe Blanche Élégante</h3>
-                <span>Perle Rare</span>
-                <span class="similar-price">16,500 FCFA</span>
-              </div>
-            </a>
-
-            <a href="produit.html" class="similar-card">
-              <div class="similar-image">
-                <img
-                  src="https://obrille.com/wp-content/uploads/2026/01/A3.png"
-                  alt="Ensemble Bleu Ciel"
-                  loading="lazy"
-                />
-              </div>
-              <div class="similar-info">
-                <h3>Ensemble Bleu Ciel</h3>
-                <span>Style Event</span>
-                <span class="similar-price">18,000 FCFA</span>
-              </div>
-            </a>
-
-            <a href="produit.html" class="similar-card">
-              <div class="similar-image">
-                <img
-                  src="https://obrille.com/wp-content/uploads/2026/01/gesvd.jpg"
-                  alt="Robe Marron Premium"
-                  loading="lazy"
-                />
-              </div>
-              <div class="similar-info">
-                <h3>Robe Marron Premium</h3>
-                <span>Perle Unique</span>
-                <span class="similar-price">17,000 FCFA</span>
-              </div>
-            </a>
-
-            <a href="produit.html" class="similar-card">
-              <div class="similar-image">
-                <img
-                  src="https://obrille.com/wp-content/uploads/2026/01/B2.png"
-                  alt="Robe Noire Élégante"
-                  loading="lazy"
-                />
-              </div>
-              <div class="similar-info">
-                <h3>Robe Noire Élégante</h3>
-                <span>Perle Rare</span>
-                <span class="similar-price">14,500 FCFA</span>
-              </div>
-            </a>
+          <div class="similar-grid" id="similarProductsGrid">
+            <!-- Produits chargés dynamiquement via JS -->
           </div>
         </div>
       </section>
@@ -433,7 +375,7 @@
     <link rel="stylesheet" href="../css/cart-drawer.css">
     <script src="../js/main.js?v=20260205-173000"></script>
     <script src="../js/cart-drawer.js?v=20260205-173000"></script>
-    <script src="../js/produit.js?v=20260205-173000"></script>
+    <script src="../js/produit.js?v=20260205-184500"></script>
     <script>
       (function () {
         const params = new URLSearchParams(window.location.search);
