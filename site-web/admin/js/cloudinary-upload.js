@@ -1,6 +1,6 @@
 // Cloudinary Upload Integration
 const CLOUDINARY_CONFIG = window.CLOUDINARY_CONFIG || {};
-const CLOUDINARY_CLOUD_NAME = CLOUDINARY_CONFIG.cloudName || 'devydnm2d';
+const CLOUDINARY_CLOUD_NAME = CLOUDINARY_CONFIG.cloudName || 'deyvdnm2d';
 const CLOUDINARY_UPLOAD_PRESET = CLOUDINARY_CONFIG.uploadPreset || 'atelier_unsigned';
 
 // Widget pour images galerie (portrait)
