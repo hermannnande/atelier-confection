@@ -125,11 +125,13 @@ const colorToHex = (name = '') => {
 };
 
 // ===== TYPEWRITER =====
+let __typewriterTimeoutId = null;
+let __typewriterRunId = 0;
 const typewriterEffect = () => {
   const titleElement = document.querySelector('.product-title');
   if (!titleElement) return;
-  // Éviter de relancer l'effet en boucle (et donc les reflows)
-  if (titleElement.dataset.typewriterActive === 'true' || titleElement.dataset.typewriterActive === 'done') return;
+  // Éviter de relancer si déjà en cours
+  if (titleElement.dataset.typewriterActive === 'true') return;
 
   const fullText = titleElement.dataset.fullText || titleElement.textContent.trim();
   if (!fullText) return;
@@ -137,19 +139,31 @@ const typewriterEffect = () => {
   titleElement.dataset.fullText = fullText;
   titleElement.dataset.typewriterActive = 'true';
 
+  // Annuler une animation précédente (ex: "Chargement..." puis vrai titre)
+  __typewriterRunId += 1;
+  const runId = __typewriterRunId;
+  if (__typewriterTimeoutId) {
+    try {
+      clearTimeout(__typewriterTimeoutId);
+    } catch (e) {}
+    __typewriterTimeoutId = null;
+  }
+
   let charIndex = 0;
 
   const type = () => {
+    if (runId !== __typewriterRunId) return;
     if (charIndex <= fullText.length) {
       titleElement.textContent = fullText.substring(0, charIndex);
       charIndex += 1;
-      setTimeout(type, 55);
+      __typewriterTimeoutId = setTimeout(type, 55);
       return;
     }
 
     // Fin: figer le titre (plus de suppression/re-écriture => plus de tremblement)
     titleElement.textContent = fullText;
     titleElement.dataset.typewriterActive = 'done';
+    __typewriterTimeoutId = null;
   };
 
   type();
@@ -733,9 +747,10 @@ const applyProductToPage = (product) => {
 
   const titleEl = document.querySelector('.product-title');
   if (titleEl) {
-    titleEl.dataset.typewriterActive = 'false';
-    titleEl.dataset.fullText = name;
     titleEl.textContent = name;
+    titleEl.dataset.fullText = name;
+    // autoriser une nouvelle animation (et annuler une éventuelle précédente)
+    titleEl.dataset.typewriterActive = '';
   }
 
   const priceCurrentEl = document.querySelector('.product-price .price-current');
@@ -784,8 +799,9 @@ const showNotFoundState = () => {
   document.title = `Produit introuvable - Atelier Confection`;
   const titleEl = document.querySelector('.product-title');
   if (titleEl) {
-    titleEl.dataset.typewriterActive = 'true';
     titleEl.textContent = 'Produit introuvable';
+    titleEl.dataset.fullText = 'Produit introuvable';
+    titleEl.dataset.typewriterActive = '';
   }
   const breadcrumb = document.querySelector('.product-breadcrumb');
   if (breadcrumb) {
@@ -829,6 +845,9 @@ const showNotFoundState = () => {
   if (sizeGrid) sizeGrid.innerHTML = '';
   const colorGrid = document.querySelector('.color-grid');
   if (colorGrid) colorGrid.innerHTML = '';
+
+  // Lancer l'effet ici (boot ne le lance plus sur le placeholder)
+  typewriterEffect();
 };
 
 const renderDebugPanel = () => {
@@ -897,7 +916,6 @@ const boot = async () => {
   bindFavoriteButton();
   bindAddToCartButton();
   bindShareButtons();
-  typewriterEffect();
   renderDebugPanel();
 
   const selected = readSelectedProduct();
