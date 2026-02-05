@@ -60,6 +60,33 @@ const buildColorDots = (colors) => {
 
 let adminProductsCache = [];
 
+const fetchEcommerceProducts = async () => {
+  try {
+    const res = await fetch('/api/ecommerce/products', { headers: { Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const products = Array.isArray(json?.products) ? json.products : [];
+    return products;
+  } catch (e) {
+    return [];
+  }
+};
+
+const hydrateProductsFromApi = async () => {
+  const apiProducts = await fetchEcommerceProducts();
+  if (!apiProducts.length) return false;
+
+  adminProductsCache = apiProducts;
+  try {
+    // Hydrater le stockage local pour compatibilité avec les scripts existants
+    localStorage.setItem('atelier-admin-products', JSON.stringify(apiProducts));
+    localStorage.setItem('atelier-products-cache', JSON.stringify(apiProducts));
+  } catch (e) {
+    // ignore
+  }
+  return true;
+};
+
 const buildProductCard = (product, categories) => {
   const name = product.name || 'Produit';
   const productId = String(
@@ -241,12 +268,28 @@ const hydrateCategoryFilterOptions = () => {
   select.value = current;
 };
 
-const hasAdminProducts = renderAdminProducts();
-if (hasAdminProducts) {
-  hydrateCategoryFilterOptions();
-}
-bindFavorites();
-bindProductClickStore();
+const initCatalogue = async () => {
+  // 1) Source online (API) -> permet au mobile de voir les produits créés sur desktop
+  await hydrateProductsFromApi();
+
+  // 2) Render
+  const hasAdminProducts = renderAdminProducts();
+  if (hasAdminProducts) {
+    hydrateCategoryFilterOptions();
+  }
+
+  // 3) Bind interactions
+  bindFavorites();
+  bindProductClickStore();
+
+  // 4) Observer (si défini plus bas)
+  if (typeof productObserver !== 'undefined' && productObserver) {
+    document.querySelectorAll('.product-card').forEach((card) => productObserver.observe(card));
+  }
+
+  // 5) Compteur
+  updateProductCount();
+};
 
 // Filtres
 const categoryFilter = document.getElementById('category-filter');
@@ -421,10 +464,7 @@ const productObserver = new IntersectionObserver((entries) => {
   });
 }, observerOptions);
 
-// Observer tous les produits
-document.querySelectorAll('.product-card').forEach(card => {
-  productObserver.observe(card);
-});
+// L'observation est déclenchée après le render (initCatalogue)
 
 // Pagination
 document.querySelectorAll('.pagination-number').forEach(btn => {
@@ -463,5 +503,5 @@ if (nextBtn) {
   });
 }
 
-// Initialiser le compteur au chargement
-updateProductCount();
+// Initialiser après chargement catalogue (API -> localStorage -> render)
+initCatalogue();

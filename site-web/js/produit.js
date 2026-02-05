@@ -67,6 +67,32 @@ const readAllProducts = () => {
   return cache.length ? cache : [];
 };
 
+const fetchEcommerceProductFromApi = async (id) => {
+  if (!id) return null;
+  try {
+    const res = await fetch(`/api/ecommerce/products/${encodeURIComponent(id)}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.product || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const fetchEcommerceProductsFromApi = async () => {
+  try {
+    const res = await fetch('/api/ecommerce/products', { headers: { Accept: 'application/json' } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const products = Array.isArray(json?.products) ? json.products : [];
+    return products;
+  } catch (e) {
+    return [];
+  }
+};
+
 const getAdminProductById = (id) => {
   if (!id) return null;
   const products = readAllProducts();
@@ -707,7 +733,7 @@ const renderDebugPanel = () => {
 };
 
 // ===== BOOT =====
-const boot = () => {
+const boot = async () => {
   // base init (page statique)
   bindSizeButtons();
   bindColorButtons();
@@ -734,6 +760,31 @@ const boot = () => {
   if (adminProduct) {
     applyProductToPage(adminProduct);
     return;
+  }
+
+  // Fallback ONLINE: charger depuis l'API (permet mobile / autre appareil)
+  if (id) {
+    const apiProduct = await fetchEcommerceProductFromApi(id);
+    if (apiProduct) {
+      try {
+        // cache local pour navigation/zoom/favoris
+        const existing = readJsonArray('atelier-products-cache');
+        const merged = [apiProduct, ...existing.filter((p) => String(p.id) !== String(apiProduct.id))];
+        localStorage.setItem('atelier-products-cache', JSON.stringify(merged.slice(0, 200)));
+      } catch (e) {}
+      applyProductToPage(apiProduct);
+      return;
+    }
+  } else {
+    // Sans id: si on n'a rien en local, on peut essayer de charger le catalogue online pour éviter "Introuvable"
+    const apiProducts = await fetchEcommerceProductsFromApi();
+    if (apiProducts.length) {
+      try {
+        localStorage.setItem('atelier-products-cache', JSON.stringify(apiProducts));
+      } catch (e) {}
+      applyProductToPage(apiProducts[0]);
+      return;
+    }
   }
 
   // Aucun produit trouvé: ne pas afficher l'ancien contenu statique

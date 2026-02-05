@@ -5,6 +5,23 @@ const AdminStore = (() => {
   const ORDERS_KEY = 'atelier-admin-orders';
   const SITE_ORDERS_KEY = 'orders';
   const SETTINGS_KEY = 'atelier-admin-settings';
+
+  // Sync catalogue e-commerce vers backend (Supabase via API Vercel)
+  const ECOMMERCE_SYNC_URL = '/api/ecommerce/products/sync';
+  const ECOMMERCE_SYNC_TOKEN = 'ATELIER_ECOM_2026';
+
+  const syncProductsToServer = async (products) => {
+    try {
+      // Ne pas bloquer l'UI admin si le backend est indisponible
+      await fetch(ECOMMERCE_SYNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: ECOMMERCE_SYNC_TOKEN, products }),
+      });
+    } catch (e) {
+      console.warn('⚠️ Sync produits échouée (non bloquant):', e);
+    }
+  };
   
   // Catégories par défaut
   const defaultCategories = [
@@ -25,6 +42,15 @@ const AdminStore = (() => {
     if (!localStorage.getItem(ORDERS_KEY)) {
       localStorage.setItem(ORDERS_KEY, JSON.stringify([]));
     }
+    // Sync initial pour rendre le catalogue disponible sur mobile
+    try {
+      const products = getProducts();
+      if (Array.isArray(products) && products.length) {
+        syncProductsToServer(products);
+      }
+    } catch (e) {
+      // ignore
+    }
   };
   
   // Produits
@@ -32,6 +58,8 @@ const AdminStore = (() => {
   const saveProducts = (products) => {
     try {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+      // Sync en arrière-plan (pour que mobile voie les produits)
+      syncProductsToServer(products);
       return true;
     } catch (error) {
       console.error('❌ Échec sauvegarde produits (localStorage saturé ?)', error);
