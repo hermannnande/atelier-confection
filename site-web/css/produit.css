@@ -266,7 +266,8 @@
 .color-btn {
   width: 36px;
   height: 36px;
-  border: 2px solid transparent;
+  /* Toujours visible même si la couleur est très claire (#ddd, etc.) */
+  border: 2px solid rgba(0, 0, 0, 0.08);
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.3s ease;

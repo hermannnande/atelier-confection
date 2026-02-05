@@ -63,6 +63,44 @@ const buildColorDots = (colors) => {
 
 let adminProductsCache = [];
 
+const getUpdatedTs = (product) => {
+  const raw = product?.updatedAt || product?.updated_at || product?.createdAt || product?.created_at;
+  const ts = Date.parse(String(raw || ''));
+  return Number.isFinite(ts) ? ts : 0;
+};
+
+const mergeProductsPreferNewest = (localProducts, apiProducts) => {
+  const byId = new Map();
+
+  (Array.isArray(localProducts) ? localProducts : []).forEach((p) => {
+    const id = p?.id != null ? String(p.id) : '';
+    if (!id) return;
+    byId.set(id, p);
+  });
+
+  (Array.isArray(apiProducts) ? apiProducts : []).forEach((p) => {
+    const id = p?.id != null ? String(p.id) : '';
+    if (!id) return;
+
+    const existing = byId.get(id);
+    if (!existing) {
+      byId.set(id, p);
+      return;
+    }
+
+    const apiTs = getUpdatedTs(p);
+    const localTs = getUpdatedTs(existing);
+    const apiIsNewer = apiTs >= localTs;
+
+    // Fusion non-destructive: on garde les champs manquants de l'autre source
+    byId.set(id, apiIsNewer ? { ...existing, ...p } : { ...p, ...existing });
+  });
+
+  const merged = Array.from(byId.values());
+  merged.sort((a, b) => getUpdatedTs(b) - getUpdatedTs(a));
+  return merged;
+};
+
 const fetchEcommerceProducts = async () => {
   try {
     const res = await fetch('/api/ecommerce/products', { headers: { Accept: 'application/json' } });
@@ -79,11 +117,15 @@ const hydrateProductsFromApi = async () => {
   const apiProducts = await fetchEcommerceProducts();
   if (!apiProducts.length) return false;
 
-  adminProductsCache = apiProducts;
+  // Important: ne pas écraser les produits locaux (admin) si ils sont plus récents
+  const localProducts = readAdminProducts();
+  const merged = mergeProductsPreferNewest(localProducts, apiProducts);
+
+  adminProductsCache = merged;
   try {
     // Hydrater le stockage local pour compatibilité avec les scripts existants
-    localStorage.setItem('atelier-admin-products', JSON.stringify(apiProducts));
-    localStorage.setItem('atelier-products-cache', JSON.stringify(apiProducts));
+    localStorage.setItem('atelier-admin-products', JSON.stringify(merged));
+    localStorage.setItem('atelier-products-cache', JSON.stringify(merged));
   } catch (e) {
     // ignore
   }
