@@ -3,6 +3,165 @@ let currentImages = []; // Images galerie (portrait) - max 5
 let currentVideo = ''; // URL vidéo
 let currentThumbnail = ''; // Vignette boutique 600x600
 let editingProductId = null;
+let selectedSizes = []; // Tailles sélectionnées
+let selectedColors = []; // Couleurs sélectionnées {name, hex}
+
+// Tailles prédéfinies
+const PREDEFINED_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
+// Couleurs prédéfinies
+const PREDEFINED_COLORS = [
+  { name: 'Noir', hex: '#000000' },
+  { name: 'Blanc', hex: '#FFFFFF' },
+  { name: 'Gris', hex: '#6B7280' },
+  { name: 'Beige', hex: '#D2B48C' },
+  { name: 'Marron', hex: '#8B4513' },
+  { name: 'Rouge', hex: '#DC2626' },
+  { name: 'Rose', hex: '#F472B6' },
+  { name: 'Orange', hex: '#FB923C' },
+  { name: 'Jaune', hex: '#FBBF24' },
+  { name: 'Vert', hex: '#16A34A' },
+  { name: 'Bleu', hex: '#3B82F6' },
+  { name: 'Bleu Ciel', hex: '#87CEEB' },
+  { name: 'Violet', hex: '#9333EA' },
+  { name: 'Bordeaux', hex: '#7F1D1D' },
+];
+
+// ========== GESTION DES TAILLES ==========
+
+function initSizesCheckboxes() {
+  const container = document.getElementById('sizesCheckboxContainer');
+  if (!container) return;
+  
+  container.innerHTML = PREDEFINED_SIZES.map(size => {
+    const checked = selectedSizes.includes(size) ? 'checked' : '';
+    return `
+      <label style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 2px solid ${checked ? '#8b5cf6' : '#d1d5db'}; border-radius: 6px; cursor: pointer; background: ${checked ? '#f3f0ff' : 'white'}; transition: all 0.2s;">
+        <input type="checkbox" value="${size}" ${checked} onchange="toggleSize('${size}')" style="width: 18px; height: 18px; cursor: pointer;">
+        <span style="font-weight: 600; font-size: 13px;">${size}</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function toggleSize(size) {
+  const index = selectedSizes.indexOf(size);
+  if (index > -1) {
+    selectedSizes.splice(index, 1);
+  } else {
+    selectedSizes.push(size);
+  }
+  initSizesCheckboxes(); // Re-render pour mettre à jour les styles
+}
+
+function addCustomSize() {
+  const input = document.getElementById('customSizeInput');
+  const size = input.value.trim().toUpperCase();
+  
+  if (!size) {
+    alert('Veuillez entrer une taille personnalisée');
+    return;
+  }
+  
+  if (selectedSizes.includes(size)) {
+    alert('Cette taille est déjà ajoutée');
+    return;
+  }
+  
+  selectedSizes.push(size);
+  input.value = '';
+  initSizesCheckboxes();
+}
+
+// ========== GESTION DES COULEURS ==========
+
+function initColorsDisplay() {
+  const container = document.getElementById('colorsPickerContainer');
+  if (!container) return;
+  
+  if (selectedColors.length === 0) {
+    container.innerHTML = `<p style="color: #9ca3af; font-size: 13px; width: 100%;">Aucune couleur sélectionnée. Cliquez sur le bouton pour ajouter des couleurs.</p>`;
+    return;
+  }
+  
+  container.innerHTML = selectedColors.map((color, index) => `
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border: 2px solid #e5e7eb; border-radius: 8px;">
+      <div style="width: 24px; height: 24px; border-radius: 4px; background: ${color.hex}; border: 2px solid #d1d5db;"></div>
+      <span style="font-weight: 600; font-size: 13px; flex: 1;">${color.name}</span>
+      <button type="button" onclick="removeColor(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px;">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function removeColor(index) {
+  selectedColors.splice(index, 1);
+  initColorsDisplay();
+}
+
+function openColorPicker() {
+  const modal = document.getElementById('colorPickerModal');
+  if (!modal) return;
+  
+  // Initialiser les couleurs prédéfinies
+  const grid = document.getElementById('predefinedColorsGrid');
+  if (grid) {
+    grid.innerHTML = PREDEFINED_COLORS.map(color => {
+      const isSelected = selectedColors.some(c => c.name === color.name);
+      return `
+        <div onclick="togglePredefinedColor('${color.name}', '${color.hex}')" style="cursor: pointer; padding: 10px; border: 2px solid ${isSelected ? '#8b5cf6' : '#e5e7eb'}; border-radius: 8px; text-align: center; background: ${isSelected ? '#f3f0ff' : 'white'}; transition: all 0.2s;">
+          <div style="width: 40px; height: 40px; border-radius: 8px; background: ${color.hex}; border: 2px solid #d1d5db; margin: 0 auto 6px;"></div>
+          <span style="font-size: 11px; font-weight: 600; color: #374151;">${color.name}</span>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  modal.classList.add('active');
+}
+
+function closeColorPicker() {
+  const modal = document.getElementById('colorPickerModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  initColorsDisplay();
+}
+
+function togglePredefinedColor(name, hex) {
+  const index = selectedColors.findIndex(c => c.name === name);
+  if (index > -1) {
+    selectedColors.splice(index, 1);
+  } else {
+    selectedColors.push({ name, hex });
+  }
+  openColorPicker(); // Re-render le modal
+}
+
+function addCustomColorToSelection() {
+  const nameInput = document.getElementById('customColorName');
+  const hexInput = document.getElementById('customColorHex');
+  
+  const name = nameInput.value.trim();
+  const hex = hexInput.value;
+  
+  if (!name) {
+    alert('Veuillez entrer un nom pour la couleur');
+    return;
+  }
+  
+  if (selectedColors.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+    alert('Cette couleur existe déjà');
+    return;
+  }
+  
+  selectedColors.push({ name, hex });
+  nameInput.value = '';
+  hexInput.value = '#000000';
+  openColorPicker(); // Re-render
+}
 
 // Charger les catégories dans le select
 function loadCategories() {
@@ -99,6 +258,9 @@ function openProductModal() {
   currentImages = [];
   currentVideo = '';
   currentThumbnail = '';
+  selectedSizes = []; // Reset tailles
+  selectedColors = []; // Reset couleurs
+  
   document.getElementById('modalTitle').textContent = 'Nouveau Produit';
   document.getElementById('productForm').reset();
   document.getElementById('productId').value = '';
@@ -106,8 +268,11 @@ function openProductModal() {
   document.getElementById('previewVideo').innerHTML = '';
   const previewThumbnail = document.getElementById('previewThumbnail');
   if (previewThumbnail) previewThumbnail.innerHTML = '';
+  
   document.getElementById('productModal').classList.add('active');
   loadCategories();
+  initSizesCheckboxes();
+  initColorsDisplay();
 }
 
 // Fermer le modal
@@ -133,8 +298,26 @@ function editProduct(id) {
   document.getElementById('productOriginalPrice').value = product.originalPrice || '';
   document.getElementById('productStock').value = product.stock || 0;
   document.getElementById('productDescription').value = product.description || '';
-  document.getElementById('productSizes').value = Array.isArray(product.sizes) ? product.sizes.join(', ') : '';
-  document.getElementById('productColors').value = Array.isArray(product.colors) ? product.colors.join(', ') : '';
+  
+  // Charger les tailles et couleurs
+  selectedSizes = Array.isArray(product.sizes) ? [...product.sizes] : [];
+  
+  // Charger les couleurs (format: array of strings ou array of objects)
+  if (Array.isArray(product.colors)) {
+    selectedColors = product.colors.map(c => {
+      if (typeof c === 'string') {
+        // Format ancien: chercher dans PREDEFINED_COLORS
+        const found = PREDEFINED_COLORS.find(pc => pc.name.toLowerCase() === c.toLowerCase());
+        return found || { name: c, hex: '#000000' };
+      } else if (c && c.name && c.hex) {
+        // Format nouveau: déjà un objet {name, hex}
+        return { name: c.name, hex: c.hex };
+      }
+      return null;
+    }).filter(Boolean);
+  } else {
+    selectedColors = [];
+  }
   
   currentImages = product.images || [];
   currentVideo = product.video || '';
@@ -145,6 +328,8 @@ function editProduct(id) {
   
   document.getElementById('productModal').classList.add('active');
   loadCategories();
+  initSizesCheckboxes();
+  initColorsDisplay();
 }
 
 // Supprimer un produit
@@ -274,8 +459,8 @@ if (productForm) {
       originalPrice: parseInt(document.getElementById('productOriginalPrice').value) || 0,
       stock: parseInt(document.getElementById('productStock').value) || 0,
       description: document.getElementById('productDescription').value.trim(),
-      sizes: document.getElementById('productSizes').value.split(',').map(s => s.trim()).filter(Boolean),
-      colors: document.getElementById('productColors').value.split(',').map(c => c.trim()).filter(Boolean),
+      sizes: [...selectedSizes], // Tailles sélectionnées via checkboxes
+      colors: selectedColors.map(c => c.name), // Noms des couleurs (on pourrait aussi stocker {name, hex} si besoin)
       images: currentImages, // Images galerie portrait (max 5)
       video: currentVideo, // Vidéo optionnelle
       thumbnail: currentThumbnail // Vignette boutique 600x600

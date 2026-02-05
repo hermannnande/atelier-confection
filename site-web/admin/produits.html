@@ -290,48 +290,103 @@
         <div class="modal-body">
           <input type="hidden" id="productId">
           
-          <div class="form-grid">
+          <!-- SECTION 1: INFORMATIONS DE BASE -->
+          <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #374151; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+              </svg>
+              Informations de base
+            </h3>
+            <div class="form-grid">
+              <div class="form-group form-grid-full">
+                <label for="productName">Nom du produit *</label>
+                <input type="text" id="productName" required placeholder="Ex: Robe Élégante Satin">
+              </div>
+              
+              <div class="form-group">
+                <label for="productCategory">Catégorie *</label>
+                <select id="productCategory" required>
+                  <option value="">Sélectionner...</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="productStock">Stock disponible *</label>
+                <input type="number" id="productStock" required placeholder="10" min="0" value="10">
+              </div>
+              
+              <div class="form-group form-grid-full">
+                <label for="productDescription">Description *</label>
+                <textarea id="productDescription" required rows="4" placeholder="Décrivez le produit en détail..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: PRIX ET PROMOTION -->
+          <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #92400e; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+              </svg>
+              Prix et promotion
+            </h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="productPrice">Prix de vente (FCFA) *</label>
+                <input type="number" id="productPrice" required placeholder="45000" min="0" style="font-weight: 600;">
+              </div>
+              
+              <div class="form-group">
+                <label for="productOriginalPrice">Prix avant promo (optionnel)</label>
+                <input type="number" id="productOriginalPrice" placeholder="60000" min="0">
+                <p style="font-size: 11px; color: #92400e; margin-top: 4px;">Si renseigné, affichera un badge -X%</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 3: TAILLES ET COULEURS -->
+          <div style="background: #ede9fe; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #5b21b6; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              Options produit
+            </h3>
+            
             <div class="form-group form-grid-full">
-              <label for="productName">Nom du produit *</label>
-              <input type="text" id="productName" required placeholder="Ex: Robe Élégante Satin">
+              <label>Tailles disponibles *</label>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px;" id="sizesCheckboxContainer">
+                <!-- Checkboxes générées par JS -->
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <input type="text" id="customSizeInput" placeholder="Taille personnalisée (ex: 3XL)" style="flex: 1;">
+                <button type="button" class="btn btn-sm" onclick="addCustomSize()">Ajouter</button>
+              </div>
             </div>
-            
-            <div class="form-group">
-              <label for="productCategory">Catégorie *</label>
-              <select id="productCategory" required>
-                <option value="">Sélectionner...</option>
-              </select>
+
+            <div class="form-group form-grid-full" style="margin-top: 20px;">
+              <label>Couleurs disponibles *</label>
+              <div id="colorsPickerContainer" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">
+                <!-- Couleurs sélectionnées affichées ici -->
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" onclick="openColorPicker()" style="margin-top: 12px; width: 100%;">
+                <svg viewBox="0 0 24 24" width="18" height="18" style="margin-right: 6px;">
+                  <path fill="currentColor" d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.15-.59-1.56-.36-.41-.59-.95-.59-1.56 0-1.38 1.12-2.5 2.5-2.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8s1.5.67 1.5 1.5S7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                </svg>
+                Ajouter / Gérer les couleurs
+              </button>
             </div>
-            
-            <div class="form-group">
-              <label for="productPrice">Prix (FCFA) *</label>
-              <input type="number" id="productPrice" required placeholder="45000" min="0">
-            </div>
-            
-            <div class="form-group">
-              <label for="productOriginalPrice">Prix original</label>
-              <input type="number" id="productOriginalPrice" placeholder="60000" min="0">
-            </div>
-            
-            <div class="form-group">
-              <label for="productStock">Stock *</label>
-              <input type="number" id="productStock" required placeholder="10" min="0" value="10">
-            </div>
-            
-            <div class="form-group form-grid-full">
-              <label for="productDescription">Description *</label>
-              <textarea id="productDescription" required rows="3" placeholder="Description du produit..."></textarea>
-            </div>
-            
-            <div class="form-group">
-              <label for="productSizes">Tailles (séparées par virgule) *</label>
-              <input type="text" id="productSizes" required placeholder="S, M, L, XL">
-            </div>
-            
-            <div class="form-group">
-              <label for="productColors">Couleurs (séparées par virgule) *</label>
-              <input type="text" id="productColors" required placeholder="Noir, Blanc, Beige">
-            </div>
+          </div>
+
+          <!-- SECTION 4: MÉDIAS -->
+          <div style="background: #dbeafe; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #1e40af; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+              </svg>
+              Images et vidéo
+            </h3>
             
             <div class="form-group form-grid-full">
               <label>📸 Images Galerie Produit (Format Portrait) *</label>
@@ -393,12 +448,43 @@
               <div class="preview-images" id="previewThumbnail"></div>
             </div>
           </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" onclick="closeProductModal()">Annuler</button>
           <button type="submit" class="btn btn-primary">Enregistrer</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Sélection Couleurs -->
+  <div class="modal" id="colorPickerModal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>Sélectionner les couleurs</h2>
+        <button class="modal-close" onclick="closeColorPicker()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 20px;">
+          <label style="font-weight: 600; margin-bottom: 8px; display: block;">Couleurs prédéfinies</label>
+          <div id="predefinedColorsGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+            <!-- Couleurs générées par JS -->
+          </div>
+        </div>
+        
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
+          <label style="font-weight: 600; margin-bottom: 8px; display: block;">Ajouter une couleur personnalisée</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="customColorName" placeholder="Nom (ex: Bordeaux)" style="flex: 1;">
+            <input type="color" id="customColorHex" value="#000000" style="width: 60px; height: 40px; border: 1px solid #d1d5db; border-radius: 6px;">
+            <button type="button" class="btn btn-sm btn-primary" onclick="addCustomColorToSelection()">Ajouter</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeColorPicker()">Fermer</button>
+      </div>
     </div>
   </div>
 
@@ -414,7 +500,7 @@
   
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
-  <script src="js/products-manager.js"></script>
+  <script src="js/products-manager.js?v=20260205-181500"></script>
   <script src="js/cloudinary-upload.js?v=20260205-111500"></script>
 </body>
 </html>

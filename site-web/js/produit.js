@@ -321,6 +321,7 @@ const renderGallery = (product) => {
     `);
   }
 
+  // Slot vidéo (en haut à droite)
   if (videoUrl) {
     parts.push(`
       <div class="gallery-item gallery-item-video">
@@ -329,23 +330,25 @@ const renderGallery = (product) => {
         </video>
       </div>
     `);
-  } else if (img4 || img2) {
-    // Slot vidéo sans vidéo: image portrait à droite
-    const fallback = img4 || img2;
+  } else if (img2) {
+    // Pas de vidéo: on met img2 à la place
     parts.push(`
       <div class="gallery-item gallery-item-video">
-        <img src="${fallback}" alt="${product.name || 'Produit'} - Vue" loading="lazy" />
+        <img src="${img2}" alt="${product.name || 'Produit'} - Vue 2" loading="lazy" />
       </div>
     `);
   }
 
-  if (img2) {
+  // Images restantes (seulement si pas déjà utilisées dans le slot vidéo)
+  if (img2 && videoUrl) {
+    // Si vidéo existe, img2 va en bas à gauche
     parts.push(`
       <div class="gallery-item gallery-item-2">
         <img src="${img2}" alt="${product.name || 'Produit'} - Vue 2" loading="lazy" />
       </div>
     `);
   }
+  
   if (img3) {
     parts.push(`
       <div class="gallery-item gallery-item-3">
@@ -353,6 +356,7 @@ const renderGallery = (product) => {
       </div>
     `);
   }
+  
   if (img4) {
     parts.push(`
       <div class="gallery-item gallery-item-4">
@@ -360,6 +364,7 @@ const renderGallery = (product) => {
       </div>
     `);
   }
+  
   if (img5) {
     parts.push(`
       <div class="gallery-item gallery-item-5">
