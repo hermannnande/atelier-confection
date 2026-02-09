@@ -54,7 +54,13 @@ const GestionCommandes = () => {
     }
   };
 
+  const canDelete = user?.role === 'administrateur';
+
   const handleDeleteCommande = async (commandeId) => {
+    if (!canDelete) {
+      toast.error('Accès refusé : suppression réservée à l’administrateur.');
+      return;
+    }
     try {
       await api.delete(`/commandes/${commandeId}`);
       toast.success('Commande supprimée avec succès !');
@@ -102,6 +108,10 @@ const GestionCommandes = () => {
   // Suppression groupée
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
+    if (!canDelete) {
+      toast.error('Accès refusé : suppression réservée à l’administrateur.');
+      return;
+    }
 
     try {
       await Promise.all(
@@ -253,7 +263,7 @@ const GestionCommandes = () => {
       </div>
 
       {/* Barre d'actions groupées (Admin uniquement) */}
-      {user?.role === 'administrateur' && commandesFiltrees.length > 0 && (
+      {canDelete && commandesFiltrees.length > 0 && (
         <div className="card max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -312,7 +322,7 @@ const GestionCommandes = () => {
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {/* Checkbox (Admin uniquement) */}
-                    {user?.role === 'administrateur' && (
+                    {canDelete && (
                       <input
                         type="checkbox"
                         checked={isSelected}
@@ -437,13 +447,15 @@ const GestionCommandes = () => {
                     </button>
                   )}
                   
-                  <button
-                    onClick={() => setShowDeleteModal(commande)}
-                    className="btn bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-3 py-1.5 flex items-center gap-1 flex-1 sm:flex-initial justify-center"
-                  >
-                    <Trash2 size={14} className="flex-shrink-0" />
-                    <span>Supprimer</span>
-                  </button>
+                  {canDelete && (
+                    <button
+                      onClick={() => setShowDeleteModal(commande)}
+                      className="btn bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-3 py-1.5 flex items-center gap-1 flex-1 sm:flex-initial justify-center"
+                    >
+                      <Trash2 size={14} className="flex-shrink-0" />
+                      <span>Supprimer</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -503,7 +515,7 @@ const GestionCommandes = () => {
       )}
 
       {/* Modal Confirmation Suppression */}
-      {showDeleteModal && (
+      {canDelete && showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -571,7 +583,7 @@ const GestionCommandes = () => {
       )}
 
       {/* Modal Confirmation Suppression Groupée */}
-      {showBulkDeleteModal && (
+      {canDelete && showBulkDeleteModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
