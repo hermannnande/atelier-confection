@@ -9,8 +9,8 @@ const AtelierCouturier = () => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Mode lecture seule pour les gestionnaires
-  const isReadOnly = user?.role === 'gestionnaire';
+  // Mode lecture seule pour les gestionnaires et stylistes
+  const isReadOnly = user?.role === 'gestionnaire' || user?.role === 'styliste';
 
   useEffect(() => {
     fetchCommandes();
@@ -74,7 +74,7 @@ const AtelierCouturier = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
-      {/* Badge mode lecture seule pour gestionnaire */}
+      {/* Badge mode lecture seule pour gestionnaire et styliste */}
       {isReadOnly && (
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4 flex items-center gap-3">
           <Eye className="text-blue-600 flex-shrink-0" size={24} />

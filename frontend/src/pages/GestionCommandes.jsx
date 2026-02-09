@@ -448,13 +448,13 @@ const GestionCommandes = () => {
                   )}
                   
                   {canDelete && (
-                    <button
-                      onClick={() => setShowDeleteModal(commande)}
-                      className="btn bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-3 py-1.5 flex items-center gap-1 flex-1 sm:flex-initial justify-center"
-                    >
-                      <Trash2 size={14} className="flex-shrink-0" />
-                      <span>Supprimer</span>
-                    </button>
+                  <button
+                    onClick={() => setShowDeleteModal(commande)}
+                    className="btn bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm px-3 py-1.5 flex items-center gap-1 flex-1 sm:flex-initial justify-center"
+                  >
+                    <Trash2 size={14} className="flex-shrink-0" />
+                    <span>Supprimer</span>
+                  </button>
                   )}
                 </div>
               </div>

@@ -13,7 +13,7 @@
 | └ Modifier | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | └ Voir détails | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Atelier Styliste** | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| **Atelier Couturier** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Atelier Couturier** | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | **Stock** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Livraisons** | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | **Performances** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -151,6 +151,9 @@
   - Voir commandes à découper
   - Marquer découpe terminée
   - Voir détails commande (taille, couleur, modèle)
+- ✅ **Atelier Couturier** : (lecture seule)
+  - Voir commandes en couture
+  - Voir détails commande
 - ✅ **Détails Commande** : (lecture seule)
   - Voir infos client
   - Voir modèle/taille/couleur
@@ -163,6 +166,7 @@
 
 ### 🎯 **Accès rapides Dashboard** :
 - ✂️ Atelier Styliste
+- 👕 Atelier Couturier (lecture seule)
 
 ---
 
@@ -314,6 +318,7 @@ Menu → Commandes → "+ Nouvelle"
 ```
 📊 Tableau de bord
 ✂️ Atelier - Styliste
+👕 Atelier - Couturier
 ```
 
 ### **Couturier voit** :
