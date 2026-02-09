@@ -119,7 +119,7 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Atelier - Couturiers (lecture seule pour gestionnaires et stylistes) */}
+          {/* Atelier - Couturiers (lecture seule pour gestionnaires) */}
           <Route path="atelier/couturier" element={
             <ProtectedRoute allowedRoles={['couturier', 'styliste', 'gestionnaire', 'administrateur']}>
               <AtelierCouturier />

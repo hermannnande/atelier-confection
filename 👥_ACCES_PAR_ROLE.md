@@ -151,8 +151,9 @@
   - Voir commandes à découper
   - Marquer découpe terminée
   - Voir détails commande (taille, couleur, modèle)
-- ✅ **Atelier Couturier** : (lecture seule)
-  - Voir commandes en couture
+- ✅ **Atelier Couturier** :
+  - Voir commandes en couture (après découpe)
+  - Marquer couture terminée
   - Voir détails commande
 - ✅ **Détails Commande** : (lecture seule)
   - Voir infos client
@@ -166,7 +167,7 @@
 
 ### 🎯 **Accès rapides Dashboard** :
 - ✂️ Atelier Styliste
-- 👕 Atelier Couturier (lecture seule)
+- 👕 Atelier Couturier
 
 ---
 

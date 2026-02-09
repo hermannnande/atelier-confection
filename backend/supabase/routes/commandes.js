@@ -60,7 +60,7 @@ router.get('/', authenticate, async (req, res) => {
       // Les appelants voient toutes les commandes en attente (pour traiter les appels)
       // Ne pas filtrer par appelant_id
     } else if (req.user.role === 'styliste') {
-      q = q.in('statut', ['validee', 'en_decoupe']);
+      q = q.in('statut', ['validee', 'en_decoupe', 'en_couture']);
     } else if (req.user.role === 'couturier') {
       q = q.eq('statut', 'en_couture');
     } else if (req.user.role === 'livreur') {
@@ -449,7 +449,7 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
   }
 });
 
-router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();

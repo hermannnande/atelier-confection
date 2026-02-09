@@ -16,7 +16,7 @@ router.get('/', authenticate, async (req, res) => {
       // Les appelants voient toutes les commandes en attente (pour traiter les appels)
       // Ne pas filtrer par appelant_id
     } else if (req.user.role === 'styliste') {
-      query.statut = { $in: ['validee', 'en_decoupe'] };
+      query.statut = { $in: ['validee', 'en_decoupe', 'en_couture'] };
     } else if (req.user.role === 'couturier') {
       query.statut = { $in: ['en_couture'] };
     } else if (req.user.role === 'livreur') {
@@ -239,8 +239,8 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
   }
 });
 
-// Marquer couture terminée (couturier)
-router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'gestionnaire', 'administrateur'), async (req, res) => {
+// Marquer couture terminée (couturier, styliste)
+router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const commande = await Commande.findById(req.params.id);
     

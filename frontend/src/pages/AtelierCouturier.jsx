@@ -9,8 +9,8 @@ const AtelierCouturier = () => {
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Mode lecture seule pour les gestionnaires et stylistes
-  const isReadOnly = user?.role === 'gestionnaire' || user?.role === 'styliste';
+  // Mode lecture seule pour les gestionnaires
+  const isReadOnly = user?.role === 'gestionnaire';
 
   useEffect(() => {
     fetchCommandes();
@@ -74,13 +74,13 @@ const AtelierCouturier = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
-      {/* Badge mode lecture seule pour gestionnaire et styliste */}
+      {/* Badge mode lecture seule pour gestionnaire */}
       {isReadOnly && (
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4 flex items-center gap-3">
           <Eye className="text-blue-600 flex-shrink-0" size={24} />
           <div>
             <p className="text-sm sm:text-base font-bold text-blue-900">Mode Supervision</p>
-            <p className="text-xs sm:text-sm text-blue-700">Vous consultez cette page en <strong>lecture seule</strong>. Seuls les couturiers peuvent marquer les tâches terminées.</p>
+            <p className="text-xs sm:text-sm text-blue-700">Vous consultez cette page en <strong>lecture seule</strong>. Seuls les couturiers et stylistes peuvent marquer les tâches terminées.</p>
           </div>
         </div>
       )}
@@ -206,7 +206,7 @@ const AtelierCouturier = () => {
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                     : 'bg-white hover:bg-gray-50 text-gray-900 transform hover:scale-105'
                 }`}
-                title={isReadOnly ? 'Action réservée aux couturiers' : 'Terminer et ajouter au stock'}
+                title={isReadOnly ? 'Action réservée aux couturiers et stylistes' : 'Terminer et ajouter au stock'}
               >
                 {isReadOnly ? (
                   <>
