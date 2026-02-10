@@ -5,7 +5,7 @@ import { mapUser } from '../map.js';
 
 const router = express.Router();
 
-router.get('/', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { role, actif } = req.query;
     const supabase = getSupabaseAdmin();

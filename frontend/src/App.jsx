@@ -105,9 +105,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Préparation Colis - Gestionnaires, Admins */}
+          {/* Préparation Colis - Appelants, Gestionnaires, Admins */}
           <Route path="preparation-colis" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
               <PreparationColis />
             </ProtectedRoute>
           } />

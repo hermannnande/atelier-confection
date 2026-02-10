@@ -63,7 +63,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/assigner', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { commandeId, livreurId, instructions } = req.body;
     const supabase = getSupabaseAdmin();
