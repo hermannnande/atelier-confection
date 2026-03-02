@@ -227,6 +227,18 @@ window.addEventListener('load', () => {
   observeElements('.product-card');
   observeElements('.testimonial-card');
   observeElements('.instagram-item');
+  observeElements('.trust-item');
+  observeElements('.split-item');
+  observeElements('.collection-text');
+  observeElements('.collection-images');
+  observeElements('.section-header-center');
 });
 
-console.log('✨ Enhancements chargés avec succès');
+// ===== HEADER ACTIVE LINK =====
+const currentPath = window.location.pathname;
+document.querySelectorAll('.nav-link').forEach(link => {
+  const href = link.getAttribute('href');
+  if (href && (currentPath.endsWith(href) || (href === 'index.html' && (currentPath.endsWith('/') || currentPath.endsWith('/site-web/'))))) {
+    link.classList.add('active');
+  }
+});

@@ -284,9 +284,115 @@ const observeCategories = () => {
   cards.forEach(card => observer.observe(card));
 };
 
+// ===== MENU HAMBURGER MOBILE =====
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const mobileNav = document.getElementById('mobileNav');
+const mobileNavOverlay = document.getElementById('mobileNavOverlay');
+const mobileNavClose = document.getElementById('mobileNavClose');
+
+const openMobileNav = () => {
+  mobileNav?.classList.add('open');
+  mobileNavOverlay?.classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+const closeMobileNav = () => {
+  mobileNav?.classList.remove('open');
+  mobileNavOverlay?.classList.remove('open');
+  document.body.style.overflow = '';
+};
+
+hamburgerBtn?.addEventListener('click', openMobileNav);
+mobileNavOverlay?.addEventListener('click', closeMobileNav);
+mobileNavClose?.addEventListener('click', closeMobileNav);
+
+document.querySelectorAll('.mobile-nav-link').forEach(link => {
+  link.addEventListener('click', closeMobileNav);
+});
+
+// ===== BESTSELLERS DYNAMIQUES =====
+const renderHomeBestsellers = () => {
+  const grid = document.getElementById('homeBestsellersGrid');
+  if (!grid) return;
+
+  const slugify = (v = '') =>
+    String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  let products = [];
+  try {
+    const raw = localStorage.getItem('atelier-admin-products');
+    products = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(products)) products = [];
+  } catch (e) { products = []; }
+
+  if (!products.length) {
+    try {
+      const cached = localStorage.getItem('atelier-products-cache');
+      products = cached ? JSON.parse(cached) : [];
+      if (!Array.isArray(products)) products = [];
+    } catch (e) { products = []; }
+  }
+
+  const displayed = products.filter(p => p.name && (p.thumbnail || (p.images && p.images.length))).slice(0, 8);
+
+  if (!displayed.length) {
+    const fallback = [
+      { id: 'robe-elegante-satin', name: 'Robe Elegante Satin', category: 'Elegant', price: 45000, image: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=800&q=80', badge: 'Bestseller' },
+      { id: 'ensemble-chic-modern', name: 'Ensemble Chic Modern', category: 'Perle Rare', price: 52000, image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80', badge: 'Nouveau', badgeClass: 'new' },
+      { id: 'tenue-soiree-luxe', name: 'Tenue de Soiree Luxe', category: 'Perle Unique', price: 75000, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80', badge: '-25%', badgeClass: 'sale' },
+      { id: 'robe-cocktail-premium', name: 'Robe Cocktail Premium', category: 'Style Event', price: 68000, image: 'https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?w=800&q=80', badge: 'Bestseller' },
+    ];
+    grid.innerHTML = fallback.map(p => `
+      <a href="pages/produit.html?id=${encodeURIComponent(p.id)}" class="product-card"
+         data-id="${p.id}" data-name="${p.name}" data-category="${p.category}"
+         data-price="${p.price}" data-image="${p.image}">
+        <div class="product-image">
+          <img src="${p.image}" alt="${p.name}" loading="lazy">
+          <div class="product-badge ${p.badgeClass || ''}">${p.badge}</div>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name">${p.name}</h3>
+          <p class="product-category">Collection ${p.category}</p>
+          <div class="product-price">
+            <span class="price-current">${p.price.toLocaleString('fr-FR')} FCFA</span>
+          </div>
+        </div>
+      </a>
+    `).join('');
+    return;
+  }
+
+  grid.innerHTML = displayed.map((p, i) => {
+    const id = String(p.id || slugify(p.name));
+    const img = p.thumbnail || (p.images && p.images[0]) || '';
+    const price = Number(p.price) || 0;
+    const cat = p.category || '';
+    const badge = i === 0 ? '<div class="product-badge">Bestseller</div>' :
+                  i === 1 ? '<div class="product-badge new">Nouveau</div>' : '';
+    return `
+      <a href="pages/produit.html?id=${encodeURIComponent(id)}" class="product-card"
+         data-id="${id}" data-name="${p.name}" data-category="${cat}"
+         data-price="${price}" data-image="${img}">
+        <div class="product-image">
+          <img src="${img}" alt="${p.name}" loading="lazy">
+          ${badge}
+        </div>
+        <div class="product-info">
+          <h3 class="product-name">${p.name}</h3>
+          ${cat ? `<p class="product-category">${cat}</p>` : ''}
+          <div class="product-price">
+            <span class="price-current">${price.toLocaleString('fr-FR')} FCFA</span>
+          </div>
+        </div>
+      </a>
+    `;
+  }).join('');
+};
+
 window.addEventListener("load", () => {
   updateHeader();
   observeCategories();
+  renderHomeBestsellers();
   bindProductAddToCartFallback();
   SiteStore.updateBadges();
 });

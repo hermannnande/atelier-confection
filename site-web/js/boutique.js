@@ -41,11 +41,8 @@ const buildColorDots = (colors) => {
     'bleu ciel': '#87ceeb',
     rouge: '#b91c1c',
     rose: '#f472b6',
-    orange: '#fb923c',
     vert: '#16a34a',
     jaune: '#facc15',
-    violet: '#9333ea',
-    bordeaux: '#7f1d1d',
     gris: '#6b7280',
     'gris fonce': '#333',
   };
@@ -62,75 +59,6 @@ const buildColorDots = (colors) => {
 };
 
 let adminProductsCache = [];
-
-const getUpdatedTs = (product) => {
-  const raw = product?.updatedAt || product?.updated_at || product?.createdAt || product?.created_at;
-  const ts = Date.parse(String(raw || ''));
-  return Number.isFinite(ts) ? ts : 0;
-};
-
-const mergeProductsPreferNewest = (localProducts, apiProducts) => {
-  const byId = new Map();
-
-  (Array.isArray(localProducts) ? localProducts : []).forEach((p) => {
-    const id = p?.id != null ? String(p.id) : '';
-    if (!id) return;
-    byId.set(id, p);
-  });
-
-  (Array.isArray(apiProducts) ? apiProducts : []).forEach((p) => {
-    const id = p?.id != null ? String(p.id) : '';
-    if (!id) return;
-
-    const existing = byId.get(id);
-    if (!existing) {
-      byId.set(id, p);
-      return;
-    }
-
-    const apiTs = getUpdatedTs(p);
-    const localTs = getUpdatedTs(existing);
-    const apiIsNewer = apiTs >= localTs;
-
-    // Fusion non-destructive: on garde les champs manquants de l'autre source
-    byId.set(id, apiIsNewer ? { ...existing, ...p } : { ...p, ...existing });
-  });
-
-  const merged = Array.from(byId.values());
-  merged.sort((a, b) => getUpdatedTs(b) - getUpdatedTs(a));
-  return merged;
-};
-
-const fetchEcommerceProducts = async () => {
-  try {
-    const res = await fetch('/api/ecommerce/products', { headers: { Accept: 'application/json' } });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const products = Array.isArray(json?.products) ? json.products : [];
-    return products;
-  } catch (e) {
-    return [];
-  }
-};
-
-const hydrateProductsFromApi = async () => {
-  const apiProducts = await fetchEcommerceProducts();
-  if (!apiProducts.length) return false;
-
-  // Important: ne pas écraser les produits locaux (admin) si ils sont plus récents
-  const localProducts = readAdminProducts();
-  const merged = mergeProductsPreferNewest(localProducts, apiProducts);
-
-  adminProductsCache = merged;
-  try {
-    // Hydrater le stockage local pour compatibilité avec les scripts existants
-    localStorage.setItem('atelier-admin-products', JSON.stringify(merged));
-    localStorage.setItem('atelier-products-cache', JSON.stringify(merged));
-  } catch (e) {
-    // ignore
-  }
-  return true;
-};
 
 const buildProductCard = (product, categories) => {
   const name = product.name || 'Produit';
@@ -313,28 +241,12 @@ const hydrateCategoryFilterOptions = () => {
   select.value = current;
 };
 
-const initCatalogue = async () => {
-  // 1) Source online (API) -> permet au mobile de voir les produits créés sur desktop
-  await hydrateProductsFromApi();
-
-  // 2) Render
-  const hasAdminProducts = renderAdminProducts();
-  if (hasAdminProducts) {
-    hydrateCategoryFilterOptions();
-  }
-
-  // 3) Bind interactions
-  bindFavorites();
-  bindProductClickStore();
-
-  // 4) Observer (si défini plus bas)
-  if (typeof productObserver !== 'undefined' && productObserver) {
-    document.querySelectorAll('.product-card').forEach((card) => productObserver.observe(card));
-  }
-
-  // 5) Compteur
-  updateProductCount();
-};
+const hasAdminProducts = renderAdminProducts();
+if (hasAdminProducts) {
+  hydrateCategoryFilterOptions();
+}
+bindFavorites();
+bindProductClickStore();
 
 // Filtres
 const categoryFilter = document.getElementById('category-filter');
@@ -421,9 +333,6 @@ function checkColorMatch(rgbColor, colorName) {
     'beige': ['210, 180, 140', '245, 245, 220'],
     'bleu': ['135, 206, 235', '70, 130, 180'],
     'bleu ciel': ['135, 206, 235'],
-    'orange': ['251, 146, 60', '255, 165, 0'],
-    'violet': ['147, 51, 234', '128, 0, 128'],
-    'bordeaux': ['127, 29, 29', '128, 0, 32'],
     'gris fonce': ['51, 51, 51']
   };
   
@@ -512,7 +421,10 @@ const productObserver = new IntersectionObserver((entries) => {
   });
 }, observerOptions);
 
-// L'observation est déclenchée après le render (initCatalogue)
+// Observer tous les produits
+document.querySelectorAll('.product-card').forEach(card => {
+  productObserver.observe(card);
+});
 
 // Pagination
 document.querySelectorAll('.pagination-number').forEach(btn => {
@@ -551,5 +463,28 @@ if (nextBtn) {
   });
 }
 
-// Initialiser après chargement catalogue (API -> localStorage -> render)
-initCatalogue();
+// Appliquer le filtre catégorie depuis l'URL (?cat=elegant)
+const applyCategoryFromURL = () => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const catParam = params.get('cat');
+    if (!catParam) return;
+
+    const select = document.getElementById('category-filter');
+    if (!select) return;
+
+    const target = normalizeText(catParam);
+    const options = Array.from(select.options);
+    const match = options.find(opt => normalizeText(opt.value) === target || normalizeText(opt.textContent) === target);
+
+    if (match) {
+      select.value = match.value;
+    } else {
+      select.value = catParam;
+    }
+    select.dispatchEvent(new Event('change'));
+  } catch (e) { /* ignore */ }
+};
+
+applyCategoryFromURL();
+updateProductCount();
