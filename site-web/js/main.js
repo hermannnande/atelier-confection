@@ -343,7 +343,7 @@ const renderHomeBestsellers = () => {
       { id: 'robe-cocktail-premium', name: 'Robe Cocktail Premium', category: 'Style Event', price: 68000, image: 'https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?w=800&q=80', badge: 'Bestseller' },
     ];
     grid.innerHTML = fallback.map(p => `
-      <a href="pages/produit.html?id=${encodeURIComponent(p.id)}" class="product-card"
+      <a href="pages/produit?id=${encodeURIComponent(p.id)}" class="product-card"
          data-id="${p.id}" data-name="${p.name}" data-category="${p.category}"
          data-price="${p.price}" data-image="${p.image}">
         <div class="product-image">
@@ -370,7 +370,7 @@ const renderHomeBestsellers = () => {
     const badge = i === 0 ? '<div class="product-badge">Bestseller</div>' :
                   i === 1 ? '<div class="product-badge new">Nouveau</div>' : '';
     return `
-      <a href="pages/produit.html?id=${encodeURIComponent(id)}" class="product-card"
+      <a href="pages/produit?id=${encodeURIComponent(id)}" class="product-card"
          data-id="${id}" data-name="${p.name}" data-category="${cat}"
          data-price="${price}" data-image="${img}">
         <div class="product-image">

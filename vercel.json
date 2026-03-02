@@ -21,20 +21,22 @@
       "use": "@vercel/static"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/sms/cron/rappel-en-couture",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/sms/cron/rappel-en-couture",
-      "schedule": "0 20 * * *"
-    }
-  ],
   "routes": [
     {
-      "src": "/site-web/?",
+      "src": "/site-web/?$",
       "dest": "/site-web/index.html"
+    },
+    {
+      "src": "/site-web/pages/([^/.]+)$",
+      "dest": "/site-web/pages/$1.html"
+    },
+    {
+      "src": "/site-web/admin/?$",
+      "dest": "/site-web/admin/index.html"
+    },
+    {
+      "src": "/site-web/admin/([^/.]+)$",
+      "dest": "/site-web/admin/$1.html"
     },
     {
       "src": "/site-web/(.*)",

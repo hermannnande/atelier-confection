@@ -19,7 +19,7 @@ const renderCart = () => {
         </svg>
         <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 12px;">Votre panier est vide</h3>
         <p style="color: #666; margin-bottom: 24px;">Découvrez nos collections et ajoutez vos pièces préférées</p>
-        <a href="boutique.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
+        <a href="boutique" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
           Continuer mes achats
         </a>
       </div>
@@ -66,7 +66,7 @@ const renderCart = () => {
     `
       )
       .join('')}
-    <a href="boutique.html" class="continue-shopping">
+    <a href="boutique" class="continue-shopping">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="m15 18-6-6 6-6"/>
       </svg>
@@ -231,7 +231,7 @@ function proceedToCheckout() {
   } catch (e) {
     // Ignorer si sessionStorage indisponible
   }
-  window.location.href = 'checkout.html';
+  window.location.href = 'checkout';
 }
 
 // Bouton checkout

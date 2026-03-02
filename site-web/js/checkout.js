@@ -51,7 +51,7 @@ function loadCartSummary() {
           Aucun article détecté.<br>
           <small>Vérifiez la console (F12) pour plus de détails.</small>
         </p>
-        <a href="panier.html" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
+        <a href="panier" style="display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
           Retour au panier
         </a>
       </div>
@@ -207,7 +207,7 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
       localStorage.setItem(CART_KEY, JSON.stringify([]));
     }
 
-    window.location.href = 'merci.html';
+    window.location.href = 'merci';
 
   } catch (error) {
     console.error('Erreur envoi commande:', error);

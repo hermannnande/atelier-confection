@@ -78,7 +78,7 @@ const buildProductCard = (product, categories) => {
 
   return `
     <a
-      href="produit.html?id=${safeId}"
+      href="produit?id=${safeId}"
       class="product-card"
       data-id="${productId}"
       data-name="${name}"
