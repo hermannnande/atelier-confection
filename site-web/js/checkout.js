@@ -121,6 +121,8 @@ const sendItemToApi = async (item, clientInfo) => {
     taille: item.size || 'Standard',
     couleur: item.color || 'Non specifie',
     price: String(store?.parsePrice ? store.parsePrice(item.price) : Number(item.price) || 0),
+    image: item.image || '',
+    category: item.category || '',
     source: 'site-web-ecommerce',
   };
 
