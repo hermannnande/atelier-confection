@@ -98,86 +98,122 @@ function loadCartSummary() {
   document.getElementById('summaryTotal').textContent = formatted;
 }
 
+// URL de l'API (prod Vercel ou localhost)
+const resolveApiUrl = () => {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'https://atelier-confection.vercel.app/api/commandes/public';
+  }
+  return window.location.origin + '/api/commandes/public';
+};
+
+const API_URL = resolveApiUrl();
+const API_TOKEN = 'NOUSUNIQUE123';
+
+// Envoyer un article au backend
+const sendItemToApi = async (item, clientInfo) => {
+  const body = {
+    token: API_TOKEN,
+    client: clientInfo.client,
+    phone: clientInfo.phone,
+    ville: clientInfo.ville,
+    name: item.name || 'Produit',
+    taille: item.size || 'Standard',
+    couleur: item.color || 'Non specifie',
+    price: String(store?.parsePrice ? store.parsePrice(item.price) : Number(item.price) || 0),
+    source: 'site-web-ecommerce',
+  };
+
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || `Erreur ${response.status}`);
+  }
+
+  return response.json();
+};
+
 // Validation du formulaire
 document.getElementById('deliveryForm').addEventListener('submit', async function(e) {
   e.preventDefault();
 
   const submitBtn = this.querySelector('.submit-btn');
   const formData = new FormData(this);
-  
-  // Données du formulaire
-  const orderData = {
+
+  const clientInfo = {
     client: formData.get('fullname'),
     phone: formData.get('phone'),
     ville: formData.get('city'),
     notes: formData.get('notes') || '',
-    items: store?.getCart ? store.getCart() : readCartFallback(),
-    total: document.getElementById('summaryTotal').textContent,
-    source: 'site-web',
-    date: new Date().toISOString()
   };
 
-  // Validation
-  if (!orderData.client || !orderData.phone || !orderData.ville) {
+  const cartItems = store?.getCart ? store.getCart() : readCartFallback();
+
+  if (!clientInfo.client || !clientInfo.phone || !clientInfo.ville) {
     alert('Veuillez remplir tous les champs obligatoires');
     return;
   }
 
-  // Animation de chargement
+  if (!cartItems.length) {
+    alert('Votre panier est vide');
+    return;
+  }
+
   submitBtn.classList.add('loading');
   submitBtn.innerHTML = '<span>Envoi en cours...</span>';
 
   try {
-    // Simuler l'envoi (à remplacer par votre vraie API)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const results = [];
+    for (const item of cartItems) {
+      const qty = item.qty || 1;
+      for (let i = 0; i < qty; i++) {
+        const result = await sendItemToApi(item, clientInfo);
+        results.push(result);
+      }
+    }
 
-    // Ici, vous pouvez envoyer à votre backend :
-    // const response = await fetch('https://atelier-confection.vercel.app/api/commandes/public', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     token: 'NOUSUNIQUE123',
-    //     client: orderData.client,
-    //     phone: orderData.phone,
-    //     ville: orderData.ville,
-    //     items: orderData.items,
-    //     ...
-    //   })
-    // });
+    console.log('Commandes envoyees:', results);
 
-    // Sauvegarder la commande
+    // Sauvegarde locale en backup
     const orders = JSON.parse(localStorage.getItem('orders') || '[]');
     orders.push({
-      ...orderData,
-      id: 'CMD' + Date.now(),
+      ...clientInfo,
+      items: cartItems,
+      total: document.getElementById('summaryTotal').textContent,
+      id: results[0]?.numeroCommande || ('CMD' + Date.now()),
       status: 'en_attente_validation',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
     localStorage.setItem('orders', JSON.stringify(orders));
 
-    // Stocker les données pour la page de remerciement
     sessionStorage.setItem('lastOrder', JSON.stringify({
-      fullname: orderData.client,
-      phone: orderData.phone,
-      city: orderData.ville,
-      notes: orderData.notes,
-      total: orderData.total
+      fullname: clientInfo.client,
+      phone: clientInfo.phone,
+      city: clientInfo.ville,
+      notes: clientInfo.notes,
+      total: document.getElementById('summaryTotal').textContent,
     }));
 
-    // Vider le panier
-    if (store?.saveCart) {
-      store.cart = [];
-      store.saveCart();
+    if (store?.clearCart) {
+      store.clearCart();
     } else {
       localStorage.setItem(CART_KEY, JSON.stringify([]));
     }
 
-    // Redirection vers la page de remerciement
     window.location.href = 'merci.html';
 
   } catch (error) {
-    console.error('Erreur:', error);
-    alert('Une erreur est survenue. Veuillez réessayer.');
+    console.error('Erreur envoi commande:', error);
+    alert(
+      'Erreur lors de l\'envoi de la commande.\n' +
+      error.message + '\n\n' +
+      'Veuillez reessayer ou nous contacter au 07 05 88 11 16.'
+    );
     submitBtn.classList.remove('loading');
     submitBtn.innerHTML = `
       <span>Confirmer ma commande</span>
