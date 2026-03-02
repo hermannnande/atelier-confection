@@ -241,12 +241,83 @@ const hydrateCategoryFilterOptions = () => {
   select.value = current;
 };
 
-const hasAdminProducts = renderAdminProducts();
-if (hasAdminProducts) {
-  hydrateCategoryFilterOptions();
-}
-bindFavorites();
-bindProductClickStore();
+const API_URL = (() => {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'https://atelier-confection.vercel.app/api/ecommerce/products';
+  }
+  return window.location.origin + '/api/ecommerce/products';
+})();
+
+const fetchAndRenderProducts = async () => {
+  const hasLocal = renderAdminProducts();
+  if (hasLocal) {
+    hydrateCategoryFilterOptions();
+    bindFavorites();
+    bindProductClickStore();
+    applyCategoryFromURL();
+    updateProductCount();
+    observeAllCards();
+    return;
+  }
+
+  try {
+    const cachedRaw = localStorage.getItem('atelier-products-cache');
+    const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
+    if (Array.isArray(cached) && cached.length) {
+      adminProductsCache = cached;
+      const categories = readAdminCategories().filter(c => c.active !== false);
+      const container = document.querySelector('.products-container');
+      if (container) {
+        container.innerHTML = cached
+          .filter(p => p.active !== false)
+          .map(p => buildProductCard(p, categories))
+          .join('');
+      }
+      hydrateCategoryFilterOptions();
+      bindFavorites();
+      bindProductClickStore();
+      applyCategoryFromURL();
+      updateProductCount();
+      observeAllCards();
+    }
+  } catch (_) {}
+
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) return;
+    const data = await res.json();
+    const products = Array.isArray(data) ? data : (data.products || []);
+    const active = products.filter(p => p.active !== false);
+    if (!active.length) return;
+
+    localStorage.setItem('atelier-admin-products', JSON.stringify(active));
+    localStorage.setItem('atelier-products-cache', JSON.stringify(active));
+    adminProductsCache = active;
+
+    const categories = readAdminCategories().filter(c => c.active !== false);
+    const container = document.querySelector('.products-container');
+    if (container) {
+      container.innerHTML = active.map(p => buildProductCard(p, categories)).join('');
+    }
+    hydrateCategoryFilterOptions();
+    bindFavorites();
+    bindProductClickStore();
+    applyCategoryFromURL();
+    updateProductCount();
+    observeAllCards();
+  } catch (e) {
+    console.error('Erreur chargement produits:', e);
+  }
+};
+
+const observeAllCards = () => {
+  document.querySelectorAll('.product-card').forEach(card => {
+    productObserver.observe(card);
+  });
+};
+
+fetchAndRenderProducts();
 
 // Filtres
 const categoryFilter = document.getElementById('category-filter');
@@ -421,10 +492,7 @@ const productObserver = new IntersectionObserver((entries) => {
   });
 }, observerOptions);
 
-// Observer tous les produits
-document.querySelectorAll('.product-card').forEach(card => {
-  productObserver.observe(card);
-});
+// L'observation des cartes se fait dans observeAllCards() appele par fetchAndRenderProducts()
 
 // Pagination
 document.querySelectorAll('.pagination-number').forEach(btn => {
@@ -486,5 +554,4 @@ const applyCategoryFromURL = () => {
   } catch (e) { /* ignore */ }
 };
 
-applyCategoryFromURL();
-updateProductCount();
+// applyCategoryFromURL et updateProductCount sont appeles dans fetchAndRenderProducts()
