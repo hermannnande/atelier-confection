@@ -206,9 +206,9 @@ const CartDrawer = {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
-          Procéder au paiement
+          Commander
         </button>
-        <a href="pages/panier" class="cart-drawer-btn cart-drawer-btn-secondary">
+        <a href="#" class="cart-drawer-btn cart-drawer-btn-secondary drawer-view-cart-btn">
           Voir le panier complet
         </a>
       </div>
@@ -349,6 +349,17 @@ const CartDrawer = {
         const isInPagesFolder = currentPath.includes('/pages/');
         const checkoutUrl = isInPagesFolder ? 'checkout' : 'pages/checkout';
         window.location.href = checkoutUrl;
+      }, 300);
+    });
+
+    const viewCartBtn = this.drawer?.querySelector('.drawer-view-cart-btn');
+    viewCartBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.close();
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        const isInPagesFolder = currentPath.includes('/pages/');
+        window.location.href = isInPagesFolder ? 'panier' : 'pages/panier';
       }, 300);
     });
   }
