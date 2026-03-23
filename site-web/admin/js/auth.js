@@ -7,20 +7,33 @@ const defaultUsers = [
   {
     id: '1',
     username: 'admin',
-    password: 'admin123', // En production, utiliser bcrypt
+    password: 'admin123',
     name: 'Administrateur',
     role: 'admin',
     email: 'admin@atelier-confection.com',
     createdAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    username: 'hermann',
+    password: 'admin123',
+    name: 'Hermann Nande',
+    role: 'admin',
+    email: 'hermannnande@gmail.com',
+    createdAt: new Date().toISOString()
   }
 ];
 
-// Initialiser les utilisateurs par défaut
+// Initialiser les utilisateurs par défaut (met a jour si de nouveaux comptes sont ajoutes)
 function initUsers() {
-  const users = localStorage.getItem(USERS_KEY);
-  if (!users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+  const existing = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+  const merged = [...existing];
+  for (const def of defaultUsers) {
+    if (!merged.find(u => u.id === def.id)) {
+      merged.push(def);
+    }
   }
+  localStorage.setItem(USERS_KEY, JSON.stringify(merged));
 }
 
 // Vérifier si l'utilisateur est connecté
@@ -61,7 +74,11 @@ function getCurrentUser() {
 // Connexion
 function login(username, password, remember = false) {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  const user = users.find(u => u.username === username && u.password === password);
+  const input = username.toLowerCase().trim();
+  const user = users.find(u =>
+    (u.username.toLowerCase() === input || (u.email && u.email.toLowerCase() === input)) &&
+    u.password === password
+  );
   
   if (!user) {
     return { success: false, message: 'Identifiants invalides' };
