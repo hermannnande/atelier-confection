@@ -45,6 +45,15 @@ const buildColorDots = (colors) => {
     jaune: '#facc15',
     gris: '#6b7280',
     'gris fonce': '#333',
+    terracotta: '#C2452D',
+    saumon: '#FA8072',
+    orange: '#F97316',
+    violet: '#8B5CF6',
+    'violet clair': '#C084FC',
+    'rouge bordeaux': '#7F1D1D',
+    'bleu bic': '#2563EB',
+    'vert treillis': '#15803D',
+    'jaune moutarde': '#CA8A04',
   };
 
   return colors
@@ -404,7 +413,14 @@ function checkColorMatch(rgbColor, colorName) {
     'beige': ['210, 180, 140', '245, 245, 220'],
     'bleu': ['135, 206, 235', '70, 130, 180'],
     'bleu ciel': ['135, 206, 235'],
-    'gris fonce': ['51, 51, 51']
+    'gris fonce': ['51, 51, 51'],
+    'terracotta': ['194, 69, 45'],
+    'saumon': ['250, 128, 114'],
+    'orange': ['249, 115, 22'],
+    'violet': ['139, 92, 246'],
+    'rouge bordeaux': ['127, 29, 29'],
+    'vert treillis': ['21, 128, 61'],
+    'jaune moutarde': ['202, 138, 4']
   };
   
   return colorMap[colorName]?.some(color => rgbColor.includes(color));

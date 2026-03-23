@@ -92,6 +92,15 @@ const colorToHex = (name = '') => {
     'bleu ciel': '#87ceeb',
     gris: '#6b7280',
     'gris fonce': '#333333',
+    terracotta: '#C2452D',
+    saumon: '#FA8072',
+    orange: '#F97316',
+    violet: '#8B5CF6',
+    'violet clair': '#C084FC',
+    'rouge bordeaux': '#7F1D1D',
+    'bleu bic': '#2563EB',
+    'vert treillis': '#15803D',
+    'jaune moutarde': '#CA8A04',
   };
   return map[normalizeText(name)] || '#dddddd';
 };
