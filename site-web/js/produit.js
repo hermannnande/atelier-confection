@@ -1,16 +1,14 @@
+if (window.__PRODUIT_JS_INIT) {
+  // Évite les erreurs "Identifier already declared" si le script est chargé 2 fois
+  // (cache, double inclusion, etc.)
+} else {
+  window.__PRODUIT_JS_INIT = true;
 /* Produit (page détail) - Chargement dynamique depuis l'admin
    - Boutique: lien = produit.html?id=<product.id>
    - Ici: on lit localStorage('atelier-admin-products') et on remplit la page
    - Galerie: 5 images portrait + 1 vidéo (optionnelle)
    - Vignette boutique 600x600: utilisée uniquement sur boutique, pas ici */
 
-if (window.__PRODUIT_JS_INIT) {
-  console.warn('produit.js déjà chargé, arrêt.');
-} else {
-  window.__PRODUIT_JS_INIT = true;
-  window.__PRODUIT_LOADED = true;
-
-  (function () {
 const getStore = () => window.SiteStore;
 const productRoot = document.querySelector('.product-page');
 
@@ -67,32 +65,6 @@ const readAllProducts = () => {
   return cache.length ? cache : [];
 };
 
-const fetchEcommerceProductFromApi = async (id) => {
-  if (!id) return null;
-  try {
-    const res = await fetch(`/api/ecommerce/products/${encodeURIComponent(id)}`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.product || null;
-  } catch (e) {
-    return null;
-  }
-};
-
-const fetchEcommerceProductsFromApi = async () => {
-  try {
-    const res = await fetch('/api/ecommerce/products', { headers: { Accept: 'application/json' } });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const products = Array.isArray(json?.products) ? json.products : [];
-    return products;
-  } catch (e) {
-    return [];
-  }
-};
-
 const getAdminProductById = (id) => {
   if (!id) return null;
   const products = readAllProducts();
@@ -106,12 +78,7 @@ const getCategoryLabel = (slug) => {
   return cats.find((c) => c.slug === slug)?.name || slug || 'Produits';
 };
 
-const isHexColor = (value = '') => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value).trim());
-
 const colorToHex = (name = '') => {
-  const raw = String(name || '').trim();
-  if (isHexColor(raw)) return raw;
-
   const map = {
     noir: '#000000',
     blanc: '#ffffff',
@@ -119,122 +86,23 @@ const colorToHex = (name = '') => {
     marron: '#8b4513',
     rouge: '#b91c1c',
     rose: '#f472b6',
-    orange: '#fb923c',
     vert: '#16a34a',
     jaune: '#facc15',
     bleu: '#4682b4',
     'bleu ciel': '#87ceeb',
-    violet: '#9333ea',
-    bordeaux: '#7f1d1d',
     gris: '#6b7280',
     'gris fonce': '#333333',
+    terracotta: '#C2452D',
+    saumon: '#FA8072',
+    orange: '#F97316',
+    violet: '#8B5CF6',
+    'violet clair': '#C084FC',
+    'rouge bordeaux': '#7F1D1D',
+    'bleu bic': '#2563EB',
+    'vert treillis': '#15803D',
+    'jaune moutarde': '#CA8A04',
   };
   return map[normalizeText(name)] || '#dddddd';
-};
-
-const normalizeColorList = (colors) => {
-  if (Array.isArray(colors)) {
-    return colors
-      .flatMap((c) => {
-        const raw = String(c || '').trim();
-        if (!raw) return [];
-
-        // Support format Postgres text[] sérialisé: "{Noir,Blanc}"
-        const unwrapped =
-          raw.startsWith('{') && raw.endsWith('}') ? raw.slice(1, -1) : raw;
-
-        // Support cas "Noir, Blanc" stocké dans UNE entrée
-        if (unwrapped.includes(',')) {
-          return unwrapped
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean);
-        }
-        return [unwrapped];
-      })
-      .filter(Boolean);
-  }
-
-  if (typeof colors === 'string') {
-    const raw = colors.trim();
-    if (!raw) return [];
-
-    // Support JSON string: '["Noir","Blanc"]'
-    if (raw.startsWith('[') && raw.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .map((c) => String(c || '').trim())
-            .filter(Boolean);
-        }
-      } catch (e) {
-        // fallback split below
-      }
-    }
-
-    const unwrapped =
-      raw.startsWith('{') && raw.endsWith('}') ? raw.slice(1, -1) : raw;
-
-    return unwrapped
-      .split(',')
-      .map((c) => c.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-};
-
-const getUpdatedTs = (product) => {
-  const raw =
-    product?.updatedAt ||
-    product?.updated_at ||
-    product?.createdAt ||
-    product?.created_at;
-  const ts = Date.parse(String(raw || ''));
-  return Number.isFinite(ts) ? ts : 0;
-};
-
-const getColorsLen = (product) => normalizeColorList(product?.colors).length;
-
-const pickBestProduct = (a, b) => {
-  if (!a) return b || null;
-  if (!b) return a || null;
-
-  const aTs = getUpdatedTs(a);
-  const bTs = getUpdatedTs(b);
-  if (bTs !== aTs) return bTs > aTs ? b : a;
-
-  const aColors = getColorsLen(a);
-  const bColors = getColorsLen(b);
-  if (bColors !== aColors) return bColors > aColors ? b : a;
-
-  const aImages = Array.isArray(a?.images) ? a.images.length : 0;
-  const bImages = Array.isArray(b?.images) ? b.images.length : 0;
-  if (bImages !== aImages) return bImages > aImages ? b : a;
-
-  return a;
-};
-
-const persistSelectedProduct = (product) => {
-  if (!product?.id) return;
-  try {
-    sessionStorage.setItem('atelier-selected-product', JSON.stringify(product));
-    localStorage.setItem('atelier-selected-product', JSON.stringify(product));
-  } catch (e) {
-    // ignore
-  }
-};
-
-const upsertProductToStorageList = (key, product, max = 200) => {
-  if (!product?.id) return;
-  try {
-    const existing = readJsonArray(key);
-    const merged = [product, ...existing.filter((p) => String(p?.id) !== String(product.id))];
-    localStorage.setItem(key, JSON.stringify(merged.slice(0, max)));
-  } catch (e) {
-    // ignore
-  }
 };
 
 // ===== TYPEWRITER =====
@@ -243,7 +111,7 @@ let __typewriterRunId = 0;
 const typewriterEffect = () => {
   const titleElement = document.querySelector('.product-title');
   if (!titleElement) return;
-  // Éviter de relancer si déjà en cours
+  // Empêcher de relancer l'effet si déjà en cours.
   if (titleElement.dataset.typewriterActive === 'true') return;
 
   const fullText = titleElement.dataset.fullText || titleElement.textContent.trim();
@@ -263,40 +131,19 @@ const typewriterEffect = () => {
   }
 
   let charIndex = 0;
-  let isDeleting = false;
 
   const type = () => {
-    if (runId !== __typewriterRunId) return;
-
-    // Phase d'écriture
-    if (!isDeleting && charIndex <= fullText.length) {
+    if (runId !== __typewriterRunId) return; // une nouvelle animation a démarré
+    if (charIndex <= fullText.length) {
       titleElement.textContent = fullText.substring(0, charIndex);
       charIndex += 1;
       __typewriterTimeoutId = setTimeout(type, 55);
       return;
     }
-
-    // Pause après avoir tout écrit
-    if (!isDeleting && charIndex > fullText.length) {
-      isDeleting = true;
-      __typewriterTimeoutId = setTimeout(type, 1800);
-      return;
-    }
-
-    // Phase de suppression
-    if (isDeleting && charIndex > 0) {
-      charIndex -= 1;
-      titleElement.textContent = fullText.substring(0, charIndex);
-      __typewriterTimeoutId = setTimeout(type, 40);
-      return;
-    }
-
-    // Pause avant de recommencer + boucle infinie
-    if (isDeleting && charIndex === 0) {
-      isDeleting = false;
-      __typewriterTimeoutId = setTimeout(type, 500);
-      return;
-    }
+    // Fin: figer le texte (pas de suppression => pas de tremblement)
+    titleElement.textContent = fullText;
+    titleElement.dataset.typewriterActive = 'done';
+    __typewriterTimeoutId = null;
   };
 
   type();
@@ -339,9 +186,8 @@ const renderSizes = (sizes) => {
 const renderColors = (colors) => {
   const container = document.querySelector('.color-grid');
   if (!container) return;
-  const list = normalizeColorList(colors);
-  const finalList = list.length ? list : ['Noir'];
-  container.innerHTML = finalList
+  const list = Array.isArray(colors) && colors.length ? colors : ['Noir'];
+  container.innerHTML = list
     .map((c, idx) => {
       const hex = colorToHex(c);
       const border = normalizeText(c) === 'blanc' ? 'border: 2px solid #ddd;' : '';
@@ -458,7 +304,6 @@ const renderGallery = (product) => {
     `);
   }
 
-  // Slot vidéo (en haut à droite)
   if (videoUrl) {
     parts.push(`
       <div class="gallery-item gallery-item-video">
@@ -467,25 +312,23 @@ const renderGallery = (product) => {
         </video>
       </div>
     `);
-  } else if (img2) {
-    // Pas de vidéo: on met img2 à la place
+  } else if (img4 || img2) {
+    // Slot vidéo sans vidéo: image portrait à droite
+    const fallback = img4 || img2;
     parts.push(`
       <div class="gallery-item gallery-item-video">
-        <img src="${img2}" alt="${product.name || 'Produit'} - Vue 2" loading="lazy" />
+        <img src="${fallback}" alt="${product.name || 'Produit'} - Vue" loading="lazy" />
       </div>
     `);
   }
 
-  // Images restantes (seulement si pas déjà utilisées dans le slot vidéo)
-  if (img2 && videoUrl) {
-    // Si vidéo existe, img2 va en bas à gauche
+  if (img2) {
     parts.push(`
       <div class="gallery-item gallery-item-2">
         <img src="${img2}" alt="${product.name || 'Produit'} - Vue 2" loading="lazy" />
       </div>
     `);
   }
-  
   if (img3) {
     parts.push(`
       <div class="gallery-item gallery-item-3">
@@ -493,7 +336,6 @@ const renderGallery = (product) => {
       </div>
     `);
   }
-  
   if (img4) {
     parts.push(`
       <div class="gallery-item gallery-item-4">
@@ -501,7 +343,6 @@ const renderGallery = (product) => {
       </div>
     `);
   }
-  
   if (img5) {
     parts.push(`
       <div class="gallery-item gallery-item-5">
@@ -511,86 +352,6 @@ const renderGallery = (product) => {
   }
 
   gallery.innerHTML = parts.join('');
-};
-
-// ===== PRODUITS SIMILAIRES =====
-const renderSimilarProducts = async (currentProduct) => {
-  const section = document.getElementById('similarProductsSection');
-  const grid = document.getElementById('similarProductsGrid');
-  
-  if (!section || !grid || !currentProduct) return;
-  
-  try {
-    // Récupérer tous les produits disponibles
-    let allProducts = [];
-    
-    // Essayer depuis l'API
-    try {
-      const apiProducts = await fetchEcommerceProductsFromApi();
-      if (apiProducts && apiProducts.length > 0) {
-        allProducts = apiProducts;
-      }
-    } catch (e) {
-      console.warn('API non disponible, utilisation du cache local');
-    }
-    
-    // Fallback sur localStorage
-    if (allProducts.length === 0) {
-      const cached = getStore(PRODUCTS_CACHE_KEY);
-      if (cached && Array.isArray(cached)) {
-        allProducts = cached;
-      }
-    }
-    
-    if (allProducts.length === 0) {
-      section.style.display = 'none';
-      return;
-    }
-    
-    // Filtrer: exclure le produit actuel
-    let similarProducts = allProducts.filter(p => p.id !== currentProduct.id && p.active !== false);
-    
-    // Prioriser les produits de la même catégorie
-    const sameCategory = similarProducts.filter(p => p.category === currentProduct.category);
-    const otherProducts = similarProducts.filter(p => p.category !== currentProduct.category);
-    
-    // Mélanger et prendre max 4 produits
-    similarProducts = [...sameCategory, ...otherProducts].slice(0, 4);
-    
-    if (similarProducts.length === 0) {
-      section.style.display = 'none';
-      return;
-    }
-    
-    // Générer le HTML
-    grid.innerHTML = similarProducts.map(product => {
-      const thumbnail = product.thumbnail || (product.images && product.images[0]) || '';
-      const price = (product.price || 0).toLocaleString('fr-FR');
-      const category = product.category || 'Collection';
-      
-      return `
-        <a href="produit.html?id=${product.id}" class="similar-card">
-          <div class="similar-image">
-            <img
-              src="${thumbnail}"
-              alt="${product.name || 'Produit'}"
-              loading="lazy"
-            />
-          </div>
-          <div class="similar-info">
-            <h3>${product.name || 'Produit'}</h3>
-            <span>${category}</span>
-            <span class="similar-price">${price} FCFA</span>
-          </div>
-        </a>
-      `;
-    }).join('');
-    
-    section.style.display = 'block';
-  } catch (error) {
-    console.error('Erreur chargement produits similaires:', error);
-    section.style.display = 'none';
-  }
 };
 
 // ===== FAVORIS / PANIER =====
@@ -681,9 +442,9 @@ const bindFavoriteButton = () => {
 
 const bindAddToCartButton = () => {
   const addCartBtn = document.querySelector('.btn-add-cart');
-  const optionsWrapper = document.querySelector('.product-options-wrapper');
+  const optionsWrapper = document.querySelector('.product-options-wrapper') || document.querySelector('.product-info');
   const productOptions = document.querySelectorAll('.product-option');
-  
+
   if (!addCartBtn) return;
 
   // Indiquer à main.js (fallback) que produit.js gère l'ajout panier
@@ -697,20 +458,16 @@ const bindAddToCartButton = () => {
     addCartBtn.__atelierAddToCartHandler = null;
   }
 
-  // État: est-ce que les options sont déjà affichées?
+  // État: options visibles ?
   let optionsVisible = false;
-  
-  // Sauvegarder le texte original du bouton UNE SEULE FOIS
   const originalButtonHTML = addCartBtn.innerHTML;
 
-  // Fonction pour afficher les options
   const showOptions = () => {
-    productOptions.forEach(option => {
+    productOptions.forEach((option) => {
       option.style.display = 'flex';
       option.style.animation = 'slideInUp 0.4s ease forwards';
     });
-    
-    // Changer le texte du bouton
+
     addCartBtn.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
@@ -718,69 +475,46 @@ const bindAddToCartButton = () => {
       </svg>
       Confirmer l'ajout
     `;
-    
-    // Ajouter un bouton de fermeture (X) en haut à droite du bloc options
-    if (optionsWrapper && !optionsWrapper.querySelector('.options-close-btn')) {
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'options-close-btn';
-      closeBtn.type = 'button';
-      closeBtn.setAttribute('aria-label', 'Fermer les options');
-      closeBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6L6 18M6 6l12 12"/>
-        </svg>
-      `;
-      closeBtn.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        hideOptions();
-      };
-      optionsWrapper.appendChild(closeBtn);
-    }
-    
+
     optionsVisible = true;
-    
-    // Scroll vers les options sur mobile
+
     if (window.innerWidth <= 768) {
       setTimeout(() => {
-        optionsWrapper?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 100);
+        (optionsWrapper || addCartBtn)?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
+      }, 80);
     }
   };
-  
-  // Fonction pour cacher les options
+
   const hideOptions = () => {
-    productOptions.forEach(option => {
+    productOptions.forEach((option) => {
       option.style.display = 'none';
+      option.style.animation = '';
     });
     addCartBtn.innerHTML = originalButtonHTML;
-    
-    // Supprimer le bouton de fermeture (X)
-    const closeBtn = optionsWrapper?.querySelector('.options-close-btn');
-    if (closeBtn) closeBtn.remove();
-    
     optionsVisible = false;
   };
 
+  // État initial: options cachées
+  hideOptions();
+
   addCartBtn.onclick = null;
   const handler = function (e) {
-    // Empêcher toute propagation
-    // - stopImmediatePropagation (capture) bloque aussi les listeners déjà attachés (ex: fallback main.js)
+    // Capture + stopImmediatePropagation: empêche le fallback (main.js) d'ouvrir le panier au 1er clic
     e.stopImmediatePropagation();
     e.stopPropagation();
     e.preventDefault();
-    
+
     const store = getStore();
     const base = getProductDataFromRoot();
     if (!base?.id) return;
 
-    // ÉTAPE 1: Si les options ne sont pas encore visibles, les afficher UNIQUEMENT
+    // 1er clic: afficher les options uniquement
     if (!optionsVisible) {
       showOptions();
-      return; // ← IMPORTANT: On sort ici, panier ne s'ouvre PAS
+      return;
     }
 
-    // ÉTAPE 2: Vérifier la sélection et ajouter au panier
+    // 2e clic: valider et ajouter
     const size = getSelectedSize();
     const color = getSelectedColor();
     if (!size || !color) {
@@ -788,17 +522,16 @@ const bindAddToCartButton = () => {
       return;
     }
 
-    // Ajouter au panier
     const payload = { ...base, size, color, qty: 1 };
     if (store?.addToCart) store.addToCart(payload);
     else addToCartFallback(payload);
 
-    // MAINTENANT ouvrir le panier (seulement après ajout réussi)
+    // Ouvrir le tiroir panier (après ajout)
     setTimeout(() => {
       window.CartDrawer?.open();
     }, 200);
 
-    // Feedback visuel
+    // Feedback
     this.style.transform = 'scale(0.95)';
     setTimeout(() => {
       this.style.transform = 'scale(1)';
@@ -811,14 +544,13 @@ const bindAddToCartButton = () => {
       </svg>
       Ajouté au panier !
     `;
-    
-    // Reset après 2 secondes
+
+    // Reset
     setTimeout(() => {
       hideOptions();
     }, 2000);
   };
 
-  // Capture pour passer AVANT les listeners bubble (fallback)
   addCartBtn.__atelierAddToCartHandler = handler;
   addCartBtn.addEventListener('click', handler, true);
 };
@@ -895,9 +627,9 @@ const applyProductToPage = (product) => {
   const breadcrumb = document.querySelector('.product-breadcrumb');
   if (breadcrumb) {
     breadcrumb.innerHTML = `
-      <a href="../index.html">Accueil</a>
+      <a href="../">Accueil</a>
       <span>/</span>
-      <a href="boutique.html">${categoryLabel}</a>
+      <a href="boutique">${categoryLabel}</a>
       <span>/</span>
       <span>${name}</span>
     `;
@@ -945,9 +677,6 @@ const applyProductToPage = (product) => {
   bindShareButtons();
 
   typewriterEffect();
-  
-  // Charger les produits similaires
-  renderSimilarProducts(product);
 };
 
 const showNotFoundState = () => {
@@ -964,9 +693,9 @@ const showNotFoundState = () => {
   const breadcrumb = document.querySelector('.product-breadcrumb');
   if (breadcrumb) {
     breadcrumb.innerHTML = `
-      <a href="../index.html">Accueil</a>
+      <a href="../">Accueil</a>
       <span>/</span>
-      <a href="boutique.html">Produits</a>
+      <a href="boutique">Produits</a>
       <span>/</span>
       <span>Introuvable</span>
     `;
@@ -1065,7 +794,7 @@ const renderDebugPanel = () => {
 };
 
 // ===== BOOT =====
-const boot = async () => {
+const boot = () => {
   // base init (page statique)
   bindSizeButtons();
   bindColorButtons();
@@ -1076,69 +805,31 @@ const boot = async () => {
   bindShareButtons();
   renderDebugPanel();
 
-  const id = getProductIdFromUrl();
   const selected = readSelectedProduct();
+  if (selected?.id) {
+    const id = getProductIdFromUrl();
+    if (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id)) {
+      applyProductToPage(selected);
+      return;
+    }
+  }
 
-  const selectedMatchesId =
-    !!selected?.id &&
-    (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id));
-
-  // 1) Candidats locaux (pour affichage immédiat)
+  // priorité: id=...
+  const id = getProductIdFromUrl();
   const adminProduct = getAdminProductById(id);
-  let best = pickBestProduct(selectedMatchesId ? selected : null, adminProduct);
-  if (best) {
-    applyProductToPage(best);
+  if (adminProduct) {
+    applyProductToPage(adminProduct);
+    return;
   }
-
-  // Fallback ONLINE: charger depuis l'API (permet mobile / autre appareil)
-  if (id) {
-    const apiProduct = await fetchEcommerceProductFromApi(id);
-    if (apiProduct) {
-      const finalProduct = pickBestProduct(best, apiProduct) || apiProduct;
-
-      // Si la version API apporte des données plus riches/récentes, on ré-applique.
-      const shouldReapply =
-        !best ||
-        getUpdatedTs(finalProduct) !== getUpdatedTs(best) ||
-        getColorsLen(finalProduct) !== getColorsLen(best);
-
-      if (shouldReapply) {
-        applyProductToPage(finalProduct);
-        best = finalProduct;
-      }
-
-      // Persister (évite de rester bloqué sur un vieux "selected" avec 1 couleur)
-      persistSelectedProduct(best);
-      upsertProductToStorageList('atelier-products-cache', best, 200);
-      upsertProductToStorageList('atelier-admin-products', best, 400);
-      return;
-    }
-    // Si on a déjà un produit local, on le garde même si l'API est indisponible
-    if (best) return;
-  } else {
-    // Sans id: si on n'a rien en local, on peut essayer de charger le catalogue online pour éviter "Introuvable"
-    const apiProducts = await fetchEcommerceProductsFromApi();
-    if (apiProducts.length) {
-      try {
-        localStorage.setItem('atelier-products-cache', JSON.stringify(apiProducts));
-      } catch (e) {}
-      applyProductToPage(apiProducts[0]);
-      return;
-    }
-  }
-
-  // Si un produit local est affiché, ne pas basculer en "Introuvable"
-  if (best) return;
 
   // Aucun produit trouvé: ne pas afficher l'ancien contenu statique
   showNotFoundState();
 };
 
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
 }
 
+}

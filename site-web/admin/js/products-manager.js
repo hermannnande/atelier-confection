@@ -16,15 +16,22 @@ const PREDEFINED_COLORS = [
   { name: 'Gris', hex: '#6B7280' },
   { name: 'Beige', hex: '#D2B48C' },
   { name: 'Marron', hex: '#8B4513' },
+  { name: 'Terracotta', hex: '#C2452D' },
   { name: 'Rouge', hex: '#DC2626' },
+  { name: 'Bordeaux', hex: '#7F1D1D' },
   { name: 'Rose', hex: '#F472B6' },
+  { name: 'Saumon', hex: '#FA8072' },
   { name: 'Orange', hex: '#FB923C' },
   { name: 'Jaune', hex: '#FBBF24' },
+  { name: 'Jaune Moutarde', hex: '#CA8A04' },
   { name: 'Vert', hex: '#16A34A' },
+  { name: 'Vert Treillis', hex: '#15803D' },
   { name: 'Bleu', hex: '#3B82F6' },
   { name: 'Bleu Ciel', hex: '#87CEEB' },
+  { name: 'Bleu Bic', hex: '#2563EB' },
   { name: 'Violet', hex: '#9333EA' },
-  { name: 'Bordeaux', hex: '#7F1D1D' },
+  { name: 'Violet Clair', hex: '#C084FC' },
+  { name: 'Multicolore', hex: 'linear-gradient(135deg, #DC2626, #FBBF24, #3B82F6)' },
 ];
 
 // ========== GESTION DES TAILLES ==========

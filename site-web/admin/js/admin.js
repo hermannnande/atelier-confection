@@ -115,11 +115,23 @@ const AdminStore = (() => {
     return null;
   };
   
+  const deleteProductFromServer = async (id) => {
+    try {
+      const origin = resolveEcommerceSyncUrl().replace('/api/ecommerce/products/sync', '');
+      await fetch(`${origin}/api/ecommerce/products/${encodeURIComponent(id)}?token=${ECOMMERCE_SYNC_TOKEN}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Suppression serveur echouee (non bloquant):', e);
+    }
+  };
+
   const deleteProduct = (id) => {
     const products = getProducts();
     const product = products.find(p => p.id === id);
     const filtered = products.filter(p => p.id !== id);
     saveProducts(filtered);
+    deleteProductFromServer(id);
     if (product) {
       addActivity('Produit supprimé', `${product.name} a été supprimé`);
     }

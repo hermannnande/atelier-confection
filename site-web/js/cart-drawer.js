@@ -21,8 +21,6 @@ const CartDrawer = {
   content: null,
   footer: null,
   isReady: false,
-  confirmModal: null,
-  confirmCallback: null,
 
   init() {
     this.createDrawerHTML();
@@ -30,7 +28,6 @@ const CartDrawer = {
     this.drawer = document.getElementById('cartDrawer');
     this.content = document.getElementById('cartDrawerContent');
     this.footer = document.getElementById('cartDrawerFooter');
-    this.confirmModal = document.getElementById('cartConfirmModal');
 
     // Événements
     this.overlay?.addEventListener('click', () => this.close());
@@ -39,27 +36,7 @@ const CartDrawer = {
     // Empêcher la propagation des clics sur le drawer
     this.drawer?.addEventListener('click', (e) => e.stopPropagation());
 
-    // Événements de la modal de confirmation
-    document.getElementById('cartConfirmCancel')?.addEventListener('click', () => this.hideConfirmModal());
-    document.getElementById('cartConfirmOverlay')?.addEventListener('click', () => this.hideConfirmModal());
-    document.getElementById('cartConfirmDelete')?.addEventListener('click', () => {
-      if (this.confirmCallback) {
-        this.confirmCallback();
-      }
-      this.hideConfirmModal();
-    });
-
     this.isReady = Boolean(this.overlay && this.drawer && this.content && this.footer);
-  },
-
-  showConfirmModal(callback) {
-    this.confirmCallback = callback;
-    this.confirmModal?.classList.add('active');
-  },
-
-  hideConfirmModal() {
-    this.confirmModal?.classList.remove('active');
-    this.confirmCallback = null;
   },
 
   createDrawerHTML() {
@@ -95,26 +72,6 @@ const CartDrawer = {
         <!-- Footer -->
         <div class="cart-drawer-footer" id="cartDrawerFooter">
           <!-- Le total et les boutons seront ajoutés dynamiquement -->
-        </div>
-      </div>
-
-      <!-- Modal de confirmation -->
-      <div class="cart-confirm-modal" id="cartConfirmModal">
-        <div class="cart-confirm-overlay" id="cartConfirmOverlay"></div>
-        <div class="cart-confirm-dialog">
-          <div class="cart-confirm-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-          </div>
-          <h3 class="cart-confirm-title">Retirer cet article ?</h3>
-          <p class="cart-confirm-message">Voulez-vous vraiment supprimer cet article de votre panier ?</p>
-          <div class="cart-confirm-actions">
-            <button class="cart-confirm-btn cart-confirm-cancel" id="cartConfirmCancel">Annuler</button>
-            <button class="cart-confirm-btn cart-confirm-delete" id="cartConfirmDelete">Retirer</button>
-          </div>
         </div>
       </div>
     `;
@@ -249,9 +206,9 @@ const CartDrawer = {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
-          Procéder au paiement
+          Commander
         </button>
-        <a href="pages/panier.html" class="cart-drawer-btn cart-drawer-btn-secondary">
+        <a href="#" class="cart-drawer-btn cart-drawer-btn-secondary drawer-view-cart-btn">
           Voir le panier complet
         </a>
       </div>
@@ -322,7 +279,7 @@ const CartDrawer = {
         const size = itemEl.dataset.size;
         const color = itemEl.dataset.color;
 
-        this.showConfirmModal(() => {
+        if (confirm('Retirer cet article du panier ?')) {
           if (store?.removeFromCart) {
             store.removeFromCart(id, size, color);
           } else {
@@ -332,7 +289,7 @@ const CartDrawer = {
             localStorage.setItem(CART_KEY, JSON.stringify(cart));
           }
           this.render();
-        });
+        }
       });
     });
   },
@@ -375,101 +332,36 @@ const CartDrawer = {
       store?.showToast(`Code promo appliqué ! -${promoCodes[code] * 100}%`);
     });
 
-    // Gestion du bouton checkout (afficher le popup d'info)
     checkoutBtn?.addEventListener('click', () => {
       const cart = store?.getCart ? store.getCart() : readCartFromStorage();
       if (cart.length === 0) {
         store?.showToast('Votre panier est vide');
         return;
       }
-      this.showCheckoutModal();
-    });
-  },
-
-  showCheckoutModal() {
-    const modal = document.createElement('div');
-    modal.className = 'checkout-modal';
-    modal.innerHTML = `
-      <div class="checkout-modal-overlay"></div>
-      <div class="checkout-modal-content">
-        <div class="checkout-modal-icon">
-          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 16v-4"></path>
-            <path d="M12 8h.01"></path>
-          </svg>
-        </div>
-        <h2>⚡ Paiement à la livraison</h2>
-        <div class="checkout-modal-message">
-          <p class="greeting">✨ <strong>Bonjour Madame</strong>,</p>
-          <p>Nous vous proposons de <strong style="color: #d4af37;">magnifiques tenues</strong>, confectionnées avec soin.</p>
-          <div class="delivery-info">
-            <div class="info-badge">
-              <span class="icon">⏱️</span>
-              <span><strong>Délai</strong> : confection + livraison en <strong style="color: #d4af37;">3 jours ouvrables</strong></span>
-            </div>
-            <div class="info-badge">
-              <span class="icon">💰</span>
-              <span><strong style="color: #d4af37;">Paiement uniquement à la livraison</strong></span>
-            </div>
-            <div class="info-badge">
-              <span class="icon">✨</span>
-              <span>Rendu <strong style="color: #d4af37;">élégant, bien fini et de qualité</strong></span>
-            </div>
-          </div>
-          <p class="note" style="font-size: 13px; margin-top: 16px;">Votre commande sera traitée par notre atelier, puis livrée à votre adresse.</p>
-        </div>
-        <div class="checkout-modal-actions">
-          <button class="btn-cancel">Annuler</button>
-          <button class="btn-continue">Continuer →</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    
-    // Animation d'entrée
-    setTimeout(() => {
-      modal.querySelector('.checkout-modal-overlay').style.opacity = '1';
-      modal.querySelector('.checkout-modal-content').style.opacity = '1';
-      modal.querySelector('.checkout-modal-content').style.transform = 'translateY(0) scale(1)';
-    }, 10);
-
-    // Événements
-    modal.querySelector('.btn-cancel')?.addEventListener('click', () => {
-      this.closeCheckoutModal(modal);
-    });
-    modal.querySelector('.btn-continue')?.addEventListener('click', () => {
-      this.closeCheckoutModal(modal);
-      // Fermer le tiroir d'abord
       this.close();
-      // Sauvegarder le panier pour la page checkout
       try {
-        const store = getStore();
-        const cart = store?.getCart ? store.getCart() : readCartFromStorage();
-        sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(cart));
-      } catch (e) {
-        // Ignorer si sessionStorage indisponible
-      }
-      // Rediriger vers checkout (chemin relatif adaptatif)
+        const s = getStore();
+        const c = s?.getCart ? s.getCart() : readCartFromStorage();
+        sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(c));
+      } catch (_) {}
       setTimeout(() => {
         const currentPath = window.location.pathname;
         const isInPagesFolder = currentPath.includes('/pages/');
-        const checkoutUrl = isInPagesFolder ? 'checkout.html' : 'pages/checkout.html';
+        const checkoutUrl = isInPagesFolder ? 'checkout' : 'pages/checkout';
         window.location.href = checkoutUrl;
       }, 300);
     });
-    modal.querySelector('.checkout-modal-overlay')?.addEventListener('click', () => {
-      this.closeCheckoutModal(modal);
-    });
-  },
 
-  closeCheckoutModal(modal) {
-    if (modal) {
-      modal.querySelector('.checkout-modal-overlay').style.opacity = '0';
-      modal.querySelector('.checkout-modal-content').style.opacity = '0';
-      modal.querySelector('.checkout-modal-content').style.transform = 'translateY(-20px) scale(0.95)';
-      setTimeout(() => modal.remove(), 300);
-    }
+    const viewCartBtn = this.drawer?.querySelector('.drawer-view-cart-btn');
+    viewCartBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.close();
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        const isInPagesFolder = currentPath.includes('/pages/');
+        window.location.href = isInPagesFolder ? 'panier' : 'pages/panier';
+      }, 300);
+    });
   }
 };
 

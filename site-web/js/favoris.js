@@ -7,7 +7,7 @@ const buildWishlistItem = (item) => {
   const defaultSize = item.size || item.sizes?.[0] || 'M';
   const defaultColor = item.color || item.colors?.[0] || 'Standard';
   const safeId = encodeURIComponent(item.id || store.slugify(item.name || ''));
-  const productUrl = `produit.html?id=${safeId}`;
+  const productUrl = `produit?id=${safeId}`;
 
   return `
     <div
@@ -64,7 +64,7 @@ const renderWishlist = () => {
         </svg>
         <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 12px;">Votre liste d'envie est vide</h3>
         <p style="color: #666; margin-bottom: 24px;">Parcourez notre boutique et ajoutez vos coups de cœur</p>
-        <a href="boutique.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
+        <a href="boutique" style="display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 700;">
           Découvrir la boutique
         </a>
       </div>

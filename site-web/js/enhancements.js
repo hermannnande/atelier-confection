@@ -43,7 +43,7 @@ const toSearchProduct = (product) => {
     category: product.category || '',
     price: Number(product.price) || 0,
     image: product.thumbnail || (product.images && product.images[0]) || product.image || '',
-    url: `pages/produit.html?id=${safeId}`,
+    url: `pages/produit?id=${safeId}`,
   };
 };
 
@@ -52,7 +52,7 @@ const getSearchProducts = () => {
   if (admin.length) return admin.map(toSearchProduct);
   return demoProducts.map((product) => ({
     ...product,
-    url: `pages/produit.html?id=${encodeURIComponent(product.id)}`,
+    url: `pages/produit?id=${encodeURIComponent(product.id)}`,
   }));
 };
 
@@ -227,6 +227,18 @@ window.addEventListener('load', () => {
   observeElements('.product-card');
   observeElements('.testimonial-card');
   observeElements('.instagram-item');
+  observeElements('.trust-item');
+  observeElements('.split-item');
+  observeElements('.collection-text');
+  observeElements('.collection-images');
+  observeElements('.section-header-center');
 });
 
-console.log('✨ Enhancements chargés avec succès');
+// ===== HEADER ACTIVE LINK =====
+const currentPath = window.location.pathname;
+document.querySelectorAll('.nav-link').forEach(link => {
+  const href = link.getAttribute('href');
+  if (href && (currentPath.endsWith(href) || (href === './' && (currentPath.endsWith('/') || currentPath.endsWith('/site-web/'))))) {
+    link.classList.add('active');
+  }
+});

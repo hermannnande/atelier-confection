@@ -115,5 +115,34 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// DELETE /api/ecommerce/products/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const token = req.query?.token || req.headers['x-ecom-token'];
+    if (token !== getExpectedToken()) {
+      return res.status(401).json({ success: false, message: 'Token invalide' });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ success: false, message: 'ID manquant' });
+
+    const { error } = await supabase
+      .from('ecommerce_products')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Supabase ecommerce_products delete error:', error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+
+    return res.json({ success: true, deleted: id });
+  } catch (e) {
+    console.error('/api/ecommerce/products/:id DELETE error:', e);
+    return res.status(500).json({ success: false, message: 'Erreur serveur', error: e.message });
+  }
+});
+
 export default router;
 

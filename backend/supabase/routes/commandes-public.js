@@ -5,7 +5,7 @@ import smsService from '../../services/sms.service.js';
 const router = express.Router();
 
 /**
- * 📞 ROUTE PUBLIQUE (sans auth) pour recevoir les commandes du site web
+ * ROUTE PUBLIQUE (sans auth) pour recevoir les commandes du site web
  * POST /api/commandes/public
  */
 router.post('/public', async (req, res) => {
@@ -13,14 +13,12 @@ router.post('/public', async (req, res) => {
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
 
-    // Validation du token secret (sécurité basique)
-    const { token, client, phone, ville, sku, name, taille, couleur, price, source } = req.body;
+    const { token, client, phone, ville, sku, name, taille, couleur, price, image, category, source } = req.body;
     
     if (token !== 'NOUSUNIQUE123') {
       return res.status(401).json({ success: false, message: 'Token invalide' });
     }
 
-    // Validation des champs requis (nom du client optionnel, mais téléphone requis)
     if (!phone || !name || !taille || !couleur || !price) {
       return res.status(400).json({ 
         success: false, 
@@ -28,7 +26,6 @@ router.post('/public', async (req, res) => {
       });
     }
 
-    // 🔍 Chercher si le modèle existe dans la bibliothèque
     const { data: modeleExistant } = await supabase
       .from('modeles')
       .select('*')
@@ -36,23 +33,41 @@ router.post('/public', async (req, res) => {
       .eq('actif', true)
       .single();
 
-    // 📦 Préparer l'objet modèle (avec infos de la bibliothèque si disponibles)
+    let ecommerceImage = image || '';
+
+    if (!modeleExistant && !ecommerceImage) {
+      try {
+        const { data: ecommProduct } = await supabase
+          .from('ecommerce_products')
+          .select('images, thumbnail')
+          .eq('name', name.trim())
+          .eq('active', true)
+          .single();
+        if (ecommProduct) {
+          ecommerceImage = ecommProduct.thumbnail
+            || (Array.isArray(ecommProduct.images) && ecommProduct.images[0])
+            || '';
+        }
+      } catch (_) { /* table may not exist */ }
+    }
+
     const modeleData = modeleExistant 
       ? {
           id: modeleExistant.id,
           nom: modeleExistant.nom,
           sku: sku || modeleExistant.nom,
-          image: modeleExistant.image || '',
-          categorie: modeleExistant.categorie || 'Général',
+          image: modeleExistant.image || ecommerceImage,
+          categorie: modeleExistant.categorie || category || 'Général',
           description: `Commandé depuis ${source || 'le site web'}`
         }
       : {
           nom: name.trim(),
           sku: sku || name,
+          image: ecommerceImage,
+          categorie: category || 'E-commerce',
           description: `Commandé depuis ${source || 'le site web'}`
         };
 
-    // Préparer les données de la commande
     const commandeData = {
       client: {
         nom: (client && client.trim()) || '🔍 Client à identifier',
@@ -63,10 +78,10 @@ router.post('/public', async (req, res) => {
       taille: taille.trim(),
       couleur: couleur.trim(),
       prix: Number(price) || 0,
-      statut: 'en_attente_validation', // ✅ Statut pour la page APPEL
+      statut: 'en_attente_validation',
       urgence: false,
-      appelant_id: null, // Commande web, pas d'appelant
-      note_appelant: '', // Pas de note automatique - l'appelant ajoutera ses propres notes si nécessaire
+      appelant_id: null,
+      note_appelant: '',
       historique: [
         {
           action: 'Commande reçue depuis le site web',
@@ -79,7 +94,6 @@ router.post('/public', async (req, res) => {
       updated_at: now
     };
 
-    // Insérer dans Supabase
     const { data, error } = await supabase
       .from('commandes')
       .insert([commandeData])
@@ -97,23 +111,14 @@ router.post('/public', async (req, res) => {
 
     console.log('✅ Commande web créée:', data.numero_commande);
 
-    // 📱 Envoyer SMS automatique "Commande reçue" au client
     try {
-      console.log('🔍 Vérification envoi SMS automatique pour commande_recue (commande web)...');
       const autoSendEnabled = await smsService.isAutoSendEnabled('commande_recue');
-      console.log('📊 Auto-send activé:', autoSendEnabled);
-      
       if (autoSendEnabled) {
-        console.log('📱 Tentative d\'envoi SMS "Commande reçue" au client web...');
-        await smsService.sendCommandeNotification('commande_recue', data, null); // null = pas d'utilisateur (commande web)
-        console.log('✅ SMS "Commande reçue" envoyé avec succès au client');
-      } else {
-        console.log('⏸️  Envoi automatique SMS désactivé pour commande_recue');
+        await smsService.sendCommandeNotification('commande_recue', data, null);
+        console.log('✅ SMS "Commande reçue" envoyé au client');
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-      console.error('Stack:', smsError.stack);
-      // Ne pas bloquer la création si SMS échoue
     }
     
     res.status(201).json({
