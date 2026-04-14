@@ -49,6 +49,7 @@ const Stock = () => {
     'Beige',
     'Marron',
     'Terracotta',
+    'Kaki',
     'Multicolore'
   ];
 

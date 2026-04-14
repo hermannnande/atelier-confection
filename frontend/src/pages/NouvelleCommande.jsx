@@ -41,6 +41,7 @@ const NouvelleCommande = () => {
     'Beige',
     'Marron',
     'Terracotta',
+    'Kaki',
     'Multicolore'
   ];
 
@@ -578,6 +579,7 @@ const NouvelleCommande = () => {
                     'Beige': 'bg-amber-200',
                     'Marron': 'bg-amber-800',
                     'Terracotta': 'bg-orange-700',
+                    'Kaki': 'bg-yellow-800',
                     'Multicolore': 'bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500'
                   };
 
