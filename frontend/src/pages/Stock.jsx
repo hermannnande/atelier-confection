@@ -20,6 +20,11 @@ const Stock = () => {
   const [customCouleurs, setCustomCouleurs] = useState([]);
   const [newTaille, setNewTaille] = useState('');
   const [newCouleur, setNewCouleur] = useState('');
+
+  // Mode bicolore (2 tons)
+  const [modeBicolore, setModeBicolore] = useState(false);
+  const [bicolore1, setBicolore1] = useState('');
+  const [bicolore2, setBicolore2] = useState('');
   
   // Suggestions
   const taillesSuggestions = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
@@ -46,6 +51,15 @@ const Stock = () => {
     'Terracotta',
     'Multicolore'
   ];
+
+  const addBicolore = () => {
+    if (bicolore1 && bicolore2 && bicolore1 !== bicolore2) {
+      const combined = `${bicolore1} / ${bicolore2}`;
+      addCouleur(combined);
+      setBicolore1('');
+      setBicolore2('');
+    }
+  };
 
   const [variations, setVariations] = useState([]);
 
@@ -742,16 +756,34 @@ const Stock = () => {
 
                   {/* Ajouter Couleurs */}
                   <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      🎨 Couleurs disponibles *
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        🎨 Couleurs disponibles *
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setModeBicolore(!modeBicolore)}
+                        className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
+                          modeBicolore
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <span>🎨🎨</span>
+                        <span>Bicolore / 2 tons</span>
+                      </button>
+                    </div>
                     
                     {customCouleurs.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {customCouleurs.map(couleur => (
-                          <span key={couleur} className="badge badge-info px-4 py-2 flex items-center space-x-2">
+                          <span key={couleur} className={`px-4 py-2 flex items-center space-x-2 rounded-full font-bold text-sm ${
+                            couleur.includes(' / ')
+                              ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-2 border-purple-300'
+                              : 'badge badge-info'
+                          }`}>
                             <span className="font-bold">{couleur}</span>
-                            <button onClick={() => removeCouleur(couleur)} className="hover:text-red-600">
+                            <button onClick={() => removeCouleur(couleur)} className="hover:text-red-600 ml-1">
                               <X size={16} />
                             </button>
                           </span>
@@ -759,7 +791,53 @@ const Stock = () => {
                       </div>
                     )}
 
-                    <p className="text-sm text-gray-600 mb-2">Suggestions rapides:</p>
+                    {/* Mode bicolore */}
+                    {modeBicolore && (
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-4 border-2 border-purple-200">
+                        <p className="text-sm font-bold text-purple-800 mb-3">
+                          Combiner 2 couleurs en une seule variation :
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <select
+                            value={bicolore1}
+                            onChange={(e) => setBicolore1(e.target.value)}
+                            className="input flex-1 font-semibold"
+                          >
+                            <option value="">Couleur 1...</option>
+                            {couleursSuggestions.map(c => (
+                              <option key={c} value={c} disabled={c === bicolore2}>{c}</option>
+                            ))}
+                          </select>
+                          <span className="text-center font-black text-purple-600 text-lg">/</span>
+                          <select
+                            value={bicolore2}
+                            onChange={(e) => setBicolore2(e.target.value)}
+                            className="input flex-1 font-semibold"
+                          >
+                            <option value="">Couleur 2...</option>
+                            {couleursSuggestions.map(c => (
+                              <option key={c} value={c} disabled={c === bicolore1}>{c}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={addBicolore}
+                            disabled={!bicolore1 || !bicolore2 || bicolore1 === bicolore2}
+                            className="btn btn-primary whitespace-nowrap disabled:opacity-50"
+                          >
+                            <Plus size={18} className="inline mr-1" />
+                            Ajouter
+                          </button>
+                        </div>
+                        {bicolore1 && bicolore2 && bicolore1 !== bicolore2 && (
+                          <p className="text-sm text-purple-700 mt-2 font-semibold">
+                            Sera enregistre comme : <span className="font-black">{bicolore1} / {bicolore2}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-sm text-gray-600 mb-2">Suggestions rapides (couleur unie) :</p>
                     <div className="flex flex-wrap gap-2 mb-4">
                       {couleursSuggestions.map(couleur => (
                         <button
@@ -789,7 +867,7 @@ const Stock = () => {
                             setNewCouleur('');
                           }
                         }}
-                        placeholder="Couleur personnalisée..."
+                        placeholder="Couleur personnalisee..."
                         className="input flex-1"
                       />
                       <button

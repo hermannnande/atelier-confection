@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Save, ArrowLeft, Package, AlertCircle, Check, Eye, Search } from 'lucide-react';
+import { Save, ArrowLeft, Package, AlertCircle, Check, Eye, Search, Plus, X } from 'lucide-react';
 
 const NouvelleCommande = () => {
   const navigate = useNavigate();
@@ -12,10 +12,15 @@ const NouvelleCommande = () => {
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Mode bicolore
+  const [modeBicolore, setModeBicolore] = useState(false);
+  const [bicolore1, setBicolore1] = useState('');
+  const [bicolore2, setBicolore2] = useState('');
   
   // Listes complètes des tailles et couleurs disponibles
   const taillesDisponibles = ['Standard', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
-  const couleursDisponibles = [
+  const couleursDeBase = [
     'Blanc',
     'Noir',
     'Rouge',
@@ -38,6 +43,27 @@ const NouvelleCommande = () => {
     'Terracotta',
     'Multicolore'
   ];
+
+  // Couleurs enrichies : base + bicolores du stock du modele selectionne
+  const couleursDisponibles = (() => {
+    const set = new Set(couleursDeBase);
+    if (selectedModel) {
+      selectedModel.variations.forEach(v => {
+        if (v.couleur) set.add(v.couleur);
+      });
+    }
+    return Array.from(set);
+  })();
+
+  const handleAddBicolore = () => {
+    if (bicolore1 && bicolore2 && bicolore1 !== bicolore2) {
+      const combined = `${bicolore1} / ${bicolore2}`;
+      handleCouleurChange(combined);
+      setBicolore1('');
+      setBicolore2('');
+      setModeBicolore(false);
+    }
+  };
   
   const [formData, setFormData] = useState({
     client: {
@@ -457,20 +483,80 @@ const NouvelleCommande = () => {
 
             {/* Sélection de la couleur */}
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
-                  <span className="text-sm font-bold">🎨</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
+                    <span className="text-sm font-bold">🎨</span>
+                  </div>
+                  <label className="text-sm font-bold text-gray-700">
+                    Choisissez la couleur
+                  </label>
                 </div>
-                <label className="text-sm font-bold text-gray-700">
-                  Choisissez la couleur
-                </label>
+                <button
+                  type="button"
+                  onClick={() => setModeBicolore(!modeBicolore)}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                    modeBicolore
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>🎨🎨</span>
+                  <span>Bicolore</span>
+                </button>
               </div>
+
+              {/* Panneau bicolore */}
+              {modeBicolore && (
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-4 border-2 border-purple-200 animate-scale-in">
+                  <p className="text-sm font-bold text-purple-800 mb-3">
+                    Combiner 2 couleurs pour un modele bicolore :
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <select
+                      value={bicolore1}
+                      onChange={(e) => setBicolore1(e.target.value)}
+                      className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg font-semibold text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="">Couleur 1...</option>
+                      {couleursDeBase.map(c => (
+                        <option key={c} value={c} disabled={c === bicolore2}>{c}</option>
+                      ))}
+                    </select>
+                    <span className="text-center font-black text-purple-600 text-lg">/</span>
+                    <select
+                      value={bicolore2}
+                      onChange={(e) => setBicolore2(e.target.value)}
+                      className="flex-1 px-3 py-2 border-2 border-purple-200 rounded-lg font-semibold text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="">Couleur 2...</option>
+                      {couleursDeBase.map(c => (
+                        <option key={c} value={c} disabled={c === bicolore1}>{c}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddBicolore}
+                      disabled={!bicolore1 || !bicolore2 || bicolore1 === bicolore2}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold text-sm disabled:opacity-50 whitespace-nowrap"
+                    >
+                      Valider
+                    </button>
+                  </div>
+                  {bicolore1 && bicolore2 && bicolore1 !== bicolore2 && (
+                    <p className="text-sm text-purple-700 mt-2 font-semibold">
+                      Sera enregistre comme : <span className="font-black">{bicolore1} / {bicolore2}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                 {couleursDisponibles.map((couleur) => {
                   const variation = formData.taille ? getVariationStock(formData.taille, couleur) : null;
                   const inStock = variation && variation.quantitePrincipale > 0;
+                  const isBicolore = couleur.includes(' / ');
                   
-                  // Mapper les couleurs vers des codes couleur réels
                   const couleurMap = {
                     'Blanc': 'bg-white border-2 border-gray-300',
                     'Noir': 'bg-gray-900',
@@ -494,6 +580,21 @@ const NouvelleCommande = () => {
                     'Terracotta': 'bg-orange-700',
                     'Multicolore': 'bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500'
                   };
+
+                  const renderColorSwatch = () => {
+                    if (isBicolore) {
+                      const [c1, c2] = couleur.split(' / ').map(c => c.trim());
+                      return (
+                        <div className="w-8 h-8 rounded-lg shadow-md flex-shrink-0 ring-2 ring-white overflow-hidden flex">
+                          <div className={`w-1/2 h-full ${couleurMap[c1] || 'bg-gray-300'}`}></div>
+                          <div className={`w-1/2 h-full ${couleurMap[c2] || 'bg-gray-300'}`}></div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className={`w-8 h-8 rounded-lg ${couleurMap[couleur] || 'bg-gray-300'} shadow-md flex-shrink-0 ring-2 ring-white`}></div>
+                    );
+                  };
                   
                   return (
                     <button
@@ -504,18 +605,23 @@ const NouvelleCommande = () => {
                         relative p-3 rounded-xl transition-all duration-300 text-left
                         ${formData.couleur === couleur
                           ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/40 scale-105 -translate-y-1'
-                          : 'bg-white border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg hover:scale-105'
+                          : isBicolore
+                            ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 hover:border-purple-500 hover:shadow-lg hover:scale-105'
+                            : 'bg-white border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg hover:scale-105'
                         }
                       `}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg ${couleurMap[couleur] || 'bg-gray-300'} shadow-md flex-shrink-0 ring-2 ring-white`}></div>
+                        {renderColorSwatch()}
                         <div className="flex-1 min-w-0">
                           <p className={`font-bold text-sm truncate ${
                             formData.couleur === couleur ? 'text-white' : 'text-gray-800'
                           }`}>
                             {couleur}
                           </p>
+                          {isBicolore && formData.couleur !== couleur && (
+                            <p className="text-[10px] font-bold text-purple-600">2 tons</p>
+                          )}
                           {inStock && formData.taille && (
                             <p className={`text-xs font-semibold ${
                               formData.couleur === couleur ? 'text-white/90' : 'text-emerald-600'
