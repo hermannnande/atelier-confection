@@ -16,12 +16,14 @@ import {
   MapPin,
   DollarSign,
   Calendar,
+  CalendarDays,
   CheckCircle,
   XCircle,
   Scissors,
   Shirt,
   Truck,
-  Search
+  Search,
+  FilterX
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -32,6 +34,8 @@ const GestionCommandes = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
   const [selectedCommande, setSelectedCommande] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   const [showResetModal, setShowResetModal] = useState(null);
@@ -144,15 +148,30 @@ const GestionCommandes = () => {
     return badges[statut] || { class: 'bg-gray-400', text: statut, icon: AlertTriangle };
   };
 
-  const commandesFiltrees = commandes.filter(cmd => {
-    const matchSearch = searchTerm === '' || 
-      cmd.numeroCommande?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (typeof cmd.client === 'object' ? cmd.client.nom : cmd.nomClient)?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchStatut = filterStatut === '' || cmd.statut === filterStatut;
-    
-    return matchSearch && matchStatut;
-  });
+  const clearDateFilters = () => {
+    setDateDebut('');
+    setDateFin('');
+  };
+
+  const commandesFiltrees = commandes
+    .filter(cmd => {
+      const matchSearch = searchTerm === '' || 
+        cmd.numeroCommande?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof cmd.client === 'object' ? cmd.client.nom : cmd.nomClient)?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchStatut = filterStatut === '' || cmd.statut === filterStatut;
+
+      const cmdDate = new Date(cmd.createdAt || cmd.dateCommande || cmd.created_at);
+      const matchDateDebut = !dateDebut || cmdDate >= new Date(dateDebut);
+      const matchDateFin = !dateFin || cmdDate <= new Date(dateFin + 'T23:59:59');
+      
+      return matchSearch && matchStatut && matchDateDebut && matchDateFin;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.dateCommande || a.created_at);
+      const dateB = new Date(b.createdAt || b.dateCommande || b.created_at);
+      return dateB - dateA;
+    });
 
   const getClientNom = (commande) => {
     if (commande.nomClient) return commande.nomClient;
@@ -259,6 +278,45 @@ const GestionCommandes = () => {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Filtres par date */}
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                <CalendarDays size={12} className="inline mr-1" />
+                Date début
+              </label>
+              <input
+                type="date"
+                value={dateDebut}
+                onChange={(e) => setDateDebut(e.target.value)}
+                className="input text-sm sm:text-base"
+              />
+            </div>
+            <div className="flex-1 w-full sm:w-auto">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                <CalendarDays size={12} className="inline mr-1" />
+                Date fin
+              </label>
+              <input
+                type="date"
+                value={dateFin}
+                onChange={(e) => setDateFin(e.target.value)}
+                className="input text-sm sm:text-base"
+              />
+            </div>
+            {(dateDebut || dateFin) && (
+              <button
+                onClick={clearDateFilters}
+                className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm px-3 py-2 flex items-center gap-1.5 rounded-lg transition-all w-full sm:w-auto justify-center"
+              >
+                <FilterX size={14} />
+                <span>Effacer dates</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

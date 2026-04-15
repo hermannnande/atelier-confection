@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Search, AlertCircle, Eye, History, Download } from 'lucide-react';
+import { Search, AlertCircle, Eye, History, Download, CalendarDays, FilterX } from 'lucide-react';
 
 const HistoriqueCommandes = () => {
   const [commandes, setCommandes] = useState([]);
@@ -10,6 +10,8 @@ const HistoriqueCommandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
 
   useEffect(() => {
     fetchCommandes();
@@ -66,14 +68,29 @@ const HistoriqueCommandes = () => {
     return labels[statut] || statut;
   };
 
-  const filteredCommandes = commandes.filter((commande) => {
-    const matchSearch = 
-      commande.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (typeof commande.client === 'object' ? commande.client.nom : commande.client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (typeof commande.modele === 'object' ? commande.modele.nom : commande.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchSearch;
-  });
+  const clearDateFilters = () => {
+    setDateDebut('');
+    setDateFin('');
+  };
+
+  const filteredCommandes = commandes
+    .filter((commande) => {
+      const matchSearch = 
+        commande.numeroCommande?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof commande.client === 'object' ? commande.client?.nom : commande.client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof commande.modele === 'object' ? commande.modele?.nom : commande.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+      const cmdDate = new Date(commande.createdAt || commande.dateCommande || commande.created_at);
+      const matchDateDebut = !dateDebut || cmdDate >= new Date(dateDebut);
+      const matchDateFin = !dateFin || cmdDate <= new Date(dateFin + 'T23:59:59');
+      
+      return matchSearch && matchDateDebut && matchDateFin;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.dateCommande || a.created_at);
+      const dateB = new Date(b.createdAt || b.dateCommande || b.created_at);
+      return dateB - dateA;
+    });
 
   // Statistiques rapides
   const stats = {
@@ -141,7 +158,7 @@ const HistoriqueCommandes = () => {
               <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher..."
+                placeholder="Rechercher par n°, client ou modèle..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input pl-8 sm:pl-10 text-sm sm:text-base truncate"
@@ -180,6 +197,45 @@ const HistoriqueCommandes = () => {
             </select>
           </div>
         </div>
+
+        {/* Filtres par date */}
+        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                <CalendarDays size={12} className="inline mr-1" />
+                Date début
+              </label>
+              <input
+                type="date"
+                value={dateDebut}
+                onChange={(e) => setDateDebut(e.target.value)}
+                className="input text-sm sm:text-base"
+              />
+            </div>
+            <div className="flex-1 w-full sm:w-auto">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                <CalendarDays size={12} className="inline mr-1" />
+                Date fin
+              </label>
+              <input
+                type="date"
+                value={dateFin}
+                onChange={(e) => setDateFin(e.target.value)}
+                className="input text-sm sm:text-base"
+              />
+            </div>
+            {(dateDebut || dateFin) && (
+              <button
+                onClick={clearDateFilters}
+                className="btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm px-3 py-2 flex items-center gap-1.5 rounded-lg transition-all w-full sm:w-auto justify-center"
+              >
+                <FilterX size={14} />
+                <span>Effacer dates</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Liste des commandes */}
@@ -190,8 +246,8 @@ const HistoriqueCommandes = () => {
             Aucune commande trouvée
           </h3>
           <p className="text-sm sm:text-base text-gray-600">
-            {searchTerm || filterStatut || filterUrgence
-              ? 'Essayez de modifier vos filtres'
+            {searchTerm || filterStatut || filterUrgence || dateDebut || dateFin
+              ? 'Essayez de modifier vos filtres ou la plage de dates'
               : 'Aucune commande dans le système'}
           </p>
         </div>
