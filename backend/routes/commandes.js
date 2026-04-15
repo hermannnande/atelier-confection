@@ -349,6 +349,78 @@ router.delete('/:id', authenticate, authorize('administrateur'), async (req, res
   }
 });
 
+// ─── Statistiques avancées ───
+router.get('/statistiques/analyse', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const { periode = 'mois' } = req.query;
+
+    const now = new Date();
+    let dateFrom;
+    if (periode === 'jour') {
+      dateFrom = new Date(now); dateFrom.setDate(dateFrom.getDate() - 30);
+    } else if (periode === 'semaine') {
+      dateFrom = new Date(now); dateFrom.setDate(dateFrom.getDate() - 84);
+    } else {
+      dateFrom = new Date(now); dateFrom.setFullYear(dateFrom.getFullYear() - 1);
+    }
+
+    const commandes = await Commande.find({ createdAt: { $gte: dateFrom } })
+      .select('modele couleur taille prix statut createdAt')
+      .lean();
+
+    const modeles = {};
+    const couleurs = {};
+    const tailles = {};
+    const parPeriode = {};
+    let totalCA = 0;
+
+    commandes.forEach((c) => {
+      const nom = c.modele?.nom || 'Inconnu';
+      modeles[nom] = (modeles[nom] || 0) + 1;
+
+      const col = c.couleur || 'Non spécifié';
+      couleurs[col] = (couleurs[col] || 0) + 1;
+
+      const t = c.taille || 'N/A';
+      tailles[t] = (tailles[t] || 0) + 1;
+
+      totalCA += Number(c.prix) || 0;
+
+      const d = new Date(c.createdAt);
+      let key;
+      if (periode === 'jour') {
+        key = d.toISOString().slice(0, 10);
+      } else if (periode === 'semaine') {
+        const jan1 = new Date(d.getFullYear(), 0, 1);
+        const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+        key = `${d.getFullYear()}-S${String(week).padStart(2, '0')}`;
+      } else {
+        key = d.toISOString().slice(0, 7);
+      }
+      parPeriode[key] = (parPeriode[key] || 0) + 1;
+    });
+
+    const toSorted = (obj) => Object.entries(obj)
+      .map(([nom, count]) => ({ nom, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const periodeData = Object.entries(parPeriode)
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({
+      totalCommandes: commandes.length,
+      chiffreAffaires: totalCA,
+      modelesPopulaires: toSorted(modeles).slice(0, 10),
+      couleursPopulaires: toSorted(couleurs).slice(0, 10),
+      taillesPopulaires: toSorted(tailles),
+      commandesParPeriode: periodeData
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur statistiques', error: error.message });
+  }
+});
+
 export default router;
 
 

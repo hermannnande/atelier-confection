@@ -18,6 +18,7 @@ import Modeles from './pages/Modeles';
 import Livraisons from './pages/Livraisons';
 import CaisseLivreurs from './pages/CaisseLivreurs';
 import Performances from './pages/Performances';
+import Statistiques from './pages/Statistiques';
 import Utilisateurs from './pages/Utilisateurs';
 import GestionCommandes from './pages/GestionCommandes';
 import NotificationsSMS from './pages/NotificationsSMS';
@@ -158,6 +159,13 @@ function App() {
           <Route path="performances" element={
             <ProtectedRoute allowedRoles={['administrateur']}>
               <Performances />
+            </ProtectedRoute>
+          } />
+
+          {/* Statistiques */}
+          <Route path="statistiques" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <Statistiques />
             </ProtectedRoute>
           } />
           
