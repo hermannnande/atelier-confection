@@ -74,35 +74,29 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         .filter((l) => l.statut === 'livree')
         .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
 
-      if (!session) {
-        session = new SessionCaisse({
-          livreur: livreurId,
-          livraisons: pendingLivraisons.map((l) => l._id),
-          montantTotal: nouveauMontant,
-          nombreLivraisons: pendingLivraisons.length,
-          statut: 'ouverte'
-        });
-      } else {
-        pendingLivraisons.forEach((l) => session.livraisons.push(l._id));
-        session.montantTotal = (session.montantTotal || 0) + nouveauMontant;
-        session.nombreLivraisons = (session.nombreLivraisons || 0) + pendingLivraisons.length;
-      }
+      const newSession = new SessionCaisse({
+        livreur: livreurId,
+        livraisons: pendingLivraisons.map((l) => l._id),
+        montantTotal: nouveauMontant,
+        nombreLivraisons: pendingLivraisons.length,
+        statut: 'ouverte'
+      });
 
-      await session.save();
+      await newSession.save();
       await Livraison.updateMany(
         { _id: { $in: pendingLivraisons.map((l) => l._id) } },
-        { $set: { session_caisse: session._id } }
+        { $set: { session_caisse: newSession._id } }
       );
-
-      session = await SessionCaisse.findById(session._id)
-        .populate('livreur', 'nom email telephone')
-        .populate(populateLiv);
     }
 
-    let sessionOut = null;
-    if (session) {
-      sessionOut = enrichSessionCounts(typeof session.toObject === 'function' ? session.toObject() : session);
-    }
+    const allOpen = await SessionCaisse.find({ livreur: livreurId, statut: 'ouverte' })
+      .sort({ dateDebut: -1 })
+      .populate('livreur', 'nom email telephone')
+      .populate(populateLiv);
+
+    const sessionsOuvertes = allOpen.map((s) =>
+      enrichSessionCounts(typeof s.toObject === 'function' ? s.toObject() : s)
+    );
 
     const colisRestants = await Livraison.find({
       livreur: livreurId,
@@ -115,8 +109,8 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     const colisRestantsFiltres = colisRestants.filter((l) => l.session_caisse?.statut === 'cloturee');
 
     res.json({
-      session: sessionOut,
-      sessionsOuvertes: sessionOut ? [sessionOut] : [],
+      session: sessionsOuvertes[0] || null,
+      sessionsOuvertes,
       colisRestants: colisRestantsFiltres
     });
   } catch (error) {

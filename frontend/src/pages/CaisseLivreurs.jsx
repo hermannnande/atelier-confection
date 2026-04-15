@@ -183,15 +183,17 @@ const CaisseLivreurs = () => {
   const confirmCloture = async () => {
     if (!clotureContext?.sessions?.length) return;
 
-    const livreurId = selectedLivreur._id || selectedLivreur.id;
-
     try {
       setProcessing(true);
-      const { data } = await api.post(`/sessions-caisse/livreur/${livreurId}/cloturer-tout`, {
-        commentaire: commentaire.trim() || undefined
-      });
 
-      toast.success(data.message || 'Sessions clôturées avec succès !');
+      for (const sess of clotureContext.sessions) {
+        const sid = sess._id || sess.id;
+        await api.post(`/sessions-caisse/${sid}/cloturer`, {
+          commentaire: commentaire.trim() || undefined
+        });
+      }
+
+      toast.success('Session clôturée avec succès !');
       setShowModal(false);
       setCommentaire('');
       setSelectedLivreur(null);
@@ -383,50 +385,47 @@ const CaisseLivreurs = () => {
                 </div>
               </div>
 
-              {/* Session ouverte consolidée (somme de toutes les sessions ouvertes) */}
-              {hasActiveSession ? (() => {
-                const totLivres = sessionsOuvertes.reduce((s, x) => s + (x.nombreLivres || 0), 0);
-                const totEnCours = sessionsOuvertes.reduce((s, x) => s + (x.nombreEnCours || 0), 0);
-                const totRefuses = sessionsOuvertes.reduce((s, x) => s + (x.nombreRefuses || 0), 0);
-                const totMontant = sessionsOuvertes.reduce((s, x) => s + (x.montantTotal || 0), 0);
-                const dateMin = sessionsOuvertes.reduce((d, x) => {
-                  const c = x.dateDebut || x.date_debut;
-                  return !d || (c && c < d) ? c : d;
-                }, null);
-                const allLivraisons = sessionsOuvertes.flatMap((s) => s.livraisons || []);
-                const fakeConsolidated = { ...sessionsOuvertes[0], livraisons: allLivraisons, nombreLivres: totLivres, nombreEnCours: totEnCours, nombreRefuses: totRefuses, montantTotal: totMontant, nombreLivraisons: allLivraisons.length };
+              {/* Sessions ouvertes — un bloc vert par session */}
+              {hasActiveSession && sessionsOuvertes.map((sess, si) => {
+                const nLivres = sess.nombreLivres || 0;
+                const nEnCours = sess.nombreEnCours || 0;
+                const nRefuses = sess.nombreRefuses || 0;
+                const montant = sess.montantTotal || 0;
+                const dateS = sess.dateDebut || sess.date_debut;
                 return (
-                  <div className="space-y-3 mb-3">
+                  <div key={sess._id || sess.id || si} className="space-y-3 mb-3">
                     <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-emerald-700 flex items-center">
                           <Clock size={14} className="mr-1 flex-shrink-0" />
-                          <span className="truncate">Session en cours</span>
+                          <span className="truncate">
+                            Session {sessionsOuvertes.length > 1 ? `${si + 1}/${sessionsOuvertes.length}` : 'en cours'}
+                          </span>
                         </span>
                         <span className="text-xs text-gray-600 truncate ml-2">
-                          depuis {formatDateCourte(dateMin)}
+                          depuis {formatDateCourte(dateS)}
                         </span>
                       </div>
                       <div className="space-y-3">
                         <div className="grid grid-cols-3 gap-2">
                           <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
-                            <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
-                            <span className="text-xl font-black text-emerald-600">{totLivres}</span>
+                            <span className="text-xs font-semibold text-emerald-700 block mb-1">Livrés</span>
+                            <span className="text-xl font-black text-emerald-600">{nLivres}</span>
                           </div>
                           <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
-                            <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
-                            <span className="text-xl font-black text-blue-600">{totEnCours}</span>
+                            <span className="text-xs font-semibold text-blue-700 block mb-1">En cours</span>
+                            <span className="text-xl font-black text-blue-600">{nEnCours}</span>
                           </div>
                           <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
-                            <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
-                            <span className="text-xl font-black text-red-600">{totRefuses}</span>
+                            <span className="text-xs font-semibold text-red-700 block mb-1">Refusés</span>
+                            <span className="text-xl font-black text-red-600">{nRefuses}</span>
                           </div>
                         </div>
                         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-white">Montant total</span>
                             <span className="text-lg sm:text-xl font-black text-white truncate">
-                              {totMontant.toLocaleString('fr-FR')} F
+                              {montant.toLocaleString('fr-FR')} F
                             </span>
                           </div>
                         </div>
@@ -435,7 +434,7 @@ const CaisseLivreurs = () => {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleVoirDetails(livreur, fakeConsolidated)}
+                        onClick={() => handleVoirDetails(livreur, sess)}
                         className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0"
                         title="Voir les détails des colis"
                       >
@@ -443,7 +442,7 @@ const CaisseLivreurs = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleCloturerTout(livreur, sessionsOuvertes)}
+                        onClick={() => handleCloturerTout(livreur, [sess])}
                         className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0"
                       >
                         <CheckCircle size={18} className="flex-shrink-0" />
@@ -452,9 +451,9 @@ const CaisseLivreurs = () => {
                       {canDeleteSessions && (
                         <button
                           type="button"
-                          onClick={() => setSessionDeleteModal(sessionsOuvertes[0])}
+                          onClick={() => setSessionDeleteModal(sess)}
                           className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                          title="Supprimer la session ouverte (admin)"
+                          title="Supprimer cette session (admin)"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -462,7 +461,7 @@ const CaisseLivreurs = () => {
                     </div>
                   </div>
                 );
-              })() : null}
+              })}
 
               {/* Colis restants groupés par session clôturée */}
               {hasColisRestants && (() => {

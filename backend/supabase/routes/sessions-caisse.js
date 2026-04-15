@@ -112,42 +112,40 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         .filter((l) => l.statut === 'livree')
         .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
 
-      if (!openRow) {
-        const { data: newSession, error: createErr } = await supabase
-          .from('sessions_caisse')
-          .insert({
-            livreur_id: livreurId,
-            montant_total: nouveauMontant,
-            nombre_livraisons: pending.length,
-            statut: 'ouverte',
-            date_debut: new Date().toISOString()
-          })
-          .select('*, livreur:livreur_id(id, nom, email, telephone)')
-          .single();
+      const { data: newSession, error: createErr } = await supabase
+        .from('sessions_caisse')
+        .insert({
+          livreur_id: livreurId,
+          montant_total: nouveauMontant,
+          nombre_livraisons: pending.length,
+          statut: 'ouverte',
+          date_debut: new Date().toISOString()
+        })
+        .select('*, livreur:livreur_id(id, nom, email, telephone)')
+        .single();
 
-        if (createErr) return res.status(500).json({ message: 'Erreur création session', error: createErr.message });
-        openRow = newSession;
-      } else {
-        const { error: mergeErr } = await supabase
-          .from('sessions_caisse')
-          .update({
-            montant_total: (openRow.montant_total || 0) + nouveauMontant,
-            nombre_livraisons: (openRow.nombre_livraisons || 0) + pending.length
-          })
-          .eq('id', openRow.id);
-        if (mergeErr) return res.status(500).json({ message: 'Erreur fusion session', error: mergeErr.message });
-      }
+      if (createErr) return res.status(500).json({ message: 'Erreur création session', error: createErr.message });
 
       const { error: linkErr } = await supabase
         .from('livraisons')
-        .update({ session_caisse_id: openRow.id })
+        .update({ session_caisse_id: newSession.id })
         .in('id', pending.map((l) => l.id));
       if (linkErr) return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkErr.message });
+
+      openRow = newSession;
     }
 
-    let sessionHydratee = null;
-    if (openRow) {
-      sessionHydratee = await hydrateSessionRow(supabase, openRow);
+    const { data: allOpen } = await supabase
+      .from('sessions_caisse')
+      .select('*, livreur:livreur_id(id, nom, email, telephone)')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'ouverte')
+      .order('date_debut', { ascending: false });
+
+    const sessionsHydratees = [];
+    for (const s of (allOpen || [])) {
+      const h = await hydrateSessionRow(supabase, s);
+      if (h) sessionsHydratees.push(h);
     }
 
     const { data: colisRestants } = await supabase
@@ -159,11 +157,11 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
     const colisRestantsFiltres = (colisRestants || []).filter((l) => l.session?.statut === 'cloturee');
 
-    const mapped = sessionHydratee ? mapSession(sessionHydratee) : null;
+    const mapped = sessionsHydratees.map((s) => mapSession(s));
 
     return res.json({
-      session: mapped,
-      sessionsOuvertes: mapped ? [mapped] : [],
+      session: mapped[0] || null,
+      sessionsOuvertes: mapped,
       colisRestants: colisRestantsFiltres
     });
   } catch (error) {
