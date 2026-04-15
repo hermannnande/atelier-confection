@@ -488,20 +488,24 @@ const CaisseLivreurs = () => {
             return toLocalDate(d) === filter;
           };
 
-          const filterCloture = (dateVal) => {
+          const filterByDate = (dateVal) => {
             if (quickFilter) return matchQuickFilter(dateVal);
-            if (filterDateCloture) return matchDateExact(dateVal, filterDateCloture);
             return true;
           };
 
-          const sessionsOuvertes = filterDateAssignation
-            ? allSessionsOuvertes.filter((s) => matchDateExact(s.dateDebut || s.date_debut, filterDateAssignation))
+          const sessionsOuvertes = (quickFilter || filterDateAssignation)
+            ? allSessionsOuvertes.filter((s) => {
+                const d = s.dateDebut || s.date_debut;
+                if (filterDateAssignation) return matchDateExact(d, filterDateAssignation);
+                return filterByDate(d);
+              })
             : allSessionsOuvertes;
 
           const colisRestants = (quickFilter || filterDateCloture)
             ? allColisRestants.filter((l) => {
                 const dc = l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture;
-                return filterCloture(dc);
+                if (filterDateCloture) return matchDateExact(dc, filterDateCloture);
+                return filterByDate(dc);
               })
             : allColisRestants;
 
