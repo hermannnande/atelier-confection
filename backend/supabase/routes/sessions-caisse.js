@@ -147,7 +147,22 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       session.nombreRestants = nombreEnCours + nombreRefuses; // Pour compatibilité
     }
 
-    return res.json({ session: session ? mapSession(session) : null });
+    // Chercher les colis "en cours" restants dans des sessions clôturées
+    const { data: colisRestants } = await supabase
+      .from('livraisons')
+      .select('*, commande:commande_id(*), session:session_caisse_id(id, statut, date_cloture)')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'en_cours')
+      .not('session_caisse_id', 'is', null);
+
+    const colisRestantsFiltres = (colisRestants || []).filter(
+      l => l.session?.statut === 'cloturee'
+    );
+
+    return res.json({
+      session: session ? mapSession(session) : null,
+      colisRestants: colisRestantsFiltres
+    });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
   }
@@ -198,12 +213,8 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 
     if (livError) return res.status(500).json({ message: 'Erreur mise à jour livraisons', error: livError.message });
 
-    // Retirer les colis "en cours" de la session (ils réapparaîtront dans la prochaine session)
-    await supabase
-      .from('livraisons')
-      .update({ session_caisse_id: null })
-      .eq('session_caisse_id', sessionId)
-      .eq('statut', 'en_cours');
+    // Les colis "en cours" restent liés à cette session clôturée
+    // Ils seront affichés en rouge sur la carte du livreur comme "colis restants"
 
     // Récupérer les colis REFUSÉS pour les remettre en stock
     const { data: colisRefuses, error: fetchRefusesError } = await supabase
@@ -264,41 +275,6 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
         .delete()
         .eq('session_caisse_id', sessionId)
         .eq('statut', 'refusee');
-    }
-
-    // Créer automatiquement une nouvelle session avec les colis "en cours" restants
-    const { data: colisEnCours, error: enCoursError } = await supabase
-      .from('livraisons')
-      .select('*, commande:commande_id(*)')
-      .eq('livreur_id', session.livreur_id)
-      .eq('statut', 'en_cours')
-      .is('session_caisse_id', null);
-
-    if (!enCoursError && colisEnCours && colisEnCours.length > 0) {
-      // Ne compter QUE les colis livrés (donc 0 ici car ce sont des "en_cours")
-      const montantNouvelle = colisEnCours
-        .filter(l => l.statut === 'livree')
-        .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
-
-      const { data: nouvelleSession, error: createError } = await supabase
-        .from('sessions_caisse')
-        .insert({
-          livreur_id: session.livreur_id,
-          montant_total: montantNouvelle,
-          nombre_livraisons: colisEnCours.length,
-          statut: 'ouverte',
-          date_debut: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (!createError && nouvelleSession) {
-        // Lier les colis "en cours" à la nouvelle session
-        await supabase
-          .from('livraisons')
-          .update({ session_caisse_id: nouvelleSession.id })
-          .in('id', colisEnCours.map(l => l.id));
-      }
     }
 
     return res.json({

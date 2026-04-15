@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const CaisseLivreurs = () => {
@@ -10,6 +10,7 @@ const CaisseLivreurs = () => {
   const { user } = useAuthStore();
   const [livreurs, setLivreurs] = useState([]);
   const [sessions, setSessions] = useState({});
+  const [colisRestantsMap, setColisRestantsMap] = useState({});
   const [historiques, setHistoriques] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedLivreur, setSelectedLivreur] = useState(null);
@@ -46,26 +47,28 @@ const CaisseLivreurs = () => {
       const livreursActifs = usersData.users.filter(u => u.actif);
       setLivreurs(livreursActifs);
 
-      // Pour chaque livreur, récupérer sa session active et son historique
       const sessionsData = {};
+      const colisRestantsData = {};
       const historiquesData = {};
 
       await Promise.all(
         livreursActifs.map(async (livreur) => {
+          const lid = livreur._id || livreur.id;
           try {
-            // Session active
             const { data: sessionRes } = await api.get(
-              `/sessions-caisse/livreur/${livreur._id || livreur.id}/session-active`
+              `/sessions-caisse/livreur/${lid}/session-active`
             );
             if (sessionRes.session) {
-              sessionsData[livreur._id || livreur.id] = sessionRes.session;
+              sessionsData[lid] = sessionRes.session;
+            }
+            if (sessionRes.colisRestants && sessionRes.colisRestants.length > 0) {
+              colisRestantsData[lid] = sessionRes.colisRestants;
             }
 
-            // Historique (3 dernières sessions)
             const { data: histRes } = await api.get(
-              `/sessions-caisse/livreur/${livreur._id || livreur.id}/historique?limit=3`
+              `/sessions-caisse/livreur/${lid}/historique?limit=3`
             );
-            historiquesData[livreur._id || livreur.id] = histRes.sessions || [];
+            historiquesData[lid] = histRes.sessions || [];
           } catch (error) {
             console.error(`Erreur pour ${livreur.nom}:`, error);
           }
@@ -73,6 +76,7 @@ const CaisseLivreurs = () => {
       );
 
       setSessions(sessionsData);
+      setColisRestantsMap(colisRestantsData);
       setHistoriques(historiquesData);
     } catch (error) {
       const status = error.response?.status;
@@ -262,20 +266,26 @@ const CaisseLivreurs = () => {
         {livreurs.map((livreur) => {
           const livreurId = livreur._id || livreur.id;
           const sessionActive = sessions[livreurId];
+          const colisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
           const hasActiveSession = sessionActive && sessionActive.nombreLivraisons > 0;
+          const hasColisRestants = colisRestants.length > 0;
 
           return (
             <div
               key={livreurId}
               className={`stat-card transition-all max-w-full ${
+                hasColisRestants && !hasActiveSession ? 'border-2 border-red-400 shadow-lg' :
+                hasColisRestants && hasActiveSession ? 'border-2 border-orange-400 shadow-lg' :
                 hasActiveSession ? 'border-2 border-emerald-400 shadow-lg' : ''
               }`}
             >
               {/* Header du livreur */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 ${
+                    hasColisRestants ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                  }`}>
                     {livreur.nom.charAt(0).toUpperCase()}
                   </div>
                   <div className="overflow-hidden">
@@ -283,12 +293,61 @@ const CaisseLivreurs = () => {
                     <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
                   </div>
                 </div>
-                {hasActiveSession && (
-                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200 flex-shrink-0">
-                    Active
-                  </span>
-                )}
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  {hasColisRestants && (
+                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200">
+                      ⚠️ {colisRestants.length} restant{colisRestants.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {hasActiveSession && (
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                      Active
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* Colis restants (session clôturée mais colis encore chez le livreur) */}
+              {hasColisRestants && (
+                <div className="mb-3">
+                  <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 border-2 border-red-300">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-red-700 flex items-center">
+                        <AlertOctagon size={14} className="mr-1 flex-shrink-0" />
+                        Colis restants (session clôturée)
+                      </span>
+                      <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                        {colisRestants.length} colis
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {colisRestants.map((livraison, index) => {
+                        const commande = livraison.commande || {};
+                        const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
+                        const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
+                        return (
+                          <div key={livraison._id || livraison.id || index} className="bg-white rounded-lg p-2.5 border border-red-200">
+                            <div className="flex items-center justify-between">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {clientNom}{clientVille ? ` · ${clientVille}` : ''}
+                                </p>
+                              </div>
+                              <div className="text-right flex-shrink-0 ml-2">
+                                <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">EN COURS</span>
+                                <p className="text-sm font-black text-gray-800 mt-0.5">
+                                  {(commande.prix || 0).toLocaleString('fr-FR')} F
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Session active */}
               {hasActiveSession ? (
@@ -368,11 +427,20 @@ const CaisseLivreurs = () => {
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <Package size={32} className="mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session active</p>
-                  <p className="text-xs text-gray-400 mb-3">
-                    Pas de livraisons "Livrée" pour ce livreur
-                  </p>
+                  {!hasColisRestants && (
+                    <>
+                      <Package size={32} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session active</p>
+                      <p className="text-xs text-gray-400 mb-3">
+                        Pas de livraisons "Livrée" pour ce livreur
+                      </p>
+                    </>
+                  )}
+                  {hasColisRestants && (
+                    <p className="text-xs text-gray-400 mb-3">
+                      Pas de nouvelle session · {colisRestants.length} colis restant{colisRestants.length > 1 ? 's' : ''} de la session précédente
+                    </p>
+                  )}
                   <button
                     onClick={() => handleRafraichirLivraisons(livreurId)}
                     className="btn btn-secondary text-sm"
