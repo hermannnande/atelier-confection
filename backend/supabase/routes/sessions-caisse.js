@@ -256,20 +256,20 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
   }
 });
 
-// Ajouter des livraisons (aligne sur GET session-active : nouvelle session si session ouverte deja presente)
+// Faire le point : fusionne les livraisons sans session dans l unique session ouverte (ou en cree une)
 router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
 
-    const { data: openRows } = await supabase
+    const { data: openRow } = await supabase
       .from('sessions_caisse')
       .select('*')
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
-      .order('date_debut', { ascending: false });
-
-    const openSessions = openRows || [];
+      .order('date_debut', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     const { data: nouvellesLivraisons, error: livError } = await supabase
       .from('livraisons')
@@ -290,7 +290,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
 
     let session;
 
-    if (openSessions.length === 0) {
+    if (!openRow) {
       const { data: newSession, error: createError } = await supabase
         .from('sessions_caisse')
         .insert({
@@ -306,20 +306,16 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       if (createError) return res.status(500).json({ message: 'Erreur création', error: createError.message });
       session = newSession;
     } else {
-      const { data: newSession, error: createError } = await supabase
+      const { error: updErr } = await supabase
         .from('sessions_caisse')
-        .insert({
-          livreur_id: livreurId,
-          montant_total: nouveauMontant,
-          nombre_livraisons: nouvellesLivraisons.length,
-          statut: 'ouverte',
-          date_debut: new Date().toISOString()
+        .update({
+          montant_total: (openRow.montant_total || 0) + nouveauMontant,
+          nombre_livraisons: (openRow.nombre_livraisons || 0) + nouvellesLivraisons.length
         })
-        .select()
-        .single();
+        .eq('id', openRow.id);
 
-      if (createError) return res.status(500).json({ message: 'Erreur création', error: createError.message });
-      session = newSession;
+      if (updErr) return res.status(500).json({ message: 'Erreur mise à jour', error: updErr.message });
+      session = { ...openRow, montant_total: (openRow.montant_total || 0) + nouveauMontant, nombre_livraisons: (openRow.nombre_livraisons || 0) + nouvellesLivraisons.length };
     }
 
     const { error: linkError } = await supabase
@@ -332,12 +328,79 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
     const hydrated = await hydrateSessionRow(supabase, session);
 
     return res.json({
-      message: `Point de caisse : ${nouvellesLivraisons.length} livraison(s) rattachée(s) à une nouvelle session ouverte`,
+      message: `Point de caisse : ${nouvellesLivraisons.length} livraison(s) ajoutée(s)`,
       session: mapSession(hydrated || session),
       montantAjoute: nouveauMontant
     });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de l\'ajout', error: error.message });
+  }
+});
+
+// Cloturer TOUTES les sessions ouvertes d un livreur d un coup
+router.post('/livreur/:livreurId/cloturer-tout', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { livreurId } = req.params;
+    const { commentaire } = req.body;
+
+    const { data: openSessions, error: fetchErr } = await supabase
+      .from('sessions_caisse')
+      .select('*, livreur:livreur_id(nom)')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'ouverte');
+
+    if (fetchErr) return res.status(500).json({ message: 'Erreur', error: fetchErr.message });
+    if (!openSessions || openSessions.length === 0) {
+      return res.status(404).json({ message: 'Aucune session ouverte pour ce livreur' });
+    }
+
+    const sessionIds = openSessions.map((s) => s.id);
+
+    const { error: clotErr } = await supabase
+      .from('sessions_caisse')
+      .update({
+        statut: 'cloturee',
+        date_cloture: new Date().toISOString(),
+        gestionnaire_id: req.userId,
+        commentaire: commentaire || null
+      })
+      .in('id', sessionIds);
+
+    if (clotErr) return res.status(500).json({ message: 'Erreur clôture', error: clotErr.message });
+
+    await supabase
+      .from('livraisons')
+      .update({ paiement_recu: true, date_paiement: new Date().toISOString() })
+      .in('session_caisse_id', sessionIds)
+      .eq('statut', 'livree');
+
+    const { data: colisRefuses } = await supabase
+      .from('livraisons')
+      .select('*, commande:commande_id(*)')
+      .in('session_caisse_id', sessionIds)
+      .eq('statut', 'refusee');
+
+    if (colisRefuses && colisRefuses.length > 0) {
+      for (const livraison of colisRefuses) {
+        const commande = livraison.commande;
+        if (commande) {
+          await supabase.from('commandes').update({ statut: 'en_stock', livreur_id: null }).eq('id', commande.id);
+        }
+      }
+      await supabase.from('livraisons').delete().in('session_caisse_id', sessionIds).eq('statut', 'refusee');
+    }
+
+    const totalColis = openSessions.reduce((s, ss) => s + (ss.nombre_livraisons || 0), 0);
+    const totalMontant = openSessions.reduce((s, ss) => s + (ss.montant_total || 0), 0);
+    const nomLivreur = openSessions[0]?.livreur?.nom || '';
+
+    return res.json({
+      message: `Session clôturée ! ${totalColis} livraison(s) - ${totalMontant.toLocaleString('fr-FR')} FCFA reçu de ${nomLivreur}`,
+      sessionsClosees: sessionIds.length
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la clôture', error: error.message });
   }
 });
 

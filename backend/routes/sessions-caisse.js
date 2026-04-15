@@ -246,12 +246,12 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
   }
 });
 
-// Ajouter des livraisons (même règles que GET session-active)
+// Faire le point : fusionne dans l unique session ouverte (ou en cree une)
 router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { livreurId } = req.params;
 
-    const openSessions = await SessionCaisse.find({
+    let session = await SessionCaisse.findOne({
       livreur: livreurId,
       statut: 'ouverte'
     }).sort({ dateDebut: -1 });
@@ -270,9 +270,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       .filter((l) => l.statut === 'livree')
       .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
 
-    let session;
-
-    if (openSessions.length === 0) {
+    if (!session) {
       session = new SessionCaisse({
         livreur: livreurId,
         livraisons: nouvellesLivraisons.map((l) => l._id),
@@ -281,13 +279,9 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
         statut: 'ouverte'
       });
     } else {
-      session = new SessionCaisse({
-        livreur: livreurId,
-        livraisons: nouvellesLivraisons.map((l) => l._id),
-        montantTotal: nouveauMontant,
-        nombreLivraisons: nouvellesLivraisons.length,
-        statut: 'ouverte'
-      });
+      nouvellesLivraisons.forEach((l) => session.livraisons.push(l._id));
+      session.montantTotal = (session.montantTotal || 0) + nouveauMontant;
+      session.nombreLivraisons = (session.nombreLivraisons || 0) + nouvellesLivraisons.length;
     }
 
     await session.save();
@@ -307,12 +301,76 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
     );
 
     res.json({
-      message: `Point de caisse : ${nouvellesLivraisons.length} livraison(s) rattachée(s) à une nouvelle session ouverte`,
+      message: `Point de caisse : ${nouvellesLivraisons.length} livraison(s) ajoutée(s)`,
       session: sessionOut,
       montantAjoute: nouveauMontant
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de l\'ajout', error: error.message });
+  }
+});
+
+// Cloturer TOUTES les sessions ouvertes d un livreur d un coup
+router.post('/livreur/:livreurId/cloturer-tout', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const { livreurId } = req.params;
+    const { commentaire } = req.body;
+
+    const openSessions = await SessionCaisse.find({
+      livreur: livreurId,
+      statut: 'ouverte'
+    }).populate('livreur', 'nom').populate('livraisons');
+
+    if (!openSessions || openSessions.length === 0) {
+      return res.status(404).json({ message: 'Aucune session ouverte pour ce livreur' });
+    }
+
+    let totalColis = 0;
+    let totalMontant = 0;
+
+    for (const session of openSessions) {
+      session.statut = 'cloturee';
+      session.dateCloture = new Date();
+      session.gestionnaire = req.userId;
+      if (commentaire) session.commentaire = commentaire;
+      await session.save();
+
+      totalColis += session.nombreLivraisons || 0;
+      totalMontant += session.montantTotal || 0;
+
+      await Livraison.updateMany(
+        { _id: { $in: session.livraisons.map((l) => l._id || l) }, statut: 'livree' },
+        { $set: { paiement_recu: true, date_paiement: new Date() } }
+      );
+
+      const colisRefuses = await Livraison.find({
+        _id: { $in: session.livraisons.map((l) => l._id || l) },
+        statut: 'refusee'
+      }).populate('commande');
+
+      for (const livraison of colisRefuses) {
+        const commande = livraison.commande;
+        if (commande) {
+          commande.statut = 'en_stock';
+          commande.livreur = null;
+          await commande.save();
+        }
+      }
+
+      await Livraison.deleteMany({
+        _id: { $in: session.livraisons.map((l) => l._id || l) },
+        statut: 'refusee'
+      });
+    }
+
+    const nomLivreur = openSessions[0]?.livreur?.nom || '';
+
+    res.json({
+      message: `Session clôturée ! ${totalColis} livraison(s) - ${totalMontant.toLocaleString('fr-FR')} FCFA reçu de ${nomLivreur}`,
+      sessionsClosees: openSessions.length
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la clôture', error: error.message });
   }
 });
 

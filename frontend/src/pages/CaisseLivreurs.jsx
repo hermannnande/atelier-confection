@@ -119,34 +119,33 @@ const CaisseLivreurs = () => {
     }
   };
 
-  const handleCloturerSession = (livreur, session) => {
-    if (!session) {
+  const handleCloturerTout = (livreur, sessionsArr) => {
+    if (!sessionsArr || sessionsArr.length === 0) {
       toast.error('Aucune session active pour ce livreur');
       return;
     }
-    setClotureContext({ livreur, session });
+    setClotureContext({ livreur, sessions: sessionsArr });
     setSelectedLivreur(livreur);
     setShowModal(true);
   };
 
   const confirmCloture = async () => {
-    if (!clotureContext?.session) return;
+    if (!clotureContext?.sessions?.length) return;
 
-    const session = clotureContext.session;
+    const livreurId = selectedLivreur._id || selectedLivreur.id;
 
     try {
       setProcessing(true);
-      const { data } = await api.post(`/sessions-caisse/${session._id || session.id}/cloturer`, {
+      const { data } = await api.post(`/sessions-caisse/livreur/${livreurId}/cloturer-tout`, {
         commentaire: commentaire.trim() || undefined
       });
 
-      toast.success(data.message || '✅ Session clôturée avec succès !');
+      toast.success(data.message || 'Sessions clôturées avec succès !');
       setShowModal(false);
       setCommentaire('');
       setSelectedLivreur(null);
       setClotureContext(null);
 
-      // Rafraîchir les données
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la clôture');
@@ -436,87 +435,86 @@ const CaisseLivreurs = () => {
                 </div>
               )}
 
-              {/* Sessions ouvertes (point effectué) */}
-              {hasActiveSession ? (
-                <div className="space-y-3 mb-3">
-                  {sessionsOuvertes.map((sessionActive, sessIdx) => (
-                    <div key={sessionActive._id || sessionActive.id || sessIdx} className="space-y-3">
-                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold text-emerald-700 flex items-center">
-                            <Clock size={14} className="mr-1 flex-shrink-0" />
-                            <span className="truncate">
-                              Session en cours
-                              {sessionsOuvertes.length > 1 ? ` (${sessIdx + 1}/${sessionsOuvertes.length})` : ''}
-                            </span>
-                          </span>
-                          <span className="text-xs text-gray-600 truncate ml-2">
-                            depuis {formatDateCourte(sessionActive.dateDebut)}
-                          </span>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
-                              <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
-                              <span className="text-xl font-black text-emerald-600">
-                                {sessionActive.nombreLivres || 0}
-                              </span>
-                            </div>
-                            <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
-                              <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
-                              <span className="text-xl font-black text-blue-600">
-                                {sessionActive.nombreEnCours || 0}
-                              </span>
-                            </div>
-                            <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
-                              <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
-                              <span className="text-xl font-black text-red-600">
-                                {sessionActive.nombreRefuses || 0}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold text-white">Montant total</span>
-                              <span className="text-lg sm:text-xl font-black text-white truncate">
-                                {(sessionActive.montantTotal || 0).toLocaleString('fr-FR')} F
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+              {/* Session ouverte consolidée (somme de toutes les sessions ouvertes) */}
+              {hasActiveSession ? (() => {
+                const totLivres = sessionsOuvertes.reduce((s, x) => s + (x.nombreLivres || 0), 0);
+                const totEnCours = sessionsOuvertes.reduce((s, x) => s + (x.nombreEnCours || 0), 0);
+                const totRefuses = sessionsOuvertes.reduce((s, x) => s + (x.nombreRefuses || 0), 0);
+                const totMontant = sessionsOuvertes.reduce((s, x) => s + (x.montantTotal || 0), 0);
+                const dateMin = sessionsOuvertes.reduce((d, x) => {
+                  const c = x.dateDebut || x.date_debut;
+                  return !d || (c && c < d) ? c : d;
+                }, null);
+                const allLivraisons = sessionsOuvertes.flatMap((s) => s.livraisons || []);
+                const fakeConsolidated = { ...sessionsOuvertes[0], livraisons: allLivraisons, nombreLivres: totLivres, nombreEnCours: totEnCours, nombreRefuses: totRefuses, montantTotal: totMontant, nombreLivraisons: allLivraisons.length };
+                return (
+                  <div className="space-y-3 mb-3">
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-emerald-700 flex items-center">
+                          <Clock size={14} className="mr-1 flex-shrink-0" />
+                          <span className="truncate">Session en cours</span>
+                        </span>
+                        <span className="text-xs text-gray-600 truncate ml-2">
+                          depuis {formatDateCourte(dateMin)}
+                        </span>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleVoirDetails(livreur, sessionActive)}
-                          className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                          title="Voir les détails des colis"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleCloturerSession(livreur, sessionActive)}
-                          className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0"
-                        >
-                          <CheckCircle size={18} className="flex-shrink-0" />
-                          <span className="truncate">Clôturer</span>
-                        </button>
-                        {canDeleteSessions && (
-                          <button
-                            type="button"
-                            onClick={() => setSessionDeleteModal(sessionActive)}
-                            className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                            title="Supprimer la session ouverte (admin)"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        )}
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
+                            <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
+                            <span className="text-xl font-black text-emerald-600">{totLivres}</span>
+                          </div>
+                          <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
+                            <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
+                            <span className="text-xl font-black text-blue-600">{totEnCours}</span>
+                          </div>
+                          <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
+                            <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
+                            <span className="text-xl font-black text-red-600">{totRefuses}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-white">Montant total</span>
+                            <span className="text-lg sm:text-xl font-black text-white truncate">
+                              {totMontant.toLocaleString('fr-FR')} F
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : null}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleVoirDetails(livreur, fakeConsolidated)}
+                        className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0"
+                        title="Voir les détails des colis"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCloturerTout(livreur, sessionsOuvertes)}
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0"
+                      >
+                        <CheckCircle size={18} className="flex-shrink-0" />
+                        <span className="truncate">Clôturer</span>
+                      </button>
+                      {canDeleteSessions && (
+                        <button
+                          type="button"
+                          onClick={() => setSessionDeleteModal(sessionsOuvertes[0])}
+                          className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0"
+                          title="Supprimer la session ouverte (admin)"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })() : null}
 
               {/* Colis restants (session clôturée mais colis encore chez le livreur) */}
               {hasColisRestants && (
@@ -624,7 +622,13 @@ const CaisseLivreurs = () => {
       </div>
 
       {/* Modal de confirmation */}
-      {showModal && selectedLivreur && clotureContext?.session && (
+      {showModal && selectedLivreur && clotureContext?.sessions?.length > 0 && (() => {
+        const ctxSessions = clotureContext.sessions;
+        const totLivres = ctxSessions.reduce((s, x) => s + (x.nombreLivres || 0), 0);
+        const totEnCours = ctxSessions.reduce((s, x) => s + (x.nombreEnCours || 0), 0);
+        const totRefuses = ctxSessions.reduce((s, x) => s + (x.nombreRefuses || 0), 0);
+        const totMontant = ctxSessions.reduce((s, x) => s + (x.montantTotal || 0), 0);
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
@@ -653,34 +657,24 @@ const CaisseLivreurs = () => {
               
               {/* Compteurs de colis */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {/* Colis livrés */}
                 <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
                   <span className="text-xs font-semibold text-emerald-700 block mb-1">✅ Livrés</span>
-                  <span className="text-xl font-black text-emerald-600">
-                    {clotureContext.session.nombreLivres || 0}
-                  </span>
+                  <span className="text-xl font-black text-emerald-600">{totLivres}</span>
                 </div>
-                {/* Colis en cours */}
                 <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
                   <span className="text-xs font-semibold text-blue-700 block mb-1">📦 En cours</span>
-                  <span className="text-xl font-black text-blue-600">
-                    {clotureContext.session.nombreEnCours || 0}
-                  </span>
+                  <span className="text-xl font-black text-blue-600">{totEnCours}</span>
                 </div>
-                {/* Colis refusés */}
                 <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
                   <span className="text-xs font-semibold text-red-700 block mb-1">❌ Refusés</span>
-                  <span className="text-xl font-black text-red-600">
-                    {clotureContext.session.nombreRefuses || 0}
-                  </span>
+                  <span className="text-xl font-black text-red-600">{totRefuses}</span>
                 </div>
               </div>
 
-              {/* Montant à recevoir */}
               <div>
                 <p className="text-xs text-gray-600">Montant à recevoir</p>
                 <p className="text-2xl font-black text-emerald-600">
-                  {(clotureContext.session.montantTotal || 0).toLocaleString('fr-FR')} F
+                  {totMontant.toLocaleString('fr-FR')} F
                 </p>
               </div>
             </div>
@@ -733,7 +727,8 @@ const CaisseLivreurs = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Modal Historique Complet */}
       {showHistoriqueModal && (
