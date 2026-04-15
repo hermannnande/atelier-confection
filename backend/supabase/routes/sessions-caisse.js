@@ -127,7 +127,51 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         session = { ...newSession, livraisons: livraisons || [] };
       }
     } else {
-      // Récupérer les livraisons de la session existante
+      // Session déjà ouverte : rattacher les livraisons sans session (ex. assignées depuis Préparation colis / Livraisons)
+      const { data: pendingLivraisons, error: pendingErr } = await supabase
+        .from('livraisons')
+        .select('*, commande:commande_id(*)')
+        .eq('livreur_id', livreurId)
+        .in('statut', ['livree', 'en_cours', 'refusee'])
+        .is('session_caisse_id', null);
+
+      if (!pendingErr && pendingLivraisons && pendingLivraisons.length > 0) {
+        const nouveauMontant = pendingLivraisons
+          .filter((l) => l.statut === 'livree')
+          .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+
+        const { error: updSessErr } = await supabase
+          .from('sessions_caisse')
+          .update({
+            montant_total: (session.montant_total || 0) + nouveauMontant,
+            nombre_livraisons: (session.nombre_livraisons || 0) + pendingLivraisons.length
+          })
+          .eq('id', session.id);
+
+        if (updSessErr) {
+          return res.status(500).json({ message: 'Erreur mise à jour session', error: updSessErr.message });
+        }
+
+        const { error: linkPendingErr } = await supabase
+          .from('livraisons')
+          .update({ session_caisse_id: session.id })
+          .in('id', pendingLivraisons.map((l) => l.id));
+
+        if (linkPendingErr) {
+          return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkPendingErr.message });
+        }
+
+        const { data: sessionRefreshed, error: refErr } = await supabase
+          .from('sessions_caisse')
+          .select('*, livreur:livreur_id(id, nom, email, telephone)')
+          .eq('id', session.id)
+          .single();
+
+        if (!refErr && sessionRefreshed) {
+          session = sessionRefreshed;
+        }
+      }
+
       const { data: livraisons } = await supabase
         .from('livraisons')
         .select('*, commande:commande_id(*)')

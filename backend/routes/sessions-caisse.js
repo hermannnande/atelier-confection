@@ -93,6 +93,38 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
           }
         });
       }
+    } else {
+      const pendingLivraisons = await Livraison.find({
+        livreur: livreurId,
+        statut: { $in: ['livree', 'en_cours', 'refusee'] },
+        $or: [{ session_caisse: { $exists: false } }, { session_caisse: null }]
+      });
+
+      if (pendingLivraisons.length > 0) {
+        const nouveauMontant = pendingLivraisons
+          .filter((l) => l.statut === 'livree')
+          .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+
+        pendingLivraisons.forEach((l) => session.livraisons.push(l._id));
+        session.montantTotal = (session.montantTotal || 0) + nouveauMontant;
+        session.nombreLivraisons = (session.nombreLivraisons || 0) + pendingLivraisons.length;
+        await session.save();
+
+        await Livraison.updateMany(
+          { _id: { $in: pendingLivraisons.map((l) => l._id) } },
+          { $set: { session_caisse: session._id } }
+        );
+
+        session = await SessionCaisse.findById(session._id)
+          .populate('livreur', 'nom email telephone')
+          .populate({
+            path: 'livraisons',
+            populate: {
+              path: 'commande',
+              select: 'numeroCommande client modele prix dateLivraison'
+            }
+          });
+      }
     }
 
     // Calculer le nombre de colis livrés et restants

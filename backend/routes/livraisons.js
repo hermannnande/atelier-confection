@@ -28,7 +28,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Assigner une commande à un livreur
-router.post('/assigner', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/assigner', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { commandeId, livreurId, instructions } = req.body;
 

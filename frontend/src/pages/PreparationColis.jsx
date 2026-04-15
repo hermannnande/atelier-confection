@@ -65,7 +65,7 @@ const PreparationColis = () => {
         prevCommandes.filter(c => c._id !== selectedCommande._id)
       );
       
-      toast.success('Commande assignée au livreur ! 🚚 Visible dans "Livraisons"');
+      toast.success('Commande assignée au livreur ! Visible dans Livraisons et Caisse livreurs.');
       setShowModal(false);
       setSelectedCommande(null);
       setSelectedLivreur('');
