@@ -2,8 +2,75 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2 } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+
+function CollapsibleClotureCard({ livreur, group, dateStr, montant }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="stat-card transition-all max-w-full border-2 border-red-400 shadow-lg">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 bg-gradient-to-br from-red-500 to-red-600">
+            {livreur.nom.charAt(0).toUpperCase()}
+          </div>
+          <div className="overflow-hidden">
+            <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
+            <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
+          </div>
+        </div>
+        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200 flex-shrink-0">
+          Clôturée
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-3 border border-red-200 flex items-center justify-between hover:from-red-100 hover:to-orange-100 transition-colors"
+      >
+        <span className="text-xs font-bold text-red-700 flex items-center gap-1">
+          <AlertOctagon size={14} className="flex-shrink-0" />
+          Session du {dateStr}
+        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+            {group.livraisons.length} colis · {montant.toLocaleString('fr-FR')} F
+          </span>
+          <ChevronDown size={16} className={`text-red-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-2">
+          {group.livraisons.map((livraison, idx) => {
+            const commande = livraison.commande || {};
+            const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
+            const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
+            return (
+              <div key={livraison._id || livraison.id || idx} className="bg-white rounded-lg p-2.5 border border-red-200">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
+                    <p className="text-xs text-gray-600 truncate">
+                      {clientNom}{clientVille ? ` \u00b7 ${clientVille}` : ''}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">EN COURS</span>
+                    <p className="text-sm font-black text-gray-800 mt-0.5">
+                      {(commande.prix || 0).toLocaleString('fr-FR')} F
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CaisseLivreurs = () => {
   const navigate = useNavigate();
@@ -418,59 +485,13 @@ const CaisseLivreurs = () => {
               const montant = group.livraisons.reduce((s, l) => s + (Number(l.commande?.prix) || 0), 0);
 
               cards.push(
-                <div key={`${livreurId}-cloture-${group.sessionId}`} className="stat-card transition-all max-w-full border-2 border-red-400 shadow-lg">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 bg-gradient-to-br from-red-500 to-red-600">
-                        {livreur.nom.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="overflow-hidden">
-                        <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
-                        <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
-                      </div>
-                    </div>
-                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200">
-                      Clôturée
-                    </span>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 border border-red-200 mb-2">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-red-700 flex items-center gap-1">
-                        <AlertOctagon size={14} className="flex-shrink-0" />
-                        Session du {dateStr}
-                      </span>
-                      <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
-                        {group.livraisons.length} colis · {montant.toLocaleString('fr-FR')} F
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {group.livraisons.map((livraison, idx) => {
-                        const commande = livraison.commande || {};
-                        const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
-                        const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
-                        return (
-                          <div key={livraison._id || livraison.id || idx} className="bg-white rounded-lg p-2.5 border border-red-200">
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
-                                <p className="text-xs text-gray-600 truncate">
-                                  {clientNom}{clientVille ? ` \u00b7 ${clientVille}` : ''}
-                                </p>
-                              </div>
-                              <div className="text-right flex-shrink-0 ml-2">
-                                <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">EN COURS</span>
-                                <p className="text-sm font-black text-gray-800 mt-0.5">
-                                  {(commande.prix || 0).toLocaleString('fr-FR')} F
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                <CollapsibleClotureCard
+                  key={`${livreurId}-cloture-${group.sessionId}`}
+                  livreur={livreur}
+                  group={group}
+                  dateStr={dateStr}
+                  montant={montant}
+                />
               );
             });
           }
