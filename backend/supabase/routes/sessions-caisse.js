@@ -60,51 +60,76 @@ router.get('/', authenticate, authorize('gestionnaire', 'administrateur'), async
   }
 });
 
-// Obtenir la session ouverte d'un livreur (ou créer si n'existe pas)
+async function hydrateSessionRow(supabase, sess) {
+  if (!sess) return null;
+  const { data: livraisons } = await supabase
+    .from('livraisons')
+    .select('*, commande:commande_id(*)')
+    .eq('session_caisse_id', sess.id);
+  const s = { ...sess, livraisons: livraisons || [] };
+  const nombreLivres = s.livraisons.filter((l) => l.statut === 'livree').length;
+  const nombreEnCours = s.livraisons.filter((l) => l.statut === 'en_cours').length;
+  const nombreRefuses = s.livraisons.filter((l) => l.statut === 'refusee').length;
+  s.nombreLivres = nombreLivres;
+  s.nombreEnCours = nombreEnCours;
+  s.nombreRefuses = nombreRefuses;
+  s.nombreRestants = nombreEnCours + nombreRefuses;
+  s.nombre_livraisons = s.livraisons.length;
+  s.montant_total = s.livraisons
+    .filter((l) => l.statut === 'livree')
+    .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
+  return s;
+}
+
+// Obtenir les sessions ouvertes d'un livreur (plusieurs possibles) + rattacher les livraisons sans session
 router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
 
-    // Chercher une session ouverte existante
-    let { data: session, error: sessionError } = await supabase
+    const { data: openSessionsRaw, error: openErr } = await supabase
       .from('sessions_caisse')
-      .select(`
-        *,
-        livreur:livreur_id(id, nom, email, telephone)
-      `)
+      .select('*, livreur:livreur_id(id, nom, email, telephone)')
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
-      .single();
+      .order('date_debut', { ascending: false });
 
-    if (sessionError && sessionError.code !== 'PGRST116') {
-      return res.status(500).json({ message: 'Erreur lors de la récupération', error: sessionError.message });
-    }
+    if (openErr) return res.status(500).json({ message: 'Erreur lors de la récupération', error: openErr.message });
 
-    // Si pas de session ouverte, chercher les livraisons (livrées, en cours, refusées) non assignées à une session
-    if (!session) {
-      const { data: livraisonsNonAssignees, error: livError } = await supabase
-        .from('livraisons')
-        .select('*, commande:commande_id(*)')
-        .eq('livreur_id', livreurId)
-        .in('statut', ['livree', 'en_cours', 'refusee'])
-        .is('session_caisse_id', null);
+    let openSessions = openSessionsRaw || [];
 
-      if (livError) return res.status(500).json({ message: 'Erreur livraisons', error: livError.message });
+    const { data: pendingLivraisons, error: pendingErr } = await supabase
+      .from('livraisons')
+      .select('*, commande:commande_id(*)')
+      .eq('livreur_id', livreurId)
+      .in('statut', ['livree', 'en_cours', 'refusee'])
+      .is('session_caisse_id', null);
 
-      // Créer une nouvelle session si des livraisons existent
-      if (livraisonsNonAssignees && livraisonsNonAssignees.length > 0) {
-        // Ne compter QUE les colis livrés dans le montant total
-        const montantTotal = livraisonsNonAssignees
-          .filter(l => l.statut === 'livree')
-          .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+    if (pendingErr) return res.status(500).json({ message: 'Erreur livraisons', error: pendingErr.message });
 
+    const { data: livPourRestants } = await supabase
+      .from('livraisons')
+      .select('id, session:session_caisse_id(statut)')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'en_cours')
+      .not('session_caisse_id', 'is', null);
+
+    const hasRestantsSurSessionCloturee = (livPourRestants || []).some((l) => l.session?.statut === 'cloturee');
+
+    const pending = pendingLivraisons || [];
+
+    if (pending.length > 0) {
+      const nouveauMontant = pending
+        .filter((l) => l.statut === 'livree')
+        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
+
+      if (openSessions.length === 0) {
         const { data: newSession, error: createError } = await supabase
           .from('sessions_caisse')
           .insert({
             livreur_id: livreurId,
-            montant_total: montantTotal,
-            nombre_livraisons: livraisonsNonAssignees.length,
+            montant_total: nouveauMontant,
+            nombre_livraisons: pending.length,
             statut: 'ouverte',
             date_debut: new Date().toISOString()
           })
@@ -113,96 +138,69 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
         if (createError) return res.status(500).json({ message: 'Erreur création session', error: createError.message });
 
-        // Lier les livraisons à cette session
-        const { error: updateError } = await supabase
+        const { error: linkErr } = await supabase
           .from('livraisons')
           .update({ session_caisse_id: newSession.id })
-          .in('id', livraisonsNonAssignees.map(l => l.id));
+          .in('id', pending.map((l) => l.id));
 
-        if (updateError) return res.status(500).json({ message: 'Erreur liaison livraisons', error: updateError.message });
+        if (linkErr) return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkErr.message });
+      } else if (hasRestantsSurSessionCloturee) {
+        const { data: newSession, error: createError } = await supabase
+          .from('sessions_caisse')
+          .insert({
+            livreur_id: livreurId,
+            montant_total: nouveauMontant,
+            nombre_livraisons: pending.length,
+            statut: 'ouverte',
+            date_debut: new Date().toISOString()
+          })
+          .select('*, livreur:livreur_id(id, nom, email, telephone)')
+          .single();
 
-        // Récupérer les livraisons liées
-        const { data: livraisons } = await supabase
+        if (createError) return res.status(500).json({ message: 'Erreur création session', error: createError.message });
+
+        const { error: linkErr } = await supabase
           .from('livraisons')
-          .select('*, commande:commande_id(*)')
-          .eq('session_caisse_id', newSession.id);
+          .update({ session_caisse_id: newSession.id })
+          .in('id', pending.map((l) => l.id));
 
-        session = { ...newSession, livraisons: livraisons || [] };
-      }
-    } else {
-      // Session déjà ouverte : rattacher les livraisons sans session (ex. assignées depuis Préparation colis / Livraisons)
-      const { data: pendingLivraisons, error: pendingErr } = await supabase
-        .from('livraisons')
-        .select('*, commande:commande_id(*)')
-        .eq('livreur_id', livreurId)
-        .in('statut', ['livree', 'en_cours', 'refusee'])
-        .is('session_caisse_id', null);
-
-      if (!pendingErr && pendingLivraisons && pendingLivraisons.length > 0) {
-        const nouveauMontant = pendingLivraisons
-          .filter((l) => l.statut === 'livree')
-          .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
-
+        if (linkErr) return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkErr.message });
+      } else {
+        const cible = openSessions[0];
         const { error: updSessErr } = await supabase
           .from('sessions_caisse')
           .update({
-            montant_total: (session.montant_total || 0) + nouveauMontant,
-            nombre_livraisons: (session.nombre_livraisons || 0) + pendingLivraisons.length
+            montant_total: (cible.montant_total || 0) + nouveauMontant,
+            nombre_livraisons: (cible.nombre_livraisons || 0) + pending.length
           })
-          .eq('id', session.id);
+          .eq('id', cible.id);
 
-        if (updSessErr) {
-          return res.status(500).json({ message: 'Erreur mise à jour session', error: updSessErr.message });
-        }
+        if (updSessErr) return res.status(500).json({ message: 'Erreur mise à jour session', error: updSessErr.message });
 
         const { error: linkPendingErr } = await supabase
           .from('livraisons')
-          .update({ session_caisse_id: session.id })
-          .in('id', pendingLivraisons.map((l) => l.id));
+          .update({ session_caisse_id: cible.id })
+          .in('id', pending.map((l) => l.id));
 
-        if (linkPendingErr) {
-          return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkPendingErr.message });
-        }
-
-        const { data: sessionRefreshed, error: refErr } = await supabase
-          .from('sessions_caisse')
-          .select('*, livreur:livreur_id(id, nom, email, telephone)')
-          .eq('id', session.id)
-          .single();
-
-        if (!refErr && sessionRefreshed) {
-          session = sessionRefreshed;
-        }
+        if (linkPendingErr) return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkPendingErr.message });
       }
 
-      const { data: livraisons } = await supabase
-        .from('livraisons')
-        .select('*, commande:commande_id(*)')
-        .eq('session_caisse_id', session.id);
+      const { data: refreshed } = await supabase
+        .from('sessions_caisse')
+        .select('*, livreur:livreur_id(id, nom, email, telephone)')
+        .eq('livreur_id', livreurId)
+        .eq('statut', 'ouverte')
+        .order('date_debut', { ascending: false });
 
-      session.livraisons = livraisons || [];
+      openSessions = refreshed || [];
     }
 
-    // Calculer le nombre de colis par statut
-    if (session && session.livraisons) {
-      const nombreLivres = session.livraisons.filter(l => l.statut === 'livree').length;
-      const nombreEnCours = session.livraisons.filter(l => l.statut === 'en_cours').length;
-      const nombreRefuses = session.livraisons.filter(l => l.statut === 'refusee').length;
-      session.nombreLivres = nombreLivres;
-      session.nombreEnCours = nombreEnCours;
-      session.nombreRefuses = nombreRefuses;
-      session.nombreRestants = nombreEnCours + nombreRefuses; // Pour compatibilité
+    const sessionsHydratees = [];
+    for (const s of openSessions) {
+      const h = await hydrateSessionRow(supabase, s);
+      if (h) sessionsHydratees.push(h);
     }
 
-    // Aligner compteurs sur les livraisons réelles (évite affichage vide si nombre_livraisons en base est incohérent)
-    if (session && Array.isArray(session.livraisons)) {
-      session.nombre_livraisons = session.livraisons.length;
-      session.montant_total = session.livraisons
-        .filter((l) => l.statut === 'livree')
-        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
-    }
-
-    // Chercher les colis "en cours" restants dans des sessions clôturées
     const { data: colisRestants } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*), session:session_caisse_id(id, statut, date_cloture)')
@@ -210,12 +208,14 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       .eq('statut', 'en_cours')
       .not('session_caisse_id', 'is', null);
 
-    const colisRestantsFiltres = (colisRestants || []).filter(
-      l => l.session?.statut === 'cloturee'
-    );
+    const colisRestantsFiltres = (colisRestants || []).filter((l) => l.session?.statut === 'cloturee');
+
+    const mapped = sessionsHydratees.map((s) => mapSession(s));
+    const primary = mapped[0] || null;
 
     return res.json({
-      session: session ? mapSession(session) : null,
+      session: primary,
+      sessionsOuvertes: mapped,
       colisRestants: colisRestantsFiltres
     });
   } catch (error) {
@@ -341,21 +341,21 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
   }
 });
 
-// Ajouter des livraisons à la session ouverte
+// Ajouter des livraisons à la session ouverte (même règles que GET session-active : nouvelle session si colis restants sur session clôturée)
 router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
 
-    // Chercher la session ouverte
-    let { data: session } = await supabase
+    const { data: openRows } = await supabase
       .from('sessions_caisse')
       .select('*')
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
-      .single();
+      .order('date_debut', { ascending: false });
 
-    // Chercher les livraisons (livrées, en cours, refusées) non assignées
+    const openSessions = openRows || [];
+
     const { data: nouvellesLivraisons, error: livError } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
@@ -369,13 +369,37 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       return res.json({ message: 'Aucune nouvelle livraison à ajouter' });
     }
 
-    // Ne compter QUE les colis livrés dans le montant
     const nouveauMontant = nouvellesLivraisons
-      .filter(l => l.statut === 'livree')
-      .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
+      .filter((l) => l.statut === 'livree')
+      .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
 
-    if (!session) {
-      // Créer une nouvelle session
+    const { data: livPourRestants } = await supabase
+      .from('livraisons')
+      .select('id, session:session_caisse_id(statut)')
+      .eq('livreur_id', livreurId)
+      .eq('statut', 'en_cours')
+      .not('session_caisse_id', 'is', null);
+
+    const hasRestantsSurSessionCloturee = (livPourRestants || []).some((l) => l.session?.statut === 'cloturee');
+
+    let session;
+
+    if (openSessions.length === 0) {
+      const { data: newSession, error: createError } = await supabase
+        .from('sessions_caisse')
+        .insert({
+          livreur_id: livreurId,
+          montant_total: nouveauMontant,
+          nombre_livraisons: nouvellesLivraisons.length,
+          statut: 'ouverte',
+          date_debut: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (createError) return res.status(500).json({ message: 'Erreur création', error: createError.message });
+      session = newSession;
+    } else if (hasRestantsSurSessionCloturee) {
       const { data: newSession, error: createError } = await supabase
         .from('sessions_caisse')
         .insert({
@@ -391,29 +415,30 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       if (createError) return res.status(500).json({ message: 'Erreur création', error: createError.message });
       session = newSession;
     } else {
-      // Ajouter à la session existante
+      session = openSessions[0];
       const { error: updateError } = await supabase
         .from('sessions_caisse')
         .update({
-          montant_total: session.montant_total + nouveauMontant,
-          nombre_livraisons: session.nombre_livraisons + nouvellesLivraisons.length
+          montant_total: (session.montant_total || 0) + nouveauMontant,
+          nombre_livraisons: (session.nombre_livraisons || 0) + nouvellesLivraisons.length
         })
         .eq('id', session.id);
 
       if (updateError) return res.status(500).json({ message: 'Erreur mise à jour', error: updateError.message });
     }
 
-    // Lier les livraisons à cette session
     const { error: linkError } = await supabase
       .from('livraisons')
       .update({ session_caisse_id: session.id })
-      .in('id', nouvellesLivraisons.map(l => l.id));
+      .in('id', nouvellesLivraisons.map((l) => l.id));
 
     if (linkError) return res.status(500).json({ message: 'Erreur liaison', error: linkError.message });
 
+    const hydrated = await hydrateSessionRow(supabase, session);
+
     return res.json({
       message: `${nouvellesLivraisons.length} livraison(s) ajoutée(s) à la session`,
-      session: mapSession(session),
+      session: mapSession(hydrated || session),
       montantAjoute: nouveauMontant
     });
   } catch (error) {
