@@ -128,19 +128,21 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         if (createErr) return res.status(500).json({ message: 'Erreur création session', error: createErr.message });
         openRow = newSession;
       } else {
-        await supabase
+        const { error: mergeErr } = await supabase
           .from('sessions_caisse')
           .update({
             montant_total: (openRow.montant_total || 0) + nouveauMontant,
             nombre_livraisons: (openRow.nombre_livraisons || 0) + pending.length
           })
           .eq('id', openRow.id);
+        if (mergeErr) return res.status(500).json({ message: 'Erreur fusion session', error: mergeErr.message });
       }
 
-      await supabase
+      const { error: linkErr } = await supabase
         .from('livraisons')
         .update({ session_caisse_id: openRow.id })
         .in('id', pending.map((l) => l.id));
+      if (linkErr) return res.status(500).json({ message: 'Erreur liaison livraisons', error: linkErr.message });
     }
 
     let sessionHydratee = null;

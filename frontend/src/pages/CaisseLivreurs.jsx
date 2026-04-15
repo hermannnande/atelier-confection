@@ -197,7 +197,7 @@ const CaisseLivreurs = () => {
       setSelectedLivreur(null);
       setClotureContext(null);
 
-      fetchData();
+      await fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la clôture');
       console.error(error);
