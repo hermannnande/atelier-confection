@@ -48,7 +48,7 @@ function enrichSessionCounts(session) {
   return session;
 }
 
-// Obtenir les sessions ouvertes d'un livreur (plusieurs possibles) + rattacher les livraisons sans session
+// Sessions ouvertes + livraisons sans session (lecture seule). Ouverture = POST ajouter-livraisons.
 router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { livreurId } = req.params;
@@ -75,48 +75,6 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       $or: [{ session_caisse: { $exists: false } }, { session_caisse: null }]
     }).populate('commande');
 
-    if (pendingLivraisons.length > 0) {
-      const nouveauMontant = pendingLivraisons
-        .filter((l) => l.statut === 'livree')
-        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
-
-      if (openSessions.length === 0) {
-        const newSess = new SessionCaisse({
-          livreur: livreurId,
-          livraisons: pendingLivraisons.map((l) => l._id),
-          montantTotal: nouveauMontant,
-          nombreLivraisons: pendingLivraisons.length,
-          statut: 'ouverte'
-        });
-        await newSess.save();
-        await Livraison.updateMany(
-          { _id: { $in: pendingLivraisons.map((l) => l._id) } },
-          { $set: { session_caisse: newSess._id } }
-        );
-      } else {
-        const newSess = new SessionCaisse({
-          livreur: livreurId,
-          livraisons: pendingLivraisons.map((l) => l._id),
-          montantTotal: nouveauMontant,
-          nombreLivraisons: pendingLivraisons.length,
-          statut: 'ouverte'
-        });
-        await newSess.save();
-        await Livraison.updateMany(
-          { _id: { $in: pendingLivraisons.map((l) => l._id) } },
-          { $set: { session_caisse: newSess._id } }
-        );
-      }
-
-      openSessions = await SessionCaisse.find({
-        livreur: livreurId,
-        statut: 'ouverte'
-      })
-        .sort({ dateDebut: -1 })
-        .populate('livreur', 'nom email telephone')
-        .populate(populateLiv);
-    }
-
     const sessionsOuvertes = openSessions.map((s) =>
       enrichSessionCounts(typeof s.toObject === 'function' ? s.toObject() : { ...s })
     );
@@ -140,7 +98,10 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     res.json({
       session: sessionsOuvertes[0] || null,
       sessionsOuvertes: sessionsOuvertes,
-      colisRestants: colisRestantsFiltres
+      colisRestants: colisRestantsFiltres,
+      livraisonsSansSession: pendingLivraisons.map((l) =>
+        typeof l.toObject === 'function' ? l.toObject() : l
+      )
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
@@ -346,7 +307,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
     );
 
     res.json({
-      message: `${nouvellesLivraisons.length} livraison(s) ajoutée(s) à la session`,
+      message: `Point de caisse : ${nouvellesLivraisons.length} livraison(s) rattachée(s) à une nouvelle session ouverte`,
       session: sessionOut,
       montantAjoute: nouveauMontant
     });

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2 } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const CaisseLivreurs = () => {
@@ -10,6 +10,7 @@ const CaisseLivreurs = () => {
   const { user } = useAuthStore();
   const [livreurs, setLivreurs] = useState([]);
   const [sessions, setSessions] = useState({});
+  const [livraisonsSansSessionMap, setLivraisonsSansSessionMap] = useState({});
   const [colisRestantsMap, setColisRestantsMap] = useState({});
   const [historiques, setHistoriques] = useState({});
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,7 @@ const CaisseLivreurs = () => {
       setLivreurs(livreursActifs);
 
       const sessionsData = {};
+      const sansSessionData = {};
       const colisRestantsData = {};
       const historiquesData = {};
 
@@ -70,6 +72,12 @@ const CaisseLivreurs = () => {
             if (ouvertes.length > 0) {
               sessionsData[lid] = ouvertes;
             }
+            const sans = Array.isArray(sessionRes.livraisonsSansSession)
+              ? sessionRes.livraisonsSansSession
+              : [];
+            if (sans.length > 0) {
+              sansSessionData[lid] = sans;
+            }
             if (sessionRes.colisRestants && sessionRes.colisRestants.length > 0) {
               colisRestantsData[lid] = sessionRes.colisRestants;
             }
@@ -85,6 +93,7 @@ const CaisseLivreurs = () => {
       );
 
       setSessions(sessionsData);
+      setLivraisonsSansSessionMap(sansSessionData);
       setColisRestantsMap(colisRestantsData);
       setHistoriques(historiquesData);
     } catch (error) {
@@ -157,16 +166,17 @@ const CaisseLivreurs = () => {
     setShowDetailsModal(true);
   };
 
-  const handleRafraichirLivraisons = async (livreurId) => {
+  /** Ouvre une session de caisse et rattache les livraisons sans session (point au retour du livreur). */
+  const handleOuvrirSessionCaisse = async (livreurId) => {
     try {
       const { data } = await api.post(`/sessions-caisse/livreur/${livreurId}/ajouter-livraisons`);
-      
+
       if (data.montantAjoute && data.montantAjoute > 0) {
         toast.success(`✅ ${data.message}\n💰 +${data.montantAjoute.toLocaleString('fr-FR')} FCFA`);
-        fetchData();
       } else {
-        toast.info(data.message || 'Aucune nouvelle livraison trouvée');
+        toast.success(data.message || 'Session de caisse ouverte');
       }
+      await fetchData();
     } catch (error) {
       const message = error.response?.data?.message || '';
       const errorDetails = error.response?.data?.error || '';
@@ -178,9 +188,9 @@ const CaisseLivreurs = () => {
           duration: 6000
         });
       } else if (message.includes('Aucune')) {
-        toast.info('ℹ️ Aucune nouvelle livraison à ajouter. Les livreurs doivent d\'abord marquer des colis comme "Livrée"');
+        toast.info('Aucune livraison sans session : rien à rattacher au point de caisse.');
       } else {
-        toast.error(message || 'Erreur lors du rafraîchissement');
+        toast.error(message || 'Erreur lors de l\'ouverture de session');
       }
     }
   };
@@ -277,25 +287,26 @@ const CaisseLivreurs = () => {
         </button>
       </div>
 
-      {/* Message info si aucune session */}
+      {/* Message info si aucune activité caisse sur aucun livreur */}
       {livreurs.length > 0 &&
         livreurs.every((l) => {
           const id = l._id || l.id;
-          const arr = sessions[id];
-          return !arr || arr.length === 0;
+          const noSessions = !sessions[id]?.length;
+          const noPending = !(livraisonsSansSessionMap[id]?.length > 0);
+          const noRestants = !(colisRestantsMap[id]?.length > 0);
+          return noSessions && noPending && noRestants;
         }) && (
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg flex items-start space-x-3">
           <AlertTriangle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-semibold text-blue-900 mb-1">
-              ℹ️ Aucune session active pour le moment
+              Aucune activité sur la caisse livreurs
             </p>
             <p className="text-blue-700">
-              {'Les sessions apparaissent dès qu’un colis est '}
-              <strong>assigné au livreur</strong>
-              {' (Préparation colis, Livraisons) ou '}
-              <strong>marqué livré</strong>
-              . Rechargez la page ou utilisez « Vérifier nouvelles livraisons » sur la carte du livreur.
+              Les assignations apparaissent sur chaque carte du livreur ; la session verte (caisse) se crée
+              <strong> uniquement lorsque vous cliquez sur « Ouvrir la session / faire le point »</strong>
+              , au retour du livreur. Les colis non livrés après clôture restent en rouge ; les nouvelles commandes
+              forment un bloc séparé jusqu’au point suivant.
             </p>
           </div>
         </div>
@@ -306,6 +317,7 @@ const CaisseLivreurs = () => {
         {livreurs.map((livreur) => {
           const livreurId = livreur._id || livreur.id;
           const sessionsOuvertes = sessions[livreurId] || [];
+          const pendingSansSession = livraisonsSansSessionMap[livreurId] || [];
           const colisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
           const sessionColisCount = sessionsOuvertes.reduce((sum, s) => {
@@ -317,6 +329,7 @@ const CaisseLivreurs = () => {
             return sum + n;
           }, 0);
           const hasActiveSession = sessionsOuvertes.length > 0 && sessionColisCount > 0;
+          const hasPendingSansSession = pendingSansSession.length > 0;
           const hasColisRestants = colisRestants.length > 0;
 
           return (
@@ -325,7 +338,8 @@ const CaisseLivreurs = () => {
               className={`stat-card transition-all max-w-full ${
                 hasColisRestants && !hasActiveSession ? 'border-2 border-red-400 shadow-lg' :
                 hasColisRestants && hasActiveSession ? 'border-2 border-orange-400 shadow-lg' :
-                hasActiveSession ? 'border-2 border-emerald-400 shadow-lg' : ''
+                hasActiveSession ? 'border-2 border-emerald-400 shadow-lg' :
+                hasPendingSansSession ? 'border-2 border-indigo-300 shadow-md' : ''
               }`}
             >
               {/* Header du livreur */}
@@ -352,10 +366,77 @@ const CaisseLivreurs = () => {
                       Active
                     </span>
                   )}
+                  {hasPendingSansSession && (
+                    <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full border border-indigo-200">
+                      {pendingSansSession.length} à pointer
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Sessions ouvertes (les plus récentes en premier) — avant les colis restants pour que les nouvelles assignations restent visibles en haut */}
+              {/* Livraisons assignées mais pas encore rattachées à une session (point au retour) */}
+              {hasPendingSansSession && (
+                <div className="mb-3">
+                  <div className="rounded-lg p-4 border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                        <ClipboardList size={14} className="flex-shrink-0" />
+                        En attente de point de caisse
+                      </span>
+                      <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                        {pendingSansSession.length} colis
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-indigo-800/90 mb-2">
+                      Assignées au livreur, non liées à une session clôturée ni ouverte. Ouvrez la session lorsque le livreur fait le point.
+                    </p>
+                    <div className="max-h-56 overflow-y-auto space-y-2 mb-3">
+                      {pendingSansSession.map((livraison, index) => {
+                        const commande = livraison.commande || {};
+                        const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
+                        const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
+                        const st = livraison.statut || '';
+                        const stLabel =
+                          st === 'livree' ? 'LIVRÉE' : st === 'refusee' ? 'REFUSÉE' : 'EN COURS';
+                        const stClass =
+                          st === 'livree'
+                            ? 'bg-emerald-600'
+                            : st === 'refusee'
+                              ? 'bg-red-600'
+                              : 'bg-blue-600';
+                        return (
+                          <div key={livraison._id || livraison.id || index} className="bg-white rounded-lg p-2.5 border border-indigo-100">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {clientNom}{clientVille ? ` · ${clientVille}` : ''}
+                                </p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <span className={`px-2 py-0.5 ${stClass} text-white rounded text-[10px] font-bold`}>{stLabel}</span>
+                                <p className="text-sm font-black text-gray-800 mt-0.5">
+                                  {(commande.prix || 0).toLocaleString('fr-FR')} F
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOuvrirSessionCaisse(livreurId)}
+                      className="w-full btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      <ClipboardList size={18} />
+                      Ouvrir la session / faire le point
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Sessions ouvertes (point effectué) */}
               {hasActiveSession ? (
                 <div className="space-y-3 mb-3">
                   {sessionsOuvertes.map((sessionActive, sessIdx) => (
@@ -421,14 +502,6 @@ const CaisseLivreurs = () => {
                           <CheckCircle size={18} className="flex-shrink-0" />
                           <span className="truncate">Clôturer</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRafraichirLivraisons(livreurId)}
-                          className="px-4 bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                          title="Rafraîchir les livraisons"
-                        >
-                          <TrendingUp size={18} />
-                        </button>
                         {canDeleteSessions && (
                           <button
                             type="button"
@@ -487,29 +560,31 @@ const CaisseLivreurs = () => {
                 </div>
               )}
 
-              {!hasActiveSession && (
+              {!hasActiveSession && !hasPendingSansSession && (
                 <div className="text-center py-6">
                   {!hasColisRestants && (
                     <>
                       <Package size={32} className="mx-auto text-gray-300 mb-2" />
-                      <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session active</p>
+                      <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session ouverte</p>
                       <p className="text-xs text-gray-400 mb-3">
-                        Pas de livraisons "Livrée" pour ce livreur
+                        Les assignations apparaîtront ci-dessus ; ouvrez la session quand le livreur fait le point.
                       </p>
                     </>
                   )}
                   {hasColisRestants && (
-                    <p className="text-xs text-gray-400 mb-3">
-                      Pas de nouvelle session · {colisRestants.length} colis restant{colisRestants.length > 1 ? 's' : ''} de la session précédente
+                    <p className="text-xs text-gray-500 mb-3">
+                      {colisRestants.length} colis encore en cours sur une session déjà clôturée (bloc rouge). Les
+                      prochaines assignations apparaîtront en « à pointer », séparées.
                     </p>
                   )}
                   <button
-                    onClick={() => handleRafraichirLivraisons(livreurId)}
+                    type="button"
+                    onClick={() => fetchData()}
                     className="btn btn-secondary text-sm"
-                    title="Vérifie s'il y a de nouvelles livraisons marquées comme 'Livrée'"
+                    title="Recharger les données depuis le serveur"
                   >
                     <TrendingUp size={16} className="mr-2" />
-                    Vérifier nouvelles livraisons
+                    Actualiser la carte
                   </button>
                 </div>
               )}
