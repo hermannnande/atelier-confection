@@ -124,23 +124,28 @@ const CaisseLivreurs = () => {
     setFilterDateAssignation('');
     setFilterDateCloture('');
   };
-  const matchQuickFilter = (dateStr) => {
-    if (!dateStr) return false;
+  const toLocalDate = (dateStr) => {
+    if (!dateStr) return null;
     const d = new Date(dateStr);
-    const iso = d.toISOString().slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const matchQuickFilter = (dateStr) => {
+    if (!dateStr) return true;
+    const local = toLocalDate(dateStr);
+    if (!local) return true;
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    if (quickFilter === 'today') return iso === todayStr;
+    const todayStr = toLocalDate(now);
+    if (quickFilter === 'today') return local === todayStr;
     if (quickFilter === 'yesterday') {
       const y = new Date(now); y.setDate(y.getDate() - 1);
-      return iso === y.toISOString().slice(0, 10);
+      return local === toLocalDate(y);
     }
     if (quickFilter === 'week') {
       const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
-      return d >= weekAgo && d <= now;
+      return local >= toLocalDate(weekAgo) && local <= todayStr;
     }
     if (quickFilter === 'month') {
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      return local.slice(0, 7) === todayStr.slice(0, 7);
     }
     return true;
   };
@@ -480,22 +485,17 @@ const CaisseLivreurs = () => {
 
           const matchDateExact = (d, filter) => {
             if (!filter || !d) return !filter;
-            return new Date(d).toISOString().slice(0, 10) === filter;
+            return toLocalDate(d) === filter;
           };
 
-          const filterSession = (dateVal) => {
-            if (quickFilter) return matchQuickFilter(dateVal);
-            if (filterDateAssignation) return matchDateExact(dateVal, filterDateAssignation);
-            return true;
-          };
           const filterCloture = (dateVal) => {
             if (quickFilter) return matchQuickFilter(dateVal);
             if (filterDateCloture) return matchDateExact(dateVal, filterDateCloture);
             return true;
           };
 
-          const sessionsOuvertes = (quickFilter || filterDateAssignation)
-            ? allSessionsOuvertes.filter((s) => filterSession(s.dateDebut || s.date_debut))
+          const sessionsOuvertes = filterDateAssignation
+            ? allSessionsOuvertes.filter((s) => matchDateExact(s.dateDebut || s.date_debut, filterDateAssignation))
             : allSessionsOuvertes;
 
           const colisRestants = (quickFilter || filterDateCloture)
