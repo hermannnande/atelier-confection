@@ -389,5 +389,37 @@ router.get('/livreur/:livreurId/historique', authenticate, authorize('gestionnai
   }
 });
 
+// Supprimer une session (admin uniquement) — détache les livraisons puis supprime la ligne
+router.delete('/session/:sessionId', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { sessionId } = req.params;
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('sessions_caisse')
+      .select('id')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (fetchErr) return res.status(500).json({ message: 'Erreur lors de la vérification', error: fetchErr.message });
+    if (!existing) return res.status(404).json({ message: 'Session non trouvée' });
+
+    const { error: unlinkErr } = await supabase
+      .from('livraisons')
+      .update({ session_caisse_id: null })
+      .eq('session_caisse_id', sessionId);
+
+    if (unlinkErr) return res.status(500).json({ message: 'Erreur lors du détachement des livraisons', error: unlinkErr.message });
+
+    const { error: delErr } = await supabase.from('sessions_caisse').delete().eq('id', sessionId);
+
+    if (delErr) return res.status(500).json({ message: 'Erreur lors de la suppression', error: delErr.message });
+
+    return res.json({ message: 'Session supprimée avec succès' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la suppression', error: error.message });
+  }
+});
+
 export default router;
 

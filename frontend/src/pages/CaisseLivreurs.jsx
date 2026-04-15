@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const CaisseLivreurs = () => {
@@ -19,6 +19,8 @@ const CaisseLivreurs = () => {
   const [selectedSession, setSelectedSession] = useState(null);
   const [commentaire, setCommentaire] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [sessionDeleteModal, setSessionDeleteModal] = useState(null);
+  const [deletingSession, setDeletingSession] = useState(false);
   const [showHistoriqueModal, setShowHistoriqueModal] = useState(false);
   const [historiqueComplet, setHistoriqueComplet] = useState([]);
   const [loadingHistorique, setLoadingHistorique] = useState(false);
@@ -194,6 +196,34 @@ const CaisseLivreurs = () => {
       console.error(error);
     } finally {
       setLoadingHistorique(false);
+    }
+  };
+
+  const canDeleteSessions = (user?.role || '').toLowerCase() === 'administrateur';
+
+  const reloadHistoriqueComplet = async () => {
+    try {
+      const { data } = await api.get('/sessions-caisse?statut=cloturee');
+      setHistoriqueComplet(data.sessions || []);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const confirmSupprimerSession = async () => {
+    if (!sessionDeleteModal) return;
+    const sid = sessionDeleteModal._id || sessionDeleteModal.id;
+    try {
+      setDeletingSession(true);
+      await api.delete(`/sessions-caisse/session/${sid}`);
+      toast.success('Session supprimée');
+      setSessionDeleteModal(null);
+      await fetchData();
+      if (showHistoriqueModal) await reloadHistoriqueComplet();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+    } finally {
+      setDeletingSession(false);
     }
   };
 
@@ -423,6 +453,16 @@ const CaisseLivreurs = () => {
                     >
                       <TrendingUp size={18} />
                     </button>
+                    {canDeleteSessions && (
+                      <button
+                        type="button"
+                        onClick={() => setSessionDeleteModal(sessionActive)}
+                        className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0"
+                        title="Supprimer la session ouverte (admin)"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -609,6 +649,7 @@ const CaisseLivreurs = () => {
               <button
                 onClick={() => {
                   setShowHistoriqueModal(false);
+                  setSessionDeleteModal(null);
                   setFiltreHistorique({ livreurId: '', dateDebut: '', dateFin: '' });
                   setSearchHistorique('');
                 }}
@@ -741,6 +782,11 @@ const CaisseLivreurs = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Commentaire
                         </th>
+                        {canDeleteSessions && (
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -787,6 +833,18 @@ const CaisseLivreurs = () => {
                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                               {session.commentaire || '-'}
                             </td>
+                            {canDeleteSessions && (
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => setSessionDeleteModal(session)}
+                                  className="inline-flex items-center justify-center p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                                  title="Supprimer cette session (admin)"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                     </tbody>
@@ -818,12 +876,63 @@ const CaisseLivreurs = () => {
               <button
                 onClick={() => {
                   setShowHistoriqueModal(false);
+                  setSessionDeleteModal(null);
                   setFiltreHistorique({ livreurId: '', dateDebut: '', dateFin: '' });
                   setSearchHistorique('');
                 }}
                 className="btn btn-secondary"
               >
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal suppression session (admin) */}
+      {sessionDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Trash2 className="text-red-600" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Supprimer la session ?</h3>
+            </div>
+            <p className="text-gray-600 mb-2 text-sm">
+              Cette action est irréversible. Les livraisons liées seront détachées de cette session (elles restent chez le livreur si toujours en cours).
+            </p>
+            <p className="text-xs text-gray-500 mb-6">
+              Session du livreur : <strong>{sessionDeleteModal.livreur?.nom || '—'}</strong>
+              {' · '}
+              {(sessionDeleteModal.montantTotal || 0).toLocaleString('fr-FR')} F · {sessionDeleteModal.nombreLivraisons || 0} colis
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSessionDeleteModal(null)}
+                className="flex-1 btn btn-secondary"
+                disabled={deletingSession}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmSupprimerSession}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2"
+                disabled={deletingSession}
+              >
+                {deletingSession ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                    Suppression…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={18} />
+                    Supprimer
+                  </>
+                )}
               </button>
             </div>
           </div>

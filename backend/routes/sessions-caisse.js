@@ -329,5 +329,27 @@ router.get('/livreur/:livreurId/historique', authenticate, authorize('gestionnai
   }
 });
 
+// Supprimer une session (admin uniquement)
+router.delete('/session/:sessionId', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await SessionCaisse.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: 'Session non trouvée' });
+    }
+
+    await Livraison.updateMany(
+      { session_caisse: sessionId },
+      { $set: { session_caisse: null } }
+    );
+
+    await SessionCaisse.findByIdAndDelete(sessionId);
+
+    res.json({ message: 'Session supprimée avec succès' });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors de la suppression', error: error.message });
+  }
+});
+
 export default router;
 
