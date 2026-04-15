@@ -75,16 +75,6 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       $or: [{ session_caisse: { $exists: false } }, { session_caisse: null }]
     }).populate('commande');
 
-    const livPourRestants = await Livraison.find({
-      livreur: livreurId,
-      statut: 'en_cours',
-      session_caisse: { $exists: true, $ne: null }
-    }).populate({ path: 'session_caisse', select: 'statut' });
-
-    const hasRestantsSurSessionCloturee = livPourRestants.some(
-      (l) => l.session_caisse?.statut === 'cloturee'
-    );
-
     if (pendingLivraisons.length > 0) {
       const nouveauMontant = pendingLivraisons
         .filter((l) => l.statut === 'livree')
@@ -103,7 +93,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
           { _id: { $in: pendingLivraisons.map((l) => l._id) } },
           { $set: { session_caisse: newSess._id } }
         );
-      } else if (hasRestantsSurSessionCloturee) {
+      } else {
         const newSess = new SessionCaisse({
           livreur: livreurId,
           livraisons: pendingLivraisons.map((l) => l._id),
@@ -115,16 +105,6 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
         await Livraison.updateMany(
           { _id: { $in: pendingLivraisons.map((l) => l._id) } },
           { $set: { session_caisse: newSess._id } }
-        );
-      } else {
-        const cible = openSessions[0];
-        pendingLivraisons.forEach((l) => cible.livraisons.push(l._id));
-        cible.montantTotal = (cible.montantTotal || 0) + nouveauMontant;
-        cible.nombreLivraisons = (cible.nombreLivraisons || 0) + pendingLivraisons.length;
-        await cible.save();
-        await Livraison.updateMany(
-          { _id: { $in: pendingLivraisons.map((l) => l._id) } },
-          { $set: { session_caisse: cible._id } }
         );
       }
 
@@ -329,16 +309,6 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       .filter((l) => l.statut === 'livree')
       .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
 
-    const livPourRestants = await Livraison.find({
-      livreur: livreurId,
-      statut: 'en_cours',
-      session_caisse: { $exists: true, $ne: null }
-    }).populate({ path: 'session_caisse', select: 'statut' });
-
-    const hasRestantsSurSessionCloturee = livPourRestants.some(
-      (l) => l.session_caisse?.statut === 'cloturee'
-    );
-
     let session;
 
     if (openSessions.length === 0) {
@@ -349,7 +319,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
         nombreLivraisons: nouvellesLivraisons.length,
         statut: 'ouverte'
       });
-    } else if (hasRestantsSurSessionCloturee) {
+    } else {
       session = new SessionCaisse({
         livreur: livreurId,
         livraisons: nouvellesLivraisons.map((l) => l._id),
@@ -357,11 +327,6 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
         nombreLivraisons: nouvellesLivraisons.length,
         statut: 'ouverte'
       });
-    } else {
-      session = openSessions[0];
-      session.livraisons.push(...nouvellesLivraisons.map((l) => l._id));
-      session.montantTotal = (session.montantTotal || 0) + nouveauMontant;
-      session.nombreLivraisons = (session.nombreLivraisons || 0) + nouvellesLivraisons.length;
     }
 
     await session.save();
