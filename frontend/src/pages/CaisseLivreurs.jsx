@@ -330,223 +330,219 @@ const CaisseLivreurs = () => {
         </div>
       )}
 
-      {/* Grille des livreurs */}
+      {/* Grille des livreurs — cartes vertes (sessions actives) puis cartes rouges (restants) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {livreurs.map((livreur) => {
+        {livreurs.flatMap((livreur) => {
           const livreurId = livreur._id || livreur.id;
           const sessionsOuvertes = sessions[livreurId] || [];
           const colisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
           const sessionColisCount = sessionsOuvertes.reduce((sum, s) => {
-            const n =
-              s.livraisons?.length ??
-              s.nombreLivraisons ??
-              s.nombre_livraisons ??
-              0;
+            const n = s.livraisons?.length ?? s.nombreLivraisons ?? s.nombre_livraisons ?? 0;
             return sum + n;
           }, 0);
           const hasActiveSession = sessionsOuvertes.length > 0 && sessionColisCount > 0;
           const hasColisRestants = colisRestants.length > 0;
 
-          return (
-            <div
-              key={livreurId}
-              className={`stat-card transition-all max-w-full ${
-                hasColisRestants && !hasActiveSession ? 'border-2 border-red-400 shadow-lg' :
-                hasColisRestants && hasActiveSession ? 'border-2 border-orange-400 shadow-lg' :
-                hasActiveSession ? 'border-2 border-emerald-400 shadow-lg' : ''
-              }`}
-            >
-              {/* Header du livreur */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 ${
-                    hasColisRestants ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-blue-500 to-purple-600'
-                  }`}>
-                    {livreur.nom.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="overflow-hidden">
-                    <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
-                    <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  {hasColisRestants && (
-                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200">
-                      ⚠️ {colisRestants.length} restant{colisRestants.length > 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {hasActiveSession && (
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
-                      Active
-                    </span>
-                  )}
+          const cards = [];
 
+          /* ───── CARTE VERTE : sessions actives ───── */
+          if (hasActiveSession) {
+            cards.push(
+              <div key={`${livreurId}-active`} className="stat-card transition-all max-w-full border-2 border-emerald-400 shadow-lg">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 bg-gradient-to-br from-emerald-500 to-teal-600">
+                      {livreur.nom.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
+                      <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                    Nouvelle session
+                  </span>
                 </div>
-              </div>
 
-              {/* Sessions ouvertes — un bloc vert par session */}
-              {hasActiveSession && sessionsOuvertes.map((sess, si) => {
-                const nLivres = sess.nombreLivres || 0;
-                const nEnCours = sess.nombreEnCours || 0;
-                const nRefuses = sess.nombreRefuses || 0;
-                const montant = sess.montantTotal || 0;
-                const dateS = sess.dateDebut || sess.date_debut;
-                return (
-                  <div key={sess._id || sess.id || si} className="space-y-3 mb-3">
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-emerald-700 flex items-center">
-                          <Clock size={14} className="mr-1 flex-shrink-0" />
-                          <span className="truncate">
-                            Session {sessionsOuvertes.length > 1 ? `${si + 1}/${sessionsOuvertes.length}` : 'en cours'}
-                          </span>
-                        </span>
-                        <span className="text-xs text-gray-600 truncate ml-2">
-                          depuis {formatDateCourte(dateS)}
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
-                            <span className="text-xs font-semibold text-emerald-700 block mb-1">Livrés</span>
-                            <span className="text-xl font-black text-emerald-600">{nLivres}</span>
-                          </div>
-                          <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
-                            <span className="text-xs font-semibold text-blue-700 block mb-1">En cours</span>
-                            <span className="text-xl font-black text-blue-600">{nEnCours}</span>
-                          </div>
-                          <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
-                            <span className="text-xs font-semibold text-red-700 block mb-1">Refusés</span>
-                            <span className="text-xl font-black text-red-600">{nRefuses}</span>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-white">Montant total</span>
-                            <span className="text-lg sm:text-xl font-black text-white truncate">
-                              {montant.toLocaleString('fr-FR')} F
+                {sessionsOuvertes.map((sess, si) => {
+                  const nLivres = sess.nombreLivres || 0;
+                  const nEnCours = sess.nombreEnCours || 0;
+                  const nRefuses = sess.nombreRefuses || 0;
+                  const montant = sess.montantTotal || 0;
+                  const dateS = sess.dateDebut || sess.date_debut;
+                  return (
+                    <div key={sess._id || sess.id || si} className="space-y-3 mb-3">
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-emerald-700 flex items-center">
+                            <Clock size={14} className="mr-1 flex-shrink-0" />
+                            <span className="truncate">
+                              Session {sessionsOuvertes.length > 1 ? `${si + 1}/${sessionsOuvertes.length}` : 'en cours'}
                             </span>
+                          </span>
+                          <span className="text-xs text-gray-600 truncate ml-2">
+                            depuis {formatDateCourte(dateS)}
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-emerald-50 rounded-lg px-2 py-2 text-center border border-emerald-200">
+                              <span className="text-xs font-semibold text-emerald-700 block mb-1">Livrés</span>
+                              <span className="text-xl font-black text-emerald-600">{nLivres}</span>
+                            </div>
+                            <div className="bg-blue-50 rounded-lg px-2 py-2 text-center border border-blue-200">
+                              <span className="text-xs font-semibold text-blue-700 block mb-1">En cours</span>
+                              <span className="text-xl font-black text-blue-600">{nEnCours}</span>
+                            </div>
+                            <div className="bg-red-50 rounded-lg px-2 py-2 text-center border border-red-200">
+                              <span className="text-xs font-semibold text-red-700 block mb-1">Refusés</span>
+                              <span className="text-xl font-black text-red-600">{nRefuses}</span>
+                            </div>
+                          </div>
+                          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-3 py-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-white">Montant total</span>
+                              <span className="text-lg sm:text-xl font-black text-white truncate">
+                                {montant.toLocaleString('fr-FR')} F
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleVoirDetails(livreur, sess)}
-                        className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                        title="Voir les détails des colis"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCloturerTout(livreur, [sess])}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0"
-                      >
-                        <CheckCircle size={18} className="flex-shrink-0" />
-                        <span className="truncate">Clôturer</span>
-                      </button>
-                      {canDeleteSessions && (
-                        <button
-                          type="button"
-                          onClick={() => setSessionDeleteModal(sess)}
-                          className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0"
-                          title="Supprimer cette session (admin)"
-                        >
-                          <Trash2 size={18} />
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => handleVoirDetails(livreur, sess)} className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0" title="Voir les détails des colis">
+                          <Eye size={18} />
                         </button>
-                      )}
+                        <button type="button" onClick={() => handleCloturerTout(livreur, [sess])} className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0">
+                          <CheckCircle size={18} className="flex-shrink-0" />
+                          <span className="truncate">Clôturer</span>
+                        </button>
+                        {canDeleteSessions && (
+                          <button type="button" onClick={() => setSessionDeleteModal(sess)} className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0" title="Supprimer cette session (admin)">
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {historique.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center">
+                      <Calendar size={14} className="mr-1 flex-shrink-0" />
+                      <span className="truncate">Historique ({historique.length} dernières)</span>
+                    </p>
+                    <div className="space-y-2">
+                      {historique.map((session, index) => (
+                        <div key={session._id || session.id || index} className="flex items-center justify-between text-xs bg-gray-50 rounded p-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-700 truncate">{session.nombreLivraisons} colis</p>
+                            <p className="text-gray-500 truncate">{formatDateCourte(session.dateCloture)}</p>
+                          </div>
+                          <p className="font-bold text-gray-800 ml-2 flex-shrink-0">{(session.montantTotal || 0).toLocaleString('fr-FR')} F</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                );
-              })}
+                )}
+              </div>
+            );
+          }
 
-              {/* Colis restants groupés par session clôturée */}
-              {hasColisRestants && (() => {
-                const grouped = {};
-                colisRestants.forEach((l) => {
-                  const sid = l.session?.id || l.session?._id || l.session_caisse_id || l.session_caisse?._id || 'unknown';
-                  if (!grouped[sid]) {
-                    grouped[sid] = {
-                      sessionId: sid,
-                      dateCloture: l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture || null,
-                      livraisons: []
-                    };
-                  }
-                  grouped[sid].livraisons.push(l);
-                });
-                const sessionGroups = Object.values(grouped).sort((a, b) => {
-                  if (!a.dateCloture) return 1;
-                  if (!b.dateCloture) return -1;
-                  return new Date(b.dateCloture) - new Date(a.dateCloture);
-                });
-                return sessionGroups.map((group, gi) => (
+          /* ───── CARTE ROUGE : colis restants (sessions clôturées) ───── */
+          if (hasColisRestants) {
+            const grouped = {};
+            colisRestants.forEach((l) => {
+              const sid = l.session?.id || l.session?._id || l.session_caisse_id || l.session_caisse?._id || 'unknown';
+              if (!grouped[sid]) {
+                grouped[sid] = {
+                  sessionId: sid,
+                  dateCloture: l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture || null,
+                  livraisons: []
+                };
+              }
+              grouped[sid].livraisons.push(l);
+            });
+            const sessionGroups = Object.values(grouped).sort((a, b) => {
+              if (!a.dateCloture) return 1;
+              if (!b.dateCloture) return -1;
+              return new Date(b.dateCloture) - new Date(a.dateCloture);
+            });
+
+            cards.push(
+              <div key={`${livreurId}-restants`} className="stat-card transition-all max-w-full border-2 border-red-400 shadow-lg">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 bg-gradient-to-br from-red-500 to-red-600">
+                      {livreur.nom.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
+                      <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200">
+                    {colisRestants.length} restant{colisRestants.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                {sessionGroups.map((group, gi) => (
                   <SessionClotureBlock key={group.sessionId} group={group} index={gi} total={sessionGroups.length} />
-                ));
-              })()}
+                ))}
+              </div>
+            );
+          }
 
-              {!hasActiveSession && (
+          /* ───── CARTE NEUTRE : aucune activité ───── */
+          if (!hasActiveSession && !hasColisRestants) {
+            cards.push(
+              <div key={livreurId} className="stat-card transition-all max-w-full">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600">
+                      {livreur.nom.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <h3 className="font-bold text-gray-800 truncate">{livreur.nom}</h3>
+                      <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
+                    </div>
+                  </div>
+                </div>
                 <div className="text-center py-6">
-                  {!hasColisRestants && (
-                    <>
-                      <Package size={32} className="mx-auto text-gray-300 mb-2" />
-                      <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session ouverte</p>
-                      <p className="text-xs text-gray-400 mb-3">
-                        Les sessions de caisse apparaîtront ci-dessus lorsque des livraisons seront assignées.
-                      </p>
-                    </>
-                  )}
-                  {hasColisRestants && (
-                    <p className="text-xs text-gray-500 mb-3">
-                      {colisRestants.length} colis en cours sur des sessions clôturées (blocs rouges ci-dessus).
-                      Les prochaines assignations créeront une nouvelle session.
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => fetchData()}
-                    className="btn btn-secondary text-sm"
-                    title="Recharger les données depuis le serveur"
-                  >
+                  <Package size={32} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm text-gray-500 mb-1 font-semibold">Aucune session active</p>
+                  <p className="text-xs text-gray-400 mb-3">La session apparaît dès qu'un colis est assigné.</p>
+                  <button type="button" onClick={() => fetchData()} className="btn btn-secondary text-sm">
                     <TrendingUp size={16} className="mr-2" />
-                    Actualiser la carte
+                    Actualiser
                   </button>
                 </div>
-              )}
-
-              {/* Historique */}
-              {historique.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center">
-                    <Calendar size={14} className="mr-1 flex-shrink-0" />
-                    <span className="truncate">Historique ({historique.length} dernières)</span>
-                  </p>
-                  <div className="space-y-2">
-                    {historique.map((session, index) => (
-                      <div
-                        key={session._id || session.id || index}
-                        className="flex items-center justify-between text-xs bg-gray-50 rounded p-2"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-gray-700 truncate">
-                            {session.nombreLivraisons} colis
-                          </p>
-                          <p className="text-gray-500 truncate">
-                            {formatDateCourte(session.dateCloture)}
-                          </p>
+                {historique.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center">
+                      <Calendar size={14} className="mr-1 flex-shrink-0" />
+                      <span className="truncate">Historique ({historique.length} dernières)</span>
+                    </p>
+                    <div className="space-y-2">
+                      {historique.map((session, index) => (
+                        <div key={session._id || session.id || index} className="flex items-center justify-between text-xs bg-gray-50 rounded p-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-700 truncate">{session.nombreLivraisons} colis</p>
+                            <p className="text-gray-500 truncate">{formatDateCourte(session.dateCloture)}</p>
+                          </div>
+                          <p className="font-bold text-gray-800 ml-2 flex-shrink-0">{(session.montantTotal || 0).toLocaleString('fr-FR')} F</p>
                         </div>
-                        <p className="font-bold text-gray-800 ml-2 flex-shrink-0">
-                          {(session.montantTotal || 0).toLocaleString('fr-FR')} F
-                        </p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          );
+                )}
+              </div>
+            );
+          }
+
+          return cards;
         })}
       </div>
 
