@@ -473,12 +473,12 @@ router.delete('/session/:sessionId', authenticate, authorize('administrateur'), 
     if (fetchErr) return res.status(500).json({ message: 'Erreur lors de la vérification', error: fetchErr.message });
     if (!existing) return res.status(404).json({ message: 'Session non trouvée' });
 
-    const { error: unlinkErr } = await supabase
+    const { error: delLivErr } = await supabase
       .from('livraisons')
-      .update({ session_caisse_id: null })
+      .delete()
       .eq('session_caisse_id', sessionId);
 
-    if (unlinkErr) return res.status(500).json({ message: 'Erreur lors du détachement des livraisons', error: unlinkErr.message });
+    if (delLivErr) return res.status(500).json({ message: 'Erreur suppression livraisons', error: delLivErr.message });
 
     const { error: delErr } = await supabase.from('sessions_caisse').delete().eq('id', sessionId);
 

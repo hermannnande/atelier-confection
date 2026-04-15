@@ -413,10 +413,7 @@ router.delete('/session/:sessionId', authenticate, authorize('administrateur'), 
       return res.status(404).json({ message: 'Session non trouvée' });
     }
 
-    await Livraison.updateMany(
-      { session_caisse: sessionId },
-      { $set: { session_caisse: null } }
-    );
+    await Livraison.deleteMany({ session_caisse: sessionId });
 
     await SessionCaisse.findByIdAndDelete(sessionId);
 
