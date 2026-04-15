@@ -117,6 +117,33 @@ const CaisseLivreurs = () => {
   const [filterLivreur, setFilterLivreur] = useState('');
   const [filterDateAssignation, setFilterDateAssignation] = useState('');
   const [filterDateCloture, setFilterDateCloture] = useState('');
+  const [quickFilter, setQuickFilter] = useState('today');
+
+  const applyQuickFilter = (key) => {
+    setQuickFilter(key);
+    setFilterDateAssignation('');
+    setFilterDateCloture('');
+  };
+  const matchQuickFilter = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const iso = d.toISOString().slice(0, 10);
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    if (quickFilter === 'today') return iso === todayStr;
+    if (quickFilter === 'yesterday') {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      return iso === y.toISOString().slice(0, 10);
+    }
+    if (quickFilter === 'week') {
+      const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+      return d >= weekAgo && d <= now;
+    }
+    if (quickFilter === 'month') {
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+    return true;
+  };
 
   useEffect(() => {
     // Vérifier les permissions avant de charger les données
@@ -390,7 +417,7 @@ const CaisseLivreurs = () => {
             <input
               type="date"
               value={filterDateAssignation}
-              onChange={(e) => setFilterDateAssignation(e.target.value)}
+              onChange={(e) => { setFilterDateAssignation(e.target.value); setQuickFilter(''); }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
@@ -399,11 +426,46 @@ const CaisseLivreurs = () => {
             <input
               type="date"
               value={filterDateCloture}
-              onChange={(e) => setFilterDateCloture(e.target.value)}
+              onChange={(e) => { setFilterDateCloture(e.target.value); setQuickFilter(''); }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
         </div>
+      </div>
+
+      {/* Filtres rapides */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-gray-500 mr-1">Filtre rapide :</span>
+        {[
+          { key: 'today', label: "Aujourd'hui" },
+          { key: 'yesterday', label: 'Hier' },
+          { key: 'week', label: 'Cette semaine' },
+          { key: 'month', label: 'Ce mois' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => applyQuickFilter(key)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+              quickFilter === key
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => applyQuickFilter('')}
+          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+            !quickFilter
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+          }`}
+        >
+          Tout
+        </button>
       </div>
 
       {/* Grille des livreurs — cartes vertes (sessions actives) puis cartes rouges (restants) */}
@@ -416,19 +478,30 @@ const CaisseLivreurs = () => {
           const allColisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
 
-          const matchDate = (d, filter) => {
+          const matchDateExact = (d, filter) => {
             if (!filter || !d) return !filter;
             return new Date(d).toISOString().slice(0, 10) === filter;
           };
 
-          const sessionsOuvertes = filterDateAssignation
-            ? allSessionsOuvertes.filter((s) => matchDate(s.dateDebut || s.date_debut, filterDateAssignation))
+          const filterSession = (dateVal) => {
+            if (quickFilter) return matchQuickFilter(dateVal);
+            if (filterDateAssignation) return matchDateExact(dateVal, filterDateAssignation);
+            return true;
+          };
+          const filterCloture = (dateVal) => {
+            if (quickFilter) return matchQuickFilter(dateVal);
+            if (filterDateCloture) return matchDateExact(dateVal, filterDateCloture);
+            return true;
+          };
+
+          const sessionsOuvertes = (quickFilter || filterDateAssignation)
+            ? allSessionsOuvertes.filter((s) => filterSession(s.dateDebut || s.date_debut))
             : allSessionsOuvertes;
 
-          const colisRestants = filterDateCloture
+          const colisRestants = (quickFilter || filterDateCloture)
             ? allColisRestants.filter((l) => {
                 const dc = l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture;
-                return matchDate(dc, filterDateCloture);
+                return filterCloture(dc);
               })
             : allColisRestants;
 
@@ -594,7 +667,7 @@ const CaisseLivreurs = () => {
           }
 
           /* ───── CARTE NEUTRE : aucune activité (masquée si un filtre date est actif) ───── */
-          if (!hasActiveSession && !hasColisRestants && !filterDateAssignation && !filterDateCloture) {
+          if (!hasActiveSession && !hasColisRestants && !filterDateAssignation && !filterDateCloture && !quickFilter) {
             cards.push(
               <div key={livreurId} className="stat-card transition-all max-w-full">
                 <div className="flex items-start justify-between mb-4">
