@@ -7,6 +7,11 @@ import { useAuthStore } from '../store/authStore';
 
 function CollapsibleClotureCard({ livreur, group, dateStr, montant, canDelete, onDelete }) {
   const [open, setOpen] = useState(false);
+
+  const handleDelete = () => {
+    onDelete(group);
+  };
+
   return (
     <div className="stat-card transition-all max-w-full border-2 border-red-400 shadow-lg">
       <div className="flex items-start justify-between mb-3">
@@ -19,21 +24,9 @@ function CollapsibleClotureCard({ livreur, group, dateStr, montant, canDelete, o
             <p className="text-xs text-gray-500 truncate">{livreur.telephone}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200">
-            Clôturée
-          </span>
-          {canDelete && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(group); }}
-              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all"
-              title="Supprimer cette session (admin)"
-            >
-              <Trash2 size={16} />
-            </button>
-          )}
-        </div>
+        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full border border-red-200 flex-shrink-0">
+          Clôturée
+        </span>
       </div>
 
       <button
@@ -79,6 +72,17 @@ function CollapsibleClotureCard({ livreur, group, dateStr, montant, canDelete, o
             );
           })}
         </div>
+      )}
+
+      {canDelete && (
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="mt-3 w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all border border-red-300"
+        >
+          <Trash2 size={18} />
+          Supprimer cette session
+        </button>
       )}
     </div>
   );
