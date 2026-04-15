@@ -114,6 +114,9 @@ const CaisseLivreurs = () => {
     dateFin: ''
   });
   const [searchHistorique, setSearchHistorique] = useState('');
+  const [filterLivreur, setFilterLivreur] = useState('');
+  const [filterDateAssignation, setFilterDateAssignation] = useState('');
+  const [filterDateCloture, setFilterDateCloture] = useState('');
 
   useEffect(() => {
     // Vérifier les permissions avant de charger les données
@@ -353,13 +356,82 @@ const CaisseLivreurs = () => {
         </div>
       )}
 
+      {/* Filtres */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter size={18} className="text-gray-500" />
+          <span className="text-sm font-bold text-gray-700">Filtres</span>
+          {(filterLivreur || filterDateAssignation || filterDateCloture) && (
+            <button
+              type="button"
+              onClick={() => { setFilterLivreur(''); setFilterDateAssignation(''); setFilterDateCloture(''); }}
+              className="ml-auto text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
+            >
+              Réinitialiser
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Livreur</label>
+            <select
+              value={filterLivreur}
+              onChange={(e) => setFilterLivreur(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="">Tous les livreurs</option>
+              {livreurs.map((l) => (
+                <option key={l._id || l.id} value={l._id || l.id}>{l.nom}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Date d'assignation</label>
+            <input
+              type="date"
+              value={filterDateAssignation}
+              onChange={(e) => setFilterDateAssignation(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Date de clôture</label>
+            <input
+              type="date"
+              value={filterDateCloture}
+              onChange={(e) => setFilterDateCloture(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Grille des livreurs — cartes vertes (sessions actives) puis cartes rouges (restants) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {livreurs.flatMap((livreur) => {
+        {livreurs
+          .filter((l) => !filterLivreur || (l._id || l.id) === filterLivreur)
+          .flatMap((livreur) => {
           const livreurId = livreur._id || livreur.id;
-          const sessionsOuvertes = sessions[livreurId] || [];
-          const colisRestants = colisRestantsMap[livreurId] || [];
+          const allSessionsOuvertes = sessions[livreurId] || [];
+          const allColisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
+
+          const matchDate = (d, filter) => {
+            if (!filter || !d) return !filter;
+            return new Date(d).toISOString().slice(0, 10) === filter;
+          };
+
+          const sessionsOuvertes = filterDateAssignation
+            ? allSessionsOuvertes.filter((s) => matchDate(s.dateDebut || s.date_debut, filterDateAssignation))
+            : allSessionsOuvertes;
+
+          const colisRestants = filterDateCloture
+            ? allColisRestants.filter((l) => {
+                const dc = l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture;
+                return matchDate(dc, filterDateCloture);
+              })
+            : allColisRestants;
+
           const sessionColisCount = sessionsOuvertes.reduce((sum, s) => {
             const n = s.livraisons?.length ?? s.nombreLivraisons ?? s.nombre_livraisons ?? 0;
             return sum + n;
@@ -521,8 +593,8 @@ const CaisseLivreurs = () => {
             });
           }
 
-          /* ───── CARTE NEUTRE : aucune activité ───── */
-          if (!hasActiveSession && !hasColisRestants) {
+          /* ───── CARTE NEUTRE : aucune activité (masquée si un filtre date est actif) ───── */
+          if (!hasActiveSession && !hasColisRestants && !filterDateAssignation && !filterDateCloture) {
             cards.push(
               <div key={livreurId} className="stat-card transition-all max-w-full">
                 <div className="flex items-start justify-between mb-4">
