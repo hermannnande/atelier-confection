@@ -2,8 +2,68 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2 } from 'lucide-react';
+import { Package, Wallet, X, Calendar, CheckCircle, Clock, TrendingUp, AlertTriangle, Eye, History, Search, Filter, AlertOctagon, Phone, MapPin, Trash2, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+
+function SessionClotureBlock({ group, index, total }) {
+  const [open, setOpen] = useState(false);
+  const dateStr = group.dateCloture
+    ? new Date(group.dateCloture).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Date inconnue';
+  const montant = group.livraisons.reduce((s, l) => s + (Number(l.commande?.prix) || 0), 0);
+
+  return (
+    <div className="mb-3">
+      <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between p-3 hover:bg-red-100/40 transition-colors"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertOctagon size={14} className="text-red-600 flex-shrink-0" />
+            <span className="text-xs font-bold text-red-700 truncate">
+              Session clôturée {total > 1 ? `${index + 1}/${total}` : ''} — {dateStr}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+              {group.livraisons.length} colis · {montant.toLocaleString('fr-FR')} F
+            </span>
+            <ChevronDown size={16} className={`text-red-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
+        {open && (
+          <div className="px-3 pb-3 space-y-2">
+            {group.livraisons.map((livraison, idx) => {
+              const commande = livraison.commande || {};
+              const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
+              const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
+              return (
+                <div key={livraison._id || livraison.id || idx} className="bg-white rounded-lg p-2.5 border border-red-200">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
+                      <p className="text-xs text-gray-600 truncate">
+                        {clientNom}{clientVille ? ` \u00b7 ${clientVille}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">EN COURS</span>
+                      <p className="text-sm font-black text-gray-800 mt-0.5">
+                        {(commande.prix || 0).toLocaleString('fr-FR')} F
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const CaisseLivreurs = () => {
   const navigate = useNavigate();
@@ -404,47 +464,29 @@ const CaisseLivreurs = () => {
                 );
               })() : null}
 
-              {/* Colis restants (session clôturée mais colis encore chez le livreur) */}
-              {hasColisRestants && (
-                <div className="mb-3">
-                  <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 border-2 border-red-300">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold text-red-700 flex items-center">
-                        <AlertOctagon size={14} className="mr-1 flex-shrink-0" />
-                        Colis restants (session clôturée)
-                      </span>
-                      <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
-                        {colisRestants.length} colis
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {colisRestants.map((livraison, index) => {
-                        const commande = livraison.commande || {};
-                        const clientNom = typeof commande.client === 'object' ? commande.client?.nom : commande.client || 'N/A';
-                        const clientVille = typeof commande.client === 'object' ? commande.client?.ville : '';
-                        return (
-                          <div key={livraison._id || livraison.id || index} className="bg-white rounded-lg p-2.5 border border-red-200">
-                            <div className="flex items-center justify-between">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-gray-900 truncate">{commande.numeroCommande || 'N/A'}</p>
-                                <p className="text-xs text-gray-600 truncate">
-                                  {clientNom}{clientVille ? ` · ${clientVille}` : ''}
-                                </p>
-                              </div>
-                              <div className="text-right flex-shrink-0 ml-2">
-                                <span className="px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">EN COURS</span>
-                                <p className="text-sm font-black text-gray-800 mt-0.5">
-                                  {(commande.prix || 0).toLocaleString('fr-FR')} F
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Colis restants groupés par session clôturée */}
+              {hasColisRestants && (() => {
+                const grouped = {};
+                colisRestants.forEach((l) => {
+                  const sid = l.session?.id || l.session?._id || l.session_caisse_id || l.session_caisse?._id || 'unknown';
+                  if (!grouped[sid]) {
+                    grouped[sid] = {
+                      sessionId: sid,
+                      dateCloture: l.session?.date_cloture || l.session?.dateCloture || l.session_caisse?.dateCloture || null,
+                      livraisons: []
+                    };
+                  }
+                  grouped[sid].livraisons.push(l);
+                });
+                const sessionGroups = Object.values(grouped).sort((a, b) => {
+                  if (!a.dateCloture) return 1;
+                  if (!b.dateCloture) return -1;
+                  return new Date(b.dateCloture) - new Date(a.dateCloture);
+                });
+                return sessionGroups.map((group, gi) => (
+                  <SessionClotureBlock key={group.sessionId} group={group} index={gi} total={sessionGroups.length} />
+                ));
+              })()}
 
               {!hasActiveSession && (
                 <div className="text-center py-6">
@@ -459,8 +501,8 @@ const CaisseLivreurs = () => {
                   )}
                   {hasColisRestants && (
                     <p className="text-xs text-gray-500 mb-3">
-                      {colisRestants.length} colis encore en cours sur une session déjà clôturée (bloc rouge). Les
-                      prochaines assignations apparaîtront en « à pointer », séparées.
+                      {colisRestants.length} colis en cours sur des sessions clôturées (blocs rouges ci-dessus).
+                      Les prochaines assignations créeront une nouvelle session.
                     </p>
                   )}
                   <button
