@@ -48,23 +48,17 @@ function enrichSessionCounts(session) {
   return session;
 }
 
-// Sessions ouvertes + livraisons sans session (lecture seule). Ouverture = POST ajouter-livraisons.
+// Session ouverte du livreur : auto-crée/fusionne les livraisons sans session
 router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { livreurId } = req.params;
 
     const populateLiv = {
       path: 'livraisons',
-      populate: {
-        path: 'commande',
-        select: 'numeroCommande client modele prix dateLivraison'
-      }
+      populate: { path: 'commande', select: 'numeroCommande client modele prix dateLivraison' }
     };
 
-    let openSessions = await SessionCaisse.find({
-      livreur: livreurId,
-      statut: 'ouverte'
-    })
+    let session = await SessionCaisse.findOne({ livreur: livreurId, statut: 'ouverte' })
       .sort({ dateDebut: -1 })
       .populate('livreur', 'nom email telephone')
       .populate(populateLiv);
@@ -75,33 +69,55 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       $or: [{ session_caisse: { $exists: false } }, { session_caisse: null }]
     }).populate('commande');
 
-    const sessionsOuvertes = openSessions.map((s) =>
-      enrichSessionCounts(typeof s.toObject === 'function' ? s.toObject() : { ...s })
-    );
+    if (pendingLivraisons.length > 0) {
+      const nouveauMontant = pendingLivraisons
+        .filter((l) => l.statut === 'livree')
+        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
+
+      if (!session) {
+        session = new SessionCaisse({
+          livreur: livreurId,
+          livraisons: pendingLivraisons.map((l) => l._id),
+          montantTotal: nouveauMontant,
+          nombreLivraisons: pendingLivraisons.length,
+          statut: 'ouverte'
+        });
+      } else {
+        pendingLivraisons.forEach((l) => session.livraisons.push(l._id));
+        session.montantTotal = (session.montantTotal || 0) + nouveauMontant;
+        session.nombreLivraisons = (session.nombreLivraisons || 0) + pendingLivraisons.length;
+      }
+
+      await session.save();
+      await Livraison.updateMany(
+        { _id: { $in: pendingLivraisons.map((l) => l._id) } },
+        { $set: { session_caisse: session._id } }
+      );
+
+      session = await SessionCaisse.findById(session._id)
+        .populate('livreur', 'nom email telephone')
+        .populate(populateLiv);
+    }
+
+    let sessionOut = null;
+    if (session) {
+      sessionOut = enrichSessionCounts(typeof session.toObject === 'function' ? session.toObject() : session);
+    }
 
     const colisRestants = await Livraison.find({
       livreur: livreurId,
       statut: 'en_cours',
       session_caisse: { $exists: true, $ne: null }
     })
-      .populate({
-        path: 'session_caisse',
-        select: 'statut dateCloture'
-      })
-      .populate({
-        path: 'commande',
-        select: 'numeroCommande client modele prix dateLivraison'
-      });
+      .populate({ path: 'session_caisse', select: 'statut dateCloture' })
+      .populate({ path: 'commande', select: 'numeroCommande client modele prix dateLivraison' });
 
     const colisRestantsFiltres = colisRestants.filter((l) => l.session_caisse?.statut === 'cloturee');
 
     res.json({
-      session: sessionsOuvertes[0] || null,
-      sessionsOuvertes: sessionsOuvertes,
-      colisRestants: colisRestantsFiltres,
-      livraisonsSansSession: pendingLivraisons.map((l) =>
-        typeof l.toObject === 'function' ? l.toObject() : l
-      )
+      session: sessionOut,
+      sessionsOuvertes: sessionOut ? [sessionOut] : [],
+      colisRestants: colisRestantsFiltres
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });

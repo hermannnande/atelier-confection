@@ -1,7 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
-import { mapTimestamps, withMongoShape, mapLivraison } from '../map.js';
+import { mapTimestamps, withMongoShape } from '../map.js';
 
 const router = express.Router();
 
@@ -81,22 +81,20 @@ async function hydrateSessionRow(supabase, sess) {
   return s;
 }
 
-// Sessions ouvertes + livraisons sans session (lecture seule). Ouverture de session = POST ajouter-livraisons.
+// Session ouverte du livreur : auto-crée/fusionne les livraisons sans session dans l unique session ouverte
 router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
 
-    const { data: openSessionsRaw, error: openErr } = await supabase
+    let { data: openRow } = await supabase
       .from('sessions_caisse')
       .select('*, livreur:livreur_id(id, nom, email, telephone)')
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
-      .order('date_debut', { ascending: false });
-
-    if (openErr) return res.status(500).json({ message: 'Erreur lors de la récupération', error: openErr.message });
-
-    const openSessions = openSessionsRaw || [];
+      .order('date_debut', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     const { data: pendingLivraisons, error: pendingErr } = await supabase
       .from('livraisons')
@@ -109,10 +107,45 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
     const pending = pendingLivraisons || [];
 
-    const sessionsHydratees = [];
-    for (const s of openSessions) {
-      const h = await hydrateSessionRow(supabase, s);
-      if (h) sessionsHydratees.push(h);
+    if (pending.length > 0) {
+      const nouveauMontant = pending
+        .filter((l) => l.statut === 'livree')
+        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
+
+      if (!openRow) {
+        const { data: newSession, error: createErr } = await supabase
+          .from('sessions_caisse')
+          .insert({
+            livreur_id: livreurId,
+            montant_total: nouveauMontant,
+            nombre_livraisons: pending.length,
+            statut: 'ouverte',
+            date_debut: new Date().toISOString()
+          })
+          .select('*, livreur:livreur_id(id, nom, email, telephone)')
+          .single();
+
+        if (createErr) return res.status(500).json({ message: 'Erreur création session', error: createErr.message });
+        openRow = newSession;
+      } else {
+        await supabase
+          .from('sessions_caisse')
+          .update({
+            montant_total: (openRow.montant_total || 0) + nouveauMontant,
+            nombre_livraisons: (openRow.nombre_livraisons || 0) + pending.length
+          })
+          .eq('id', openRow.id);
+      }
+
+      await supabase
+        .from('livraisons')
+        .update({ session_caisse_id: openRow.id })
+        .in('id', pending.map((l) => l.id));
+    }
+
+    let sessionHydratee = null;
+    if (openRow) {
+      sessionHydratee = await hydrateSessionRow(supabase, openRow);
     }
 
     const { data: colisRestants } = await supabase
@@ -124,14 +157,12 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
     const colisRestantsFiltres = (colisRestants || []).filter((l) => l.session?.statut === 'cloturee');
 
-    const mapped = sessionsHydratees.map((s) => mapSession(s));
-    const primary = mapped[0] || null;
+    const mapped = sessionHydratee ? mapSession(sessionHydratee) : null;
 
     return res.json({
-      session: primary,
-      sessionsOuvertes: mapped,
-      colisRestants: colisRestantsFiltres,
-      livraisonsSansSession: pending.map((row) => mapLivraison(row))
+      session: mapped,
+      sessionsOuvertes: mapped ? [mapped] : [],
+      colisRestants: colisRestantsFiltres
     });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
