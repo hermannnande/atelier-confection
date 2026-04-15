@@ -129,6 +129,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 
     // Calculer le nombre de colis livrés et restants
     if (session && session.livraisons) {
+      session.nombreLivraisons = session.livraisons.length;
       const nombreLivres = session.livraisons.filter(l => l.statut === 'livree').length;
       const nombreRestants = session.livraisons.filter(l => ['en_cours', 'refusee'].includes(l.statut)).length;
       session._doc = session._doc || session;

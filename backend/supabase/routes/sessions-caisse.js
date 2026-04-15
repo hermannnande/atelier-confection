@@ -14,8 +14,11 @@ function mapSession(row) {
       livreur: row.livreur ?? undefined,
       gestionnaire: row.gestionnaire ?? undefined,
       livraisons: row.livraisons || [],
-      montantTotal: row.montant_total,
-      nombreLivraisons: row.nombre_livraisons,
+      montantTotal: row.montant_total ?? row.montantTotal,
+      nombreLivraisons:
+        row.nombre_livraisons ??
+        row.nombreLivraisons ??
+        (Array.isArray(row.livraisons) ? row.livraisons.length : 0),
       nombreLivres: row.nombreLivres,
       nombreEnCours: row.nombreEnCours,
       nombreRefuses: row.nombreRefuses,
@@ -189,6 +192,14 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       session.nombreEnCours = nombreEnCours;
       session.nombreRefuses = nombreRefuses;
       session.nombreRestants = nombreEnCours + nombreRefuses; // Pour compatibilité
+    }
+
+    // Aligner compteurs sur les livraisons réelles (évite affichage vide si nombre_livraisons en base est incohérent)
+    if (session && Array.isArray(session.livraisons)) {
+      session.nombre_livraisons = session.livraisons.length;
+      session.montant_total = session.livraisons
+        .filter((l) => l.statut === 'livree')
+        .reduce((sum, l) => sum + (Number(l.commande?.prix) || 0), 0);
     }
 
     // Chercher les colis "en cours" restants dans des sessions clôturées

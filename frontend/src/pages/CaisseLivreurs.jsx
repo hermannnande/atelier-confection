@@ -285,7 +285,11 @@ const CaisseLivreurs = () => {
               ℹ️ Aucune session active pour le moment
             </p>
             <p className="text-blue-700">
-              Les sessions se créent automatiquement quand les <strong>livreurs marquent des colis comme "Livrée"</strong> dans la page Livraisons.
+              {'Les sessions apparaissent dès qu’un colis est '}
+              <strong>assigné au livreur</strong>
+              {' (Préparation colis, Livraisons) ou '}
+              <strong>marqué livré</strong>
+              . Rechargez la page ou utilisez « Vérifier nouvelles livraisons » sur la carte du livreur.
             </p>
           </div>
         </div>
@@ -298,7 +302,12 @@ const CaisseLivreurs = () => {
           const sessionActive = sessions[livreurId];
           const colisRestants = colisRestantsMap[livreurId] || [];
           const historique = historiques[livreurId] || [];
-          const hasActiveSession = sessionActive && sessionActive.nombreLivraisons > 0;
+          const sessionColisCount =
+            sessionActive?.livraisons?.length ??
+            sessionActive?.nombreLivraisons ??
+            sessionActive?.nombre_livraisons ??
+            0;
+          const hasActiveSession = Boolean(sessionActive) && sessionColisCount > 0;
           const hasColisRestants = colisRestants.length > 0;
 
           return (

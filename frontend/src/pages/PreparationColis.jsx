@@ -56,13 +56,13 @@ const PreparationColis = () => {
     setAssigning(true);
     try {
       await api.post(`/livraisons/assigner`, {
-        commandeId: selectedCommande._id,
+        commandeId: selectedCommande._id || selectedCommande.id,
         livreurId: selectedLivreur
       });
       
       // Retirer immédiatement la commande de la liste pour un feedback instantané
       setCommandes(prevCommandes => 
-        prevCommandes.filter(c => c._id !== selectedCommande._id)
+        prevCommandes.filter(c => (c._id || c.id) !== (selectedCommande._id || selectedCommande.id))
       );
       
       toast.success('Commande assignée au livreur ! Visible dans Livraisons et Caisse livreurs.');
@@ -410,7 +410,7 @@ const PreparationColis = () => {
               >
                 <option value="">Choisir un livreur...</option>
                 {livreurs.map((livreur) => (
-                  <option key={livreur._id} value={livreur._id}>
+                  <option key={livreur._id || livreur.id} value={livreur._id || livreur.id}>
                     {livreur.nom} {livreur.telephone ? `- ${livreur.telephone}` : ''}
                   </option>
                 ))}
