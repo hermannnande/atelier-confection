@@ -583,22 +583,27 @@ const CaisseLivreurs = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => handleVoirDetails(livreur, sess)} className="px-4 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex-shrink-0" title="Voir les détails des colis">
-                          <Eye size={18} />
+                        <button type="button" onClick={() => handleVoirDetails(livreur, sess)} className="w-full px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold rounded-lg transition-all flex items-center justify-center gap-1" title="Voir les détails des colis">
+                          <Eye size={16} />
+                          <span className="text-xs">Détails session {sessionsOuvertes.length > 1 ? si + 1 : ''}</span>
                         </button>
-                        <button type="button" onClick={() => handleCloturerTout(livreur, [sess])} className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0">
-                          <CheckCircle size={18} className="flex-shrink-0" />
-                          <span className="truncate">Clôturer</span>
-                        </button>
-                        {canDeleteSessions && (
-                          <button type="button" onClick={() => setSessionDeleteModal(sess)} className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0" title="Supprimer cette session (admin)">
-                            <Trash2 size={18} />
-                          </button>
-                        )}
                       </div>
                     </div>
                   );
                 })}
+
+                {/* Boutons d'action globaux pour toutes les sessions */}
+                <div className="flex gap-2 mt-1">
+                  <button type="button" onClick={() => handleCloturerTout(livreur, sessionsOuvertes)} className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-2.5 rounded-lg flex items-center justify-center space-x-2 shadow-md transition-all min-w-0">
+                    <CheckCircle size={18} className="flex-shrink-0" />
+                    <span className="truncate">Clôturer {sessionsOuvertes.length > 1 ? `(${sessionsOuvertes.length} sessions)` : ''}</span>
+                  </button>
+                  {canDeleteSessions && (
+                    <button type="button" onClick={() => setSessionDeleteModal(sessionsOuvertes[0])} className="px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition-all flex-shrink-0" title="Supprimer (admin)">
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
 
                 {historique.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
