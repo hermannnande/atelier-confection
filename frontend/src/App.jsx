@@ -86,9 +86,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Commandes - Appelants, Gestionnaires, Admins */}
+          {/* Commandes - Appelants, Gestionnaires, Admins, Stylistes */}
           <Route path="commandes" element={
-            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur', 'styliste']}>
               <Commandes />
             </ProtectedRoute>
           } />
