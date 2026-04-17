@@ -160,19 +160,19 @@ const ModelesEnAttente = () => {
                 )}
 
                 {/* Infos du modèle */}
-                <div className="p-2 sm:p-3 bg-white">
-                  <p className="text-xs sm:text-sm font-black text-gray-900 truncate mb-1.5">
+                <div className="p-1.5 sm:p-3 bg-white">
+                  <p className="text-[10px] sm:text-sm font-black text-gray-900 truncate mb-1">
                     {modeleNom || 'N/A'}
                   </p>
 
-                  <div className="grid grid-cols-2 gap-1">
-                    <div className="bg-purple-50 rounded-md p-1 sm:p-1.5 text-center">
-                      <p className="text-[9px] sm:text-[10px] text-purple-500 font-bold uppercase">Taille</p>
-                      <p className="text-sm sm:text-base font-black text-purple-700">{commande.taille}</p>
+                  <div className="grid grid-cols-2 gap-0.5 sm:gap-1">
+                    <div className="bg-purple-50 rounded p-0.5 sm:p-1.5 text-center">
+                      <p className="text-[8px] sm:text-[10px] text-purple-500 font-bold uppercase">Taille</p>
+                      <p className="text-[11px] sm:text-base font-black text-purple-700">{commande.taille}</p>
                     </div>
-                    <div className="bg-pink-50 rounded-md p-1 sm:p-1.5 text-center min-w-0">
-                      <p className="text-[9px] sm:text-[10px] text-pink-500 font-bold uppercase">Couleur</p>
-                      <p className="text-[11px] sm:text-xs font-black text-pink-700 truncate">{commande.couleur}</p>
+                    <div className="bg-pink-50 rounded p-0.5 sm:p-1.5 text-center min-w-0">
+                      <p className="text-[8px] sm:text-[10px] text-pink-500 font-bold uppercase">Couleur</p>
+                      <p className="text-[10px] sm:text-xs font-black text-pink-700 truncate">{commande.couleur}</p>
                     </div>
                   </div>
                 </div>
