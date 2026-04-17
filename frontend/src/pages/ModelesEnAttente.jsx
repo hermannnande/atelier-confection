@@ -161,7 +161,7 @@ const ModelesEnAttente = () => {
 
                 {/* Infos du modèle */}
                 <div className="p-1.5 sm:p-3 bg-white">
-                  <p className="text-[10px] sm:text-sm font-black text-gray-900 truncate mb-1">
+                  <p className="text-[10px] sm:text-sm font-black text-gray-900 mb-1 break-words leading-tight">
                     {modeleNom || 'N/A'}
                   </p>
 
