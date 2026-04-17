@@ -24,6 +24,7 @@ import GestionCommandes from './pages/GestionCommandes';
 import NotificationsSMS from './pages/NotificationsSMS';
 import Presence from './pages/Presence';
 import HistoriquePresences from './pages/HistoriquePresences';
+import ModelesEnAttente from './pages/ModelesEnAttente';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -86,9 +87,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Commandes - Appelants, Gestionnaires, Admins, Stylistes */}
+          {/* Commandes - Appelants, Gestionnaires, Admins */}
           <Route path="commandes" element={
-            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur', 'styliste']}>
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
               <Commandes />
             </ProtectedRoute>
           } />
@@ -110,6 +111,13 @@ function App() {
           <Route path="preparation-colis" element={
             <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
               <PreparationColis />
+            </ProtectedRoute>
+          } />
+          
+          {/* Modèles en attente - Stylistes, Gestionnaires, Admins */}
+          <Route path="modeles-en-attente" element={
+            <ProtectedRoute allowedRoles={['styliste', 'gestionnaire', 'administrateur']}>
+              <ModelesEnAttente />
             </ProtectedRoute>
           } />
           
