@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import CountrySelector from './CountrySelector';
 import { 
   LayoutDashboard, 
   Package, 
@@ -223,9 +224,12 @@ const Layout = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 md:space-x-4">
+              {/* Selecteur de pays multi-pays */}
+              <CountrySelector />
+
               {/* Date */}
-              <div className="hidden md:block px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100/60">
+              <div className="hidden lg:block px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100/60">
                 <p className="text-sm font-bold text-gray-700">
                   {new Date().toLocaleDateString('fr-FR', { 
                     day: 'numeric',
@@ -236,12 +240,12 @@ const Layout = () => {
               </div>
 
               {/* Actions */}
-              <button className="relative p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
+              <button className="hidden md:block relative p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
                 <Bell size={22} strokeWidth={2.5} />
                 <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
               </button>
               
-              <button className="p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
+              <button className="hidden md:block p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
                 <Settings size={22} strokeWidth={2.5} />
               </button>
             </div>

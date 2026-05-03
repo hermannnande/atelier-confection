@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
 
@@ -47,10 +48,14 @@ async function hydrateLivraisons(supabase, livRows) {
   return out;
 }
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    let q = supabase.from('livraisons').select('*').order('date_assignation', { ascending: false });
+    let q = supabase
+      .from('livraisons')
+      .select('*')
+      .eq('pays_code', req.country)
+      .order('date_assignation', { ascending: false });
     if (req.user.role === 'livreur') q = q.eq('livreur_id', req.userId);
 
     const { data, error } = await q;
@@ -63,21 +68,25 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.post('/assigner', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { commandeId, livreurId, instructions } = req.body;
     const supabase = getSupabaseAdmin();
 
     const { data: commande, error: e1 } = await supabase.from('commandes').select('*').eq('id', commandeId).single();
     if (e1 || !commande) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(commande, req, res)) return;
     if (commande.statut !== 'en_stock') {
       return res.status(400).json({ message: 'La commande doit être en stock pour être assignée à un livreur' });
     }
 
-    // Vérifier le stock (optionnel maintenant, ne bloque plus l'assignation)
+    const commandeCountry = commande.pays_code || 'CI';
+
+    // Vérifier le stock dans le pays de la commande (optionnel, ne bloque pas)
     const { data: stockItem, error: e2 } = await supabase
       .from('stock')
       .select('*')
+      .eq('pays_code', commandeCountry)
       .eq('modele', commande.modele?.nom)
       .eq('taille', commande.taille)
       .eq('couleur', commande.couleur)
@@ -87,6 +96,7 @@ router.post('/assigner', authenticate, authorize('appelant', 'gestionnaire', 'ad
     const { data: livraison, error: e3 } = await supabase
       .from('livraisons')
       .insert({
+        pays_code: commandeCountry,
         commande_id: commandeId,
         livreur_id: livreurId,
         statut: 'en_cours',
@@ -164,7 +174,7 @@ router.post('/assigner', authenticate, authorize('appelant', 'gestionnaire', 'ad
 });
 
 // Mettre à jour une livraison (pour paiement, etc.)
-router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
@@ -177,6 +187,7 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
     if (!livraison) {
       return res.status(404).json({ message: 'Livraison non trouvée - aucune donnée' });
     }
+    if (!ensureCountryAccess(livraison, req, res)) return;
 
     // Autoriser la mise à jour de certains champs seulement
     const updates = {};
@@ -206,11 +217,13 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
   }
 });
 
-router.post('/:id/livree', authenticate, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
+    const livraisonCountry = livraison.pays_code || 'CI';
 
     await supabase.from('livraisons').update({ statut: 'livree', date_livraison: new Date().toISOString() }).eq('id', req.params.id);
 
@@ -229,10 +242,11 @@ router.post('/:id/livree', authenticate, authorize('livreur', 'gestionnaire', 'a
         .update({ statut: 'livree', date_livraison: new Date().toISOString(), historique })
         .eq('id', livraison.commande_id);
 
-      // réduire stock en livraison
+      // réduire stock en livraison (dans le pays de la livraison)
       const { data: stockItem } = await supabase
         .from('stock')
         .select('*')
+        .eq('pays_code', livraisonCountry)
         .eq('modele', commande.modele?.nom)
         .eq('taille', commande.taille)
         .eq('couleur', commande.couleur)
@@ -264,12 +278,13 @@ router.post('/:id/livree', authenticate, authorize('livreur', 'gestionnaire', 'a
   }
 });
 
-router.post('/:id/refusee', authenticate, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { motifRefus } = req.body;
     const supabase = getSupabaseAdmin();
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
 
     await supabase
       .from('livraisons')
@@ -299,13 +314,15 @@ router.post('/:id/refusee', authenticate, authorize('livreur', 'gestionnaire', '
   }
 });
 
-router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/confirmer-retour', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { commentaire } = req.body;
     const supabase = getSupabaseAdmin();
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
     if (livraison.statut !== 'refusee') return res.status(400).json({ message: 'Seules les livraisons refusées peuvent être retournées' });
+    const livraisonCountry = livraison.pays_code || 'CI';
 
     const { data: commande } = await supabase.from('commandes').select('*').eq('id', livraison.commande_id).single();
 
@@ -324,6 +341,7 @@ router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'ad
       const { data: stockItem } = await supabase
         .from('stock')
         .select('*')
+        .eq('pays_code', livraisonCountry)
         .eq('modele', commande.modele?.nom)
         .eq('taille', commande.taille)
         .eq('couleur', commande.couleur)
@@ -360,15 +378,16 @@ router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'ad
 });
 
 // Marquer l'argent comme remis pour un livreur
-router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
     
-    // Trouver toutes les livraisons livrées du livreur qui n'ont pas encore eu leur paiement reçu
+    // Trouver toutes les livraisons livrées (du pays actif) du livreur qui n'ont pas encore eu leur paiement reçu
     const { data: livraisons, error: selectError } = await supabase
       .from('livraisons')
       .select('id, commande_id')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'livree')
       .eq('paiement_recu', false);
@@ -390,13 +409,14 @@ router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, authorize
 
     const montantTotal = commandes ? commandes.reduce((sum, c) => sum + (c.prix || 0), 0) : 0;
 
-    // Marquer toutes ces livraisons comme payées
+    // Marquer toutes ces livraisons (du pays actif) comme payées
     const { error: updateError } = await supabase
       .from('livraisons')
       .update({
         paiement_recu: true,
         date_paiement: new Date().toISOString()
       })
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'livree')
       .eq('paiement_recu', false);

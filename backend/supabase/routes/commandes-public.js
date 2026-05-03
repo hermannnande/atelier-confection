@@ -1,14 +1,21 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
+import { resolveCountryPublic } from '../middleware/country.js';
 import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
 
 /**
- * ROUTE PUBLIQUE (sans auth) pour recevoir les commandes du site web
+ * ROUTE PUBLIQUE (sans auth) pour recevoir les commandes du site web et Google Sheets.
  * POST /api/commandes/public
+ *
+ * Multi-pays : le pays est lu via le middleware resolveCountryPublic depuis :
+ *   - body.country  (recommande, ex: "CI", "BF", "FR")
+ *   - query.country (ex: ?country=BF)
+ *   - header X-Country
+ *   - sinon fallback 'CI' (retrocompatibilite avec les integrations existantes)
  */
-router.post('/public', async (req, res) => {
+router.post('/public', resolveCountryPublic, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
@@ -69,6 +76,7 @@ router.post('/public', async (req, res) => {
         };
 
     const commandeData = {
+      pays_code: req.country, // Multi-pays : 'CI' par defaut, sinon body.country (BF, FR...)
       client: {
         nom: (client && client.trim()) || '🔍 Client à identifier',
         contact: phone.trim(),
@@ -84,7 +92,7 @@ router.post('/public', async (req, res) => {
       note_appelant: '',
       historique: [
         {
-          action: 'Commande reçue depuis le site web',
+          action: `Commande reçue depuis ${source || 'le site web'} (pays: ${req.country})`,
           statut: 'en_attente_validation',
           utilisateur: null,
           date: now

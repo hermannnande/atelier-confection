@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapTimestamps, withMongoShape } from '../map.js';
 
 const router = express.Router();
@@ -32,7 +33,7 @@ function mapSession(row) {
 }
 
 // Obtenir toutes les sessions (avec filtres)
-router.get('/', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId, statut } = req.query;
@@ -44,6 +45,7 @@ router.get('/', authenticate, authorize('gestionnaire', 'administrateur'), async
         livreur:livreur_id(id, nom, email, telephone),
         gestionnaire:gestionnaire_id(id, nom, email)
       `)
+      .eq('pays_code', req.country)
       .order('created_at', { ascending: false });
 
     if (livreurId) query = query.eq('livreur_id', livreurId);
@@ -82,7 +84,7 @@ async function hydrateSessionRow(supabase, sess) {
 }
 
 // Session ouverte du livreur : auto-crée/fusionne les livraisons sans session dans l unique session ouverte
-router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/livreur/:livreurId/session-active', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
@@ -90,6 +92,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     let { data: openRow } = await supabase
       .from('sessions_caisse')
       .select('*, livreur:livreur_id(id, nom, email, telephone)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
       .order('date_debut', { ascending: false })
@@ -99,6 +102,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     const { data: pendingLivraisons, error: pendingErr } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .in('statut', ['livree', 'en_cours', 'refusee'])
       .is('session_caisse_id', null);
@@ -115,6 +119,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
       const { data: newSession, error: createErr } = await supabase
         .from('sessions_caisse')
         .insert({
+          pays_code: req.country,
           livreur_id: livreurId,
           montant_total: nouveauMontant,
           nombre_livraisons: pending.length,
@@ -138,6 +143,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     const { data: allOpen } = await supabase
       .from('sessions_caisse')
       .select('*, livreur:livreur_id(id, nom, email, telephone)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
       .order('date_debut', { ascending: false });
@@ -151,6 +157,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
     const { data: colisRestants } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*), session:session_caisse_id(id, statut, date_cloture)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'en_cours')
       .not('session_caisse_id', 'is', null);
@@ -170,7 +177,7 @@ router.get('/livreur/:livreurId/session-active', authenticate, authorize('gestio
 });
 
 // Clôturer une session (marquer comme payée)
-router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:sessionId/cloturer', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { sessionId } = req.params;
@@ -184,6 +191,8 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
       .single();
 
     if (fetchError) return res.status(404).json({ message: 'Session non trouvée', error: fetchError.message });
+    if (!ensureCountryAccess(session, req, res)) return;
+    const sessionCountry = session.pays_code || 'CI';
 
     if (session.statut === 'cloturee') {
       return res.status(400).json({ message: 'Session déjà clôturée' });
@@ -230,10 +239,11 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
         const commande = livraison.commande;
         if (!commande) continue;
 
-        // Trouver l'item dans le stock
+        // Trouver l'item dans le stock (du pays de la session)
         const { data: stockItem, error: stockError } = await supabase
           .from('stock')
           .select('*')
+          .eq('pays_code', sessionCountry)
           .eq('modele', commande.modele?.nom || commande.modele)
           .eq('taille', commande.taille)
           .eq('couleur', commande.couleur)
@@ -288,7 +298,7 @@ router.post('/:sessionId/cloturer', authenticate, authorize('gestionnaire', 'adm
 });
 
 // Faire le point : fusionne les livraisons sans session dans l unique session ouverte (ou en cree une)
-router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
@@ -296,6 +306,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
     const { data: openRow } = await supabase
       .from('sessions_caisse')
       .select('*')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte')
       .order('date_debut', { ascending: false })
@@ -305,6 +316,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
     const { data: nouvellesLivraisons, error: livError } = await supabase
       .from('livraisons')
       .select('*, commande:commande_id(*)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .in('statut', ['livree', 'en_cours', 'refusee'])
       .is('session_caisse_id', null);
@@ -325,6 +337,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
       const { data: newSession, error: createError } = await supabase
         .from('sessions_caisse')
         .insert({
+          pays_code: req.country,
           livreur_id: livreurId,
           montant_total: nouveauMontant,
           nombre_livraisons: nouvellesLivraisons.length,
@@ -369,7 +382,7 @@ router.post('/livreur/:livreurId/ajouter-livraisons', authenticate, authorize('g
 });
 
 // Cloturer TOUTES les sessions ouvertes d un livreur d un coup
-router.post('/livreur/:livreurId/cloturer-tout', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/livreur/:livreurId/cloturer-tout', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
@@ -378,6 +391,7 @@ router.post('/livreur/:livreurId/cloturer-tout', authenticate, authorize('gestio
     const { data: openSessions, error: fetchErr } = await supabase
       .from('sessions_caisse')
       .select('*, livreur:livreur_id(nom)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'ouverte');
 
@@ -436,7 +450,7 @@ router.post('/livreur/:livreurId/cloturer-tout', authenticate, authorize('gestio
 });
 
 // Obtenir l'historique des sessions clôturées d'un livreur
-router.get('/livreur/:livreurId/historique', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/livreur/:livreurId/historique', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { livreurId } = req.params;
@@ -445,6 +459,7 @@ router.get('/livreur/:livreurId/historique', authenticate, authorize('gestionnai
     const { data: sessions, error } = await supabase
       .from('sessions_caisse')
       .select('*, gestionnaire:gestionnaire_id(id, nom)')
+      .eq('pays_code', req.country)
       .eq('livreur_id', livreurId)
       .eq('statut', 'cloturee')
       .order('date_cloture', { ascending: false })
@@ -459,19 +474,20 @@ router.get('/livreur/:livreurId/historique', authenticate, authorize('gestionnai
 });
 
 // Supprimer une session (admin uniquement) — détache les livraisons puis supprime la ligne
-router.delete('/session/:sessionId', authenticate, authorize('administrateur'), async (req, res) => {
+router.delete('/session/:sessionId', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { sessionId } = req.params;
 
     const { data: existing, error: fetchErr } = await supabase
       .from('sessions_caisse')
-      .select('id')
+      .select('id, pays_code')
       .eq('id', sessionId)
       .maybeSingle();
 
     if (fetchErr) return res.status(500).json({ message: 'Erreur lors de la vérification', error: fetchErr.message });
     if (!existing) return res.status(404).json({ message: 'Session non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const { error: delLivErr } = await supabase
       .from('livraisons')

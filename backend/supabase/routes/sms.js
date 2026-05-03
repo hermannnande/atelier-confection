@@ -1,6 +1,8 @@
 // Routes API pour la gestion des SMS
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
+import { authenticate } from '../middleware/auth.js';
+import { resolveCountry } from '../middleware/country.js';
 import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
@@ -158,15 +160,16 @@ router.put('/templates/:id', async (req, res) => {
 
 // ========================================
 // GET /api/sms/historique
-// Récupérer l'historique des SMS
+// Récupérer l'historique des SMS (filtre par pays actif)
 // ========================================
-router.get('/historique', async (req, res) => {
+router.get('/historique', authenticate, resolveCountry, async (req, res) => {
   try {
     const { limit = 50, offset = 0, statut, commande_id } = req.query;
 
     let query = supabase
       .from('sms_historique')
       .select('*')
+      .eq('pays_code', req.country)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -230,9 +233,9 @@ router.get('/historique/commande/:id', async (req, res) => {
 
 // ========================================
 // POST /api/sms/send
-// Envoyer un SMS manuel
+// Envoyer un SMS manuel (taggé avec le pays actif)
 // ========================================
-router.post('/send', async (req, res) => {
+router.post('/send', authenticate, resolveCountry, async (req, res) => {
   try {
     const { phone, message, commandeId } = req.body;
     const userId = req.user?.id;
@@ -259,8 +262,9 @@ router.post('/send', async (req, res) => {
       sms8Status &&
       (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
 
-    // Logger
+    // Logger (avec le pays actif)
     await smsService.logSMS({
+      paysCode: req.country,
       commandeId: commandeId || null,
       destinataireNom: 'Manuel',
       destinataireTelephone: smsService.formatPhoneNumber(phone),
@@ -381,9 +385,9 @@ router.put('/config/:key', async (req, res) => {
 
 // ========================================
 // POST /api/sms/test
-// Tester l'envoi d'un SMS
+// Tester l'envoi d'un SMS (taggé avec le pays actif)
 // ========================================
-router.post('/test', async (req, res) => {
+router.post('/test', authenticate, resolveCountry, async (req, res) => {
   try {
     const { phone } = req.body;
     const userId = req.user?.id;
@@ -413,8 +417,9 @@ router.post('/test', async (req, res) => {
       sms8Status &&
       (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
 
-    // Logger le SMS de test dans l'historique
+    // Logger le SMS de test dans l'historique (avec le pays actif)
     await smsService.logSMS({
+      paysCode: req.country,
       commandeId: null,
       numeroCommande: null,
       destinataireNom: 'Test',
@@ -539,36 +544,40 @@ router.get('/cron/rappel-en-couture', async (req, res) => {
 
 // ========================================
 // GET /api/sms/stats
-// Statistiques des SMS
+// Statistiques des SMS (filtre par pays actif)
 // ========================================
-router.get('/stats', async (req, res) => {
+router.get('/stats', authenticate, resolveCountry, async (req, res) => {
   try {
-    // Total SMS envoyés
+    // Total SMS envoyés (du pays actif)
     const { count: totalEnvoyes } = await supabase
       .from('sms_historique')
       .select('*', { count: 'exact', head: true })
+      .eq('pays_code', req.country)
       .eq('statut', 'envoye');
 
-    // Total SMS échoués
+    // Total SMS échoués (du pays actif)
     const { count: totalEchoues } = await supabase
       .from('sms_historique')
       .select('*', { count: 'exact', head: true })
+      .eq('pays_code', req.country)
       .eq('statut', 'echoue');
 
-    // SMS du jour
+    // SMS du jour (du pays actif)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const { count: smsAujourdhui } = await supabase
       .from('sms_historique')
       .select('*', { count: 'exact', head: true })
+      .eq('pays_code', req.country)
       .eq('statut', 'envoye')
       .gte('created_at', today.toISOString());
 
-    // Répartition par template
+    // Répartition par template (du pays actif)
     const { data: parTemplate } = await supabase
       .from('sms_historique')
       .select('template_code, statut')
+      .eq('pays_code', req.country)
       .eq('statut', 'envoye');
 
     const repartition = {};

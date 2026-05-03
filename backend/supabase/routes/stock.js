@@ -1,16 +1,21 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapStock } from '../map.js';
 
 const router = express.Router();
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const { modele, taille, couleur } = req.query;
     const supabase = getSupabaseAdmin();
 
-    let q = supabase.from('stock').select('*').order('modele', { ascending: true });
+    let q = supabase
+      .from('stock')
+      .select('*')
+      .eq('pays_code', req.country)
+      .order('modele', { ascending: true });
     if (modele) q = q.ilike('modele', `%${modele}%`);
     if (taille) q = q.eq('taille', taille);
     if (couleur) q = q.eq('couleur', couleur);
@@ -31,10 +36,10 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.get('/stats/resume', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/stats/resume', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase.from('stock').select('*');
+    const { data, error } = await supabase.from('stock').select('*').eq('pays_code', req.country);
     if (error) return res.status(500).json({ message: 'Erreur lors du calcul', error: error.message });
 
     const rows = data || [];
@@ -54,18 +59,19 @@ router.get('/stats/resume', authenticate, authorize('gestionnaire', 'administrat
   }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from('stock').select('*').eq('id', req.params.id).single();
     if (error || !data) return res.status(404).json({ message: 'Article non trouvé' });
+    if (!ensureCountryAccess(data, req, res)) return;
     return res.json({ stockItem: mapStock(data) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
   }
 });
 
-router.post('/', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { modele, taille, couleur, quantite, prix, image } = req.body;
     const supabase = getSupabaseAdmin();
@@ -73,6 +79,7 @@ router.post('/', authenticate, authorize('gestionnaire', 'administrateur'), asyn
     const { data: existing } = await supabase
       .from('stock')
       .select('*')
+      .eq('pays_code', req.country)
       .eq('modele', modele)
       .eq('taille', taille)
       .eq('couleur', couleur)
@@ -121,6 +128,7 @@ router.post('/', authenticate, authorize('gestionnaire', 'administrateur'), asyn
     const { data, error } = await supabase
       .from('stock')
       .insert({
+        pays_code: req.country,
         modele,
         taille,
         couleur,
@@ -141,13 +149,14 @@ router.post('/', authenticate, authorize('gestionnaire', 'administrateur'), asyn
 });
 
 // PUT /api/stock/:id - Modifier quantité et prix directement (Admin/Gestionnaire)
-router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { quantite, prix } = req.body;
     const supabase = getSupabaseAdmin();
 
     const { data: existing, error: e1 } = await supabase.from('stock').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Article non trouvé' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const updates = {};
     if (quantite !== undefined) {
@@ -183,13 +192,14 @@ router.put('/:id', authenticate, authorize('gestionnaire', 'administrateur'), as
   }
 });
 
-router.put('/:id/ajuster', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { quantite, type, commentaire } = req.body;
     const supabase = getSupabaseAdmin();
 
     const { data: existing, error: e1 } = await supabase.from('stock').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Article non trouvé' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const q = Number(quantite);
     let quantitePrincipale = existing.quantite_principale || 0;

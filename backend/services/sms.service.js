@@ -275,9 +275,12 @@ class SMSService {
     try {
       const supabase = getSupabaseAdmin();
       const statutFinal = data.estTest ? 'test' : (data.statut || 'envoye');
+      // Multi-pays : on tag chaque SMS avec son pays (default 'CI' pour retrocompat)
+      const paysCode = (data.paysCode && /^[A-Z]{2}$/.test(data.paysCode)) ? data.paysCode : 'CI';
       const { error } = await supabase
         .from('sms_historique')
         .insert({
+          pays_code: paysCode,
           commande_id: data.commandeId,
           numero_commande: data.numeroCommande,
           destinataire_nom: data.destinataireNom,
@@ -366,8 +369,9 @@ class SMSService {
         sms8Status &&
         (sms8Status.includes('pending') || sms8Status.includes('queue') || sms8Status.includes('scheduled'));
 
-      // Logger dans l'historique
+      // Logger dans l'historique (avec le pays de la commande)
       await this.logSMS({
+        paysCode: commande.pays_code || commande.paysCode || 'CI',
         commandeId: commande.id,
         numeroCommande: commande.numero_commande || commande.numeroCommande,
         destinataireNom: commande.client?.nom || commande.clientNom || 'Client',
@@ -401,8 +405,9 @@ class SMSService {
         // ignorer: on loggue quand même l'erreur principale
       }
 
-      // Logger l'échec
+      // Logger l'échec (avec le pays de la commande)
       await this.logSMS({
+        paysCode: commande?.pays_code || commande?.paysCode || 'CI',
         commandeId: commande.id,
         numeroCommande: commande.numero_commande || commande.numeroCommande,
         destinataireNom: commande.client?.nom || 'Client',

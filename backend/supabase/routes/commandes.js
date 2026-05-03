@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
 
@@ -48,12 +49,12 @@ function attachUsers(row, usersById) {
   return clone;
 }
 
-router.get('/', authenticate, async (req, res) => {
+router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const { statut, urgence } = req.query;
     const supabase = getSupabaseAdmin();
 
-    let q = supabase.from('commandes').select('*');
+    let q = supabase.from('commandes').select('*').eq('pays_code', req.country);
 
     // Filtres selon rôle
     if (req.user.role === 'appelant') {
@@ -92,7 +93,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
@@ -150,6 +151,7 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
 
     const commandeData = {
       numero_commande: null, // Sera généré automatiquement par le trigger
+      pays_code: req.country, // Multi-pays : la commande est creee dans le pays actif
       client,
       modele,
       taille: req.body.taille,
@@ -203,7 +205,7 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
   }
 });
 
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
@@ -217,11 +219,12 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
     // Ne pas restreindre par appelant_id
@@ -292,11 +295,12 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
   }
 });
 
-router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/valider', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -336,11 +340,12 @@ router.post('/:id/valider', authenticate, authorize('appelant', 'gestionnaire', 
 });
 
 // 📱 Route : Mettre en attente de dépôt et envoyer SMS demande d'avance
-router.post('/:id/attente-depot', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/attente-depot', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -367,11 +372,12 @@ router.post('/:id/attente-depot', authenticate, authorize('appelant', 'gestionna
   }
 });
 
-router.post('/:id/decoupe', authenticate, authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/decoupe', authenticate, resolveCountry, authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -395,11 +401,12 @@ router.post('/:id/decoupe', authenticate, authorize('styliste', 'gestionnaire', 
   }
 });
 
-router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/couture', authenticate, resolveCountry, authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -449,11 +456,12 @@ router.post('/:id/couture', authenticate, authorize('styliste', 'gestionnaire', 
   }
 });
 
-router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('couturier', 'styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -482,9 +490,11 @@ router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styli
     const taille = existing.taille;
     const couleur = existing.couleur;
 
+    const commandeCountry = existing.pays_code || 'CI';
     const { data: stockItem } = await supabase
       .from('stock')
       .select('*')
+      .eq('pays_code', commandeCountry)
       .eq('modele', modeleNom)
       .eq('taille', taille)
       .eq('couleur', couleur)
@@ -525,6 +535,7 @@ router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styli
       ];
 
       await supabase.from('stock').insert({
+        pays_code: commandeCountry,
         modele: modeleNom,
         taille,
         couleur,
@@ -558,11 +569,12 @@ router.post('/:id/terminer-couture', authenticate, authorize('couturier', 'styli
   }
 });
 
-router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/:id/annuler', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const historique = Array.isArray(existing.historique) ? existing.historique : [];
     historique.push({
@@ -588,11 +600,12 @@ router.post('/:id/annuler', authenticate, authorize('appelant', 'gestionnaire', 
 });
 
 // Supprimer une commande (Admin uniquement)
-router.delete('/:id', authenticate, authorize('administrateur'), async (req, res) => {
+router.delete('/:id', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const { error } = await supabase
       .from('commandes')
@@ -607,7 +620,7 @@ router.delete('/:id', authenticate, authorize('administrateur'), async (req, res
 });
 
 // ─── Statistiques avancées ───
-router.get('/statistiques/analyse', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/statistiques/analyse', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { periode = 'mois' } = req.query;
@@ -624,7 +637,8 @@ router.get('/statistiques/analyse', authenticate, authorize('gestionnaire', 'adm
 
     const { data: commandes, error } = await supabase
       .from('commandes')
-      .select('modele, couleur, taille, prix, statut, created_at')
+      .select('modele, couleur, taille, prix, statut, created_at, pays_code')
+      .eq('pays_code', req.country)
       .gte('created_at', dateFrom.toISOString());
 
     if (error) return res.status(500).json({ message: 'Erreur', error: error.message });

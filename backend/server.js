@@ -31,7 +31,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes (MongoDB ou Supabase)
 if (USE_SUPABASE) {
-  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }, { default: sessionCaisseRoutes }, { default: smsRoutes }, { default: attendanceRoutes }, { default: ecommerceProductsRoutes }] =
+  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }, { default: sessionCaisseRoutes }, { default: smsRoutes }, { default: attendanceRoutes }, { default: ecommerceProductsRoutes }, { default: paysRoutes }] =
     await Promise.all([
       import('./supabase/routes/auth.js'),
       import('./supabase/routes/commandes.js'),
@@ -45,9 +45,11 @@ if (USE_SUPABASE) {
       import('./supabase/routes/sms.js'),
       import('./supabase/routes/attendance.js'),
       import('./supabase/routes/ecommerce-products.js'),
+      import('./supabase/routes/pays.js'),
     ]);
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/pays', paysRoutes); // Multi-pays : liste des pays accessibles
   app.use('/api/commandes', commandeRoutes);
   app.use('/api/commandes', commandePublicRoutes); // Route publique pour le site web
   app.use('/api/stock', stockRoutes);

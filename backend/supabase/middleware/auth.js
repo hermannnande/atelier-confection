@@ -15,7 +15,7 @@ export const authenticate = async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, nom, email, role, telephone, actif')
+      .select('id, nom, email, role, telephone, actif, pays_code, pays_autorises')
       .eq('id', decoded.userId)
       .single();
 

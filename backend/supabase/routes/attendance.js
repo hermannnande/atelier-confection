@@ -19,6 +19,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapUser } from '../map.js';
 
 const router = express.Router();
@@ -56,7 +57,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // ROUTE 1 : 📍 MARQUER SON ARRIVÉE (avec validation GPS)
 // ============================================================================
 
-router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async (req, res) => {
+router.post('/mark-arrival', authenticate, resolveCountry, authorize(...ATTENDANCE_ROLES), async (req, res) => {
   try {
     const { latitude, longitude, note } = req.body;
     const userId = req.userId;
@@ -70,12 +71,17 @@ router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async
       });
     }
 
-    // Vérifier si déjà pointé aujourd'hui
+    // Multi-pays : on tag le pointage avec le pays_code de l'utilisateur (pas req.country
+    // qui peut etre un pays d'admin) car un livreur/couturier appartient a un seul pays.
+    const userPaysCode = req.user.pays_code || 'CI';
+
+    // Vérifier si déjà pointé aujourd'hui (du pays du user)
     const today = new Date().toISOString().split('T')[0];
     
     const { data: existingAttendance, error: checkError } = await supabase
       .from('attendances')
       .select('*')
+      .eq('pays_code', userPaysCode)
       .eq('user_id', userId)
       .eq('date', today)
       .maybeSingle();
@@ -95,16 +101,17 @@ router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async
       });
     }
 
-    // Récupérer la configuration de l'atelier
+    // Récupérer la configuration de l'atelier (du pays du user)
     const { data: storeConfig, error: configError } = await supabase
       .from('store_config')
       .select('*')
+      .eq('pays_code', userPaysCode)
       .maybeSingle();
 
     if (configError || !storeConfig) {
       return res.status(500).json({
         error: 'Configuration manquante',
-        message: 'La configuration GPS de l\'atelier n\'est pas définie. Contactez l\'administrateur.'
+        message: `La configuration GPS de l'atelier (${userPaysCode}) n'est pas définie. Contactez l'administrateur.`
       });
     }
 
@@ -150,10 +157,11 @@ router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async
       }
     }
 
-    // Enregistrer le pointage
+    // Enregistrer le pointage (avec le pays du user)
     const { data: attendance, error: insertError } = await supabase
       .from('attendances')
       .insert({
+        pays_code: userPaysCode,
         user_id: userId,
         date: today,
         heure_arrivee: new Date().toISOString(),
@@ -216,7 +224,7 @@ router.post('/mark-arrival', authenticate, authorize(...ATTENDANCE_ROLES), async
 // ROUTE 2 : 👋 MARQUER SON DÉPART
 // ============================================================================
 
-router.post('/mark-departure', authenticate, authorize(...ATTENDANCE_ROLES), async (req, res) => {
+router.post('/mark-departure', authenticate, resolveCountry, authorize(...ATTENDANCE_ROLES), async (req, res) => {
   try {
     const { latitude, longitude, note } = req.body;
     const userId = req.userId;
@@ -230,12 +238,15 @@ router.post('/mark-departure', authenticate, authorize(...ATTENDANCE_ROLES), asy
       });
     }
 
-    // Trouver le pointage d'aujourd'hui
+    const userPaysCode = req.user.pays_code || 'CI';
+
+    // Trouver le pointage d'aujourd'hui (du pays du user)
     const today = new Date().toISOString().split('T')[0];
     
     const { data: attendance, error: findError } = await supabase
       .from('attendances')
       .select('*')
+      .eq('pays_code', userPaysCode)
       .eq('user_id', userId)
       .eq('date', today)
       .maybeSingle();
@@ -254,16 +265,17 @@ router.post('/mark-departure', authenticate, authorize(...ATTENDANCE_ROLES), asy
       });
     }
 
-    // Récupérer la config pour calculer la distance
+    // Récupérer la config pour calculer la distance (du pays du user)
     const { data: storeConfig } = await supabase
       .from('store_config')
       .select('*')
+      .eq('pays_code', userPaysCode)
       .maybeSingle();
 
     if (!storeConfig) {
       return res.status(500).json({
         error: 'Configuration manquante',
-        message: 'La configuration GPS de l\'atelier n\'est pas définie. Contactez l\'administrateur.'
+        message: `La configuration GPS de l'atelier (${userPaysCode}) n'est pas définie. Contactez l'administrateur.`
       });
     }
 
@@ -335,6 +347,7 @@ router.get('/my-attendance-today', authenticate, async (req, res) => {
   try {
     const userId = req.userId;
     const userRole = req.user.role;
+    const userPaysCode = req.user.pays_code || 'CI';
     const supabase = getSupabaseAdmin();
 
     // Les admins et livreurs n'ont pas de pointage
@@ -350,6 +363,7 @@ router.get('/my-attendance-today', authenticate, async (req, res) => {
     const { data: attendance, error } = await supabase
       .from('attendances')
       .select('*')
+      .eq('pays_code', userPaysCode)
       .eq('user_id', userId)
       .eq('date', today)
       .maybeSingle();
@@ -388,7 +402,7 @@ router.get('/my-attendance-today', authenticate, async (req, res) => {
 // ROUTE 4 : 📋 HISTORIQUE DES PRÉSENCES (Admin/Gestionnaire)
 // ============================================================================
 
-router.get('/history', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/history', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
 
@@ -412,7 +426,8 @@ router.get('/history', authenticate, authorize('gestionnaire', 'administrateur')
           nom,
           role
         )
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .eq('pays_code', req.country);
 
     // Filtres
     if (userId) {
@@ -481,12 +496,33 @@ router.get('/history', authenticate, authorize('gestionnaire', 'administrateur')
 // ROUTE 5 : 📊 STATISTIQUES DE PRÉSENCE (Admin/Gestionnaire)
 // ============================================================================
 
-router.get('/statistics', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/statistics', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
+
+    // Multi-pays : on filtre par les user_ids du pays actif (la vue v_attendance_stats
+    // ne contient pas pays_code, on passe donc par les users)
+    const { data: usersOfCountry, error: usersErr } = await supabase
+      .from('users')
+      .select('id')
+      .eq('pays_code', req.country);
+
+    if (usersErr) {
+      return res.status(500).json({
+        error: 'Erreur serveur',
+        message: usersErr.message
+      });
+    }
+
+    const userIds = (usersOfCountry || []).map((u) => u.id);
+    if (userIds.length === 0) {
+      return res.json({ statistics: [] });
+    }
+
     const { data: stats, error } = await supabase
       .from('v_attendance_stats')
       .select('*')
+      .in('user_id', userIds)
       .order('nom', { ascending: true });
 
     if (error) {
@@ -512,18 +548,19 @@ router.get('/statistics', authenticate, authorize('gestionnaire', 'administrateu
 // ROUTE 6 : 🏢 RÉCUPÉRER LA CONFIGURATION DE L'ATELIER
 // ============================================================================
 
-router.get('/store-config', authenticate, async (req, res) => {
+router.get('/store-config', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: config, error } = await supabase
       .from('store_config')
       .select('*')
+      .eq('pays_code', req.country)
       .maybeSingle();
 
     if (error || !config) {
       return res.status(404).json({
         error: 'Configuration non trouvée',
-        message: 'La configuration GPS de l\'atelier n\'existe pas'
+        message: `La configuration GPS de l'atelier (${req.country}) n'existe pas`
       });
     }
 
@@ -542,7 +579,7 @@ router.get('/store-config', authenticate, async (req, res) => {
 // ROUTE 7 : 🔧 METTRE À JOUR LA CONFIGURATION (Admin uniquement)
 // ============================================================================
 
-router.put('/store-config', authenticate, authorize('administrateur'), async (req, res) => {
+router.put('/store-config', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
 
@@ -568,10 +605,11 @@ router.put('/store-config', authenticate, authorize('administrateur'), async (re
     if (heure_fermeture !== undefined) updates.heure_fermeture = heure_fermeture;
     if (tolerance_retard !== undefined) updates.tolerance_retard = parseInt(tolerance_retard);
 
-    // Récupérer l'ID de la config (normalement 1)
+    // Récupérer la config du pays actif (1 config par pays)
     const { data: existingConfig } = await supabase
       .from('store_config')
-      .select('id')
+      .select('id, pays_code')
+      .eq('pays_code', req.country)
       .maybeSingle();
 
     let result;
@@ -584,10 +622,10 @@ router.put('/store-config', authenticate, authorize('administrateur'), async (re
         .select('*')
         .single();
     } else {
-      // Créer
+      // Créer (avec le pays actif)
       result = await supabase
         .from('store_config')
-        .insert(updates)
+        .insert({ ...updates, pays_code: req.country })
         .select('*')
         .single();
     }
@@ -621,11 +659,23 @@ router.put('/store-config', authenticate, authorize('administrateur'), async (re
 // ROUTE 8 : 🗑️ SUPPRIMER UN POINTAGE (Admin uniquement)
 // ============================================================================
 
-router.delete('/attendances/:id', authenticate, authorize('administrateur'), async (req, res) => {
+router.delete('/attendances/:id', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
 
     const { id } = req.params;
+
+    // Verifier l'acces au pointage avant suppression
+    const { data: existing, error: fetchErr } = await supabase
+      .from('attendances')
+      .select('id, pays_code')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr || !existing) {
+      return res.status(404).json({ error: 'Pointage non trouvé', message: 'Le pointage demandé n\'existe pas' });
+    }
+    if (!ensureCountryAccess(existing, req, res)) return;
 
     const { error } = await supabase
       .from('attendances')

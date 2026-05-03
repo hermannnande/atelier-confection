@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import { resolveCountry } from '../middleware/country.js';
 
 const router = express.Router();
 
@@ -19,12 +20,12 @@ const isDateInRange = (value, dateDebut, dateFin) => {
   return true;
 };
 
-router.get('/overview', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/overview', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const [{ data: commandes }, { data: users }] = await Promise.all([
-      supabase.from('commandes').select('id, statut, prix'),
-      supabase.from('users').select('id, role, actif'),
+      supabase.from('commandes').select('id, statut, prix').eq('pays_code', req.country),
+      supabase.from('users').select('id, role, actif').eq('pays_code', req.country),
     ]);
 
     const totalCommandes = (commandes || []).length;
@@ -57,22 +58,24 @@ router.get('/overview', authenticate, authorize('gestionnaire', 'administrateur'
   }
 });
 
-router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/appelants', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
     
-    // Récupérer les appelants
+    // Récupérer les appelants du pays actif
     const { data: appelants } = await supabase
       .from('users')
       .select('id, nom, email, actif')
+      .eq('pays_code', req.country)
       .eq('role', 'appelant')
       .eq('actif', true);
 
-    // Construire la requête des commandes avec filtres de date
+    // Construire la requête des commandes (du pays actif) avec filtres de date
     let commandesQuery = supabase
       .from('commandes')
-      .select('id, appelant_id, statut, urgence, prix, created_at');
+      .select('id, appelant_id, statut, urgence, prix, created_at')
+      .eq('pays_code', req.country);
     
     // Appliquer les filtres de date si présents
     if (dateDebut) {
@@ -130,7 +133,7 @@ router.get('/appelants', authenticate, authorize('gestionnaire', 'administrateur
   }
 });
 
-router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/stylistes', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
@@ -138,13 +141,15 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
     const { data: stylistes } = await supabase
       .from('users')
       .select('id, nom, email, actif')
+      .eq('pays_code', req.country)
       .eq('role', 'styliste')
       .eq('actif', true);
     
-    // Récupérer les commandes pour calculer par date_decoupe
+    // Récupérer les commandes (du pays actif) pour calculer par date_decoupe
     const commandesQuery = supabase
       .from('commandes')
-      .select('id, styliste_id, statut, created_at, date_decoupe');
+      .select('id, styliste_id, statut, created_at, date_decoupe')
+      .eq('pays_code', req.country);
 
     const { data: commandes } = await commandesQuery;
 
@@ -181,7 +186,7 @@ router.get('/stylistes', authenticate, authorize('gestionnaire', 'administrateur
   }
 });
 
-router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/couturiers', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
@@ -189,13 +194,15 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
     const { data: couturiers } = await supabase
       .from('users')
       .select('id, nom, email, actif')
+      .eq('pays_code', req.country)
       .eq('role', 'couturier')
       .eq('actif', true);
     
-    // Récupérer les commandes pour calculer par date_couture
+    // Récupérer les commandes (du pays actif) pour calculer par date_couture
     const commandesQuery = supabase
       .from('commandes')
-      .select('id, couturier_id, statut, created_at, date_couture');
+      .select('id, couturier_id, statut, created_at, date_couture')
+      .eq('pays_code', req.country);
 
     const { data: commandes } = await commandesQuery;
 
@@ -245,7 +252,7 @@ router.get('/couturiers', authenticate, authorize('gestionnaire', 'administrateu
   }
 });
 
-router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/livreurs', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { dateDebut, dateFin } = req.query;
     const supabase = getSupabaseAdmin();
@@ -253,13 +260,15 @@ router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'
     const { data: livreurs } = await supabase
       .from('users')
       .select('id, nom, telephone, actif')
+      .eq('pays_code', req.country)
       .eq('role', 'livreur')
       .eq('actif', true);
     
-    // Construire la requête des livraisons avec filtres de date
+    // Construire la requête des livraisons (du pays actif) avec filtres de date
     let livraisonsQuery = supabase
       .from('livraisons')
-      .select('id, livreur_id, statut, commande_id, created_at');
+      .select('id, livreur_id, statut, commande_id, created_at')
+      .eq('pays_code', req.country);
     
     if (dateDebut) {
       livraisonsQuery = livraisonsQuery.gte('created_at', dateDebut);
@@ -272,7 +281,7 @@ router.get('/livreurs', authenticate, authorize('gestionnaire', 'administrateur'
     
     const [{ data: livraisons }, { data: commandes }] = await Promise.all([
       livraisonsQuery,
-      supabase.from('commandes').select('id, prix')
+      supabase.from('commandes').select('id, prix').eq('pays_code', req.country)
     ]);
 
     const prixByCommande = new Map((commandes || []).map((c) => [c.id, Number(c.prix || 0)]));

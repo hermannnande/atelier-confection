@@ -13,7 +13,7 @@ router.post('/register', authenticate, async (req, res) => {
       return res.status(403).json({ message: 'Seuls les administrateurs peuvent créer des comptes' });
     }
 
-    const { nom, email, password, role, telephone } = req.body;
+    const { nom, email, password, role, telephone, pays_code, pays_autorises } = req.body;
     const supabase = getSupabaseAdmin();
 
     const { data: existing } = await supabase
@@ -26,6 +26,18 @@ router.post('/register', authenticate, async (req, res) => {
       return res.status(400).json({ message: 'Cet email est déjà utilisé' });
     }
 
+    // Pays de l'utilisateur a creer : par defaut le pays actif de l'admin createur
+    const finalPaysCode = (pays_code && /^[A-Z]{2}$/.test(pays_code))
+      ? pays_code
+      : (req.country || req.user.pays_code || 'CI');
+
+    // Liste des pays autorises (uniquement pour admin/gestionnaire)
+    let finalPaysAutorises = null;
+    if (['administrateur', 'gestionnaire'].includes(role) && Array.isArray(pays_autorises)) {
+      finalPaysAutorises = pays_autorises.filter((c) => /^[A-Z]{2}$/.test(c));
+      if (finalPaysAutorises.length === 0) finalPaysAutorises = null;
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const { data, error } = await supabase
       .from('users')
@@ -36,8 +48,10 @@ router.post('/register', authenticate, async (req, res) => {
         role,
         telephone,
         actif: true,
+        pays_code: finalPaysCode,
+        pays_autorises: finalPaysAutorises,
       })
-      .select('id, nom, email, role, telephone, actif, created_at, updated_at')
+      .select('id, nom, email, role, telephone, actif, pays_code, pays_autorises, created_at, updated_at')
       .single();
 
     if (error) {
@@ -57,7 +71,7 @@ router.post('/login', async (req, res) => {
 
     const { data: userRow, error } = await supabase
       .from('users')
-      .select('id, nom, email, password, role, telephone, actif, created_at, updated_at')
+      .select('id, nom, email, password, role, telephone, actif, pays_code, pays_autorises, created_at, updated_at')
       .eq('email', String(email).toLowerCase())
       .maybeSingle();
 

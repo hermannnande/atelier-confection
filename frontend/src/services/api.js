@@ -9,12 +9,35 @@ const api = axios.create({
   },
 });
 
-// Intercepteur pour ajouter le token à chaque requête
+/**
+ * Lit le pays actif depuis le storage Zustand (cle 'country-storage').
+ * On lit directement le storage pour eviter une dependance circulaire entre
+ * countryStore.js (qui importe api) et ce fichier.
+ */
+function getActiveCountryCode() {
+  try {
+    const raw = localStorage.getItem('country-storage');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const code = parsed?.state?.currentCountry;
+    return code && /^[A-Z]{2}$/.test(code) ? code : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Intercepteur pour ajouter le token + le pays actif à chaque requête
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Multi-pays : ajoute X-Country pour que le backend filtre les donnees
+    const countryCode = getActiveCountryCode();
+    if (countryCode) {
+      config.headers['X-Country'] = countryCode;
     }
     return config;
   },
