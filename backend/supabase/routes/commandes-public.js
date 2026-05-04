@@ -20,7 +20,7 @@ router.post('/public', resolveCountryPublic, async (req, res) => {
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
 
-    const { token, client, phone, ville, sku, name, taille, couleur, price, image, category, source } = req.body;
+    const { token, client, phone, ville, sku, name, taille, couleur, price, image, category, source, note } = req.body;
     
     if (token !== 'NOUSUNIQUE123') {
       return res.status(401).json({ success: false, message: 'Token invalide' });
@@ -89,7 +89,7 @@ router.post('/public', resolveCountryPublic, async (req, res) => {
       statut: 'en_attente_validation',
       urgence: false,
       appelant_id: null,
-      note_appelant: '',
+      note_appelant: note ? String(note).trim() : '',
       historique: [
         {
           action: `Commande reçue depuis ${source || 'le site web'} (pays: ${req.country})`,
