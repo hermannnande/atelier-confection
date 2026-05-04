@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Section Produits — Vêtements Féminins (FR)</title>
+
+<!--
+  🇫🇷 TUNNEL DE VENTE FRANCE
+  ============================================================
+  AVANT D'UTILISER CE FICHIER, CONFIGURE 2 CHOSES :
+
+  1) GOOGLE_SCRIPT_URL (vers la fin du <script>) :
+     Remplace 'COLLE_TON_URL_APPS_SCRIPT_FR_ICI' par l'URL Web App
+     du projet Apps Script du Sheet FR.
+     Exemple: 'https://script.google.com/macros/s/AKfyc.../exec'
+
+  2) Les prix data-price dans chaque <article> :
+     Les valeurs ci-dessous (35, 45) sont des EUR par defaut.
+     Adapte-les a tes tarifs France si necessaire.
+
+  Le reste fonctionne deja:
+   - country: 'FR' est envoye a l'API pour creer la commande dans le pays France
+   - devise EUR affichee partout
+   - placeholders telephone et ville adaptes a la France
+  ============================================================
+-->
+
+<link rel="dns-prefetch" href="//nousunique.com">
+<link rel="dns-prefetch" href="//africastoresh.site">
+<link rel="dns-prefetch" href="//atelier-confection.vercel.app">
+<link rel="dns-prefetch" href="//script.google.com">
+
+<link rel="preconnect" href="https://nousunique.com" crossorigin>
+<link rel="preconnect" href="https://africastoresh.site" crossorigin>
+<link rel="preconnect" href="https://atelier-confection.vercel.app" crossorigin>
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+
+<style>
+  :root{
+    --primary:#E91E63;
+    --accent:#4CAF50;
+    --muted:#f8fafc;
+    --radius:18px;
+    --shadow:0 10px 24px rgba(0,0,0,.10);
+    --gap:14px;
+
+    --p-ink:#0b1220;
+    --p-soft:#f6f7fb;
+    --p-line:rgba(15,23,42,.10);
+    --p-gradA:#E91E63;
+    --p-gradB:#8B5CF6;
+    --p-gradC:#10B981;
+    --p-gold:#F59E0B;
+
+    --terracotta:#C96A46;
+    --bordeaux:#6d071a;
+    --or:#d4a762;
+    --beige:#fff8f4;
+    --ink:#2b1e1a;
+  }
+
+  *{box-sizing:border-box}
+  html, body { height: 100%; overflow-x: hidden; }
+  html { scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,'Helvetica Neue',Arial,sans-serif;
+    color:#111;
+    background:var(--muted);
+    min-height:100vh;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .container{max-width:min(1100px,96vw);margin:auto;padding:clamp(10px,2.5vw,16px)}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:var(--gap);
+    align-items:stretch;
+    align-content:start;
+  }
+
+  .p-card{
+    position:relative;
+    min-height:520px;
+    border-radius:18px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 80% at 10% 0%, rgba(233,30,99,.08), transparent 55%),
+      radial-gradient(120% 80% at 100% 20%, rgba(139,92,246,.08), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow:
+      0 14px 30px rgba(2,6,23,.10),
+      0 1px 0 rgba(255,255,255,.55) inset;
+    transform:translateZ(0);
+    transition: transform .24s ease, box-shadow .24s ease, filter .24s ease;
+    isolation:isolate;
+    content-visibility:auto;
+    contain:layout paint style;
+    contain-intrinsic-size:520px;
+  }
+
+  .p-card::before{
+    content:"";
+    position:absolute; inset:0;
+    padding:1px;
+    border-radius:18px;
+    background:linear-gradient(135deg,
+      rgba(233,30,99,.72),
+      rgba(139,92,246,.72),
+      rgba(16,185,129,.50)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+            mask-composite:exclude;
+    pointer-events:none;
+    opacity:.55;
+  }
+
+  .p-card::after{
+    content:"";
+    position:absolute;
+    inset:-35%;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(233,30,99,.12), transparent 40%),
+      radial-gradient(circle at 80% 30%, rgba(139,92,246,.10), transparent 42%),
+      radial-gradient(circle at 60% 80%, rgba(16,185,129,.08), transparent 45%);
+    filter: blur(14px);
+    opacity:.35;
+    pointer-events:none;
+    z-index:-1;
+  }
+
+  @media (hover:hover){
+    .p-card:hover{
+      transform: translateY(-4px);
+      box-shadow:
+        0 20px 44px rgba(2,6,23,.14),
+        0 0 0 4px rgba(233,30,99,.05);
+      filter:saturate(1.01);
+    }
+  }
+
+  .p-media{
+    width:100%;
+    aspect-ratio:4 / 5;
+    position:relative;
+    background:#f3f4f6 center/cover no-repeat;
+    overflow:hidden;
+    cursor:zoom-in;
+    contain:paint;
+  }
+
+  .p-media::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      linear-gradient(180deg, rgba(2,6,23,0) 35%, rgba(2,6,23,.44) 100%),
+      radial-gradient(70% 55% at 50% 30%, rgba(255,255,255,.12), transparent 60%);
+    pointer-events:none;
+  }
+
+  .p-media::after{
+    content:"";
+    position:absolute; inset:-30% -60%;
+    background:linear-gradient(120deg, transparent 40%, rgba(255,255,255,.45) 50%, transparent 60%);
+    transform:translateX(-160%);
+    opacity:0;
+    pointer-events:none;
+    mix-blend-mode:screen;
+  }
+
+  .p-media.flash::after{
+    opacity:1;
+    animation:mediaShine .75s ease-out forwards;
+  }
+
+  @keyframes mediaShine{
+    0%{transform:translateX(-160%); opacity:0}
+    20%{opacity:.75}
+    100%{transform:translateX(160%); opacity:0}
+  }
+
+  .thumbs{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:5px;
+    padding:8px 10px;
+    background:rgba(255,255,255,.94);
+    border-top:1px solid rgba(15,23,42,.06);
+  }
+
+  .thumbs::before{
+    content:"OFFRE LIMITÉE";
+    position:absolute;
+    top:-12px; left:10px;
+    padding:5px 8px;
+    border-radius:999px;
+    font-weight:900;
+    font-size:.66rem;
+    letter-spacing:.04em;
+    color:#fff;
+    background:linear-gradient(90deg, var(--p-gradA), var(--p-gradB));
+    box-shadow:0 10px 18px rgba(233,30,99,.18);
+  }
+
+  .thumb{
+    aspect-ratio:1/1;
+    border-radius:10px;
+    border:1px solid rgba(15,23,42,.10);
+    background:#f1f5f9 center/cover no-repeat;
+    overflow:hidden;
+    cursor:pointer;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+
+  .thumb.active{
+    border-color:rgba(233,30,99,.65);
+    box-shadow:0 8px 14px rgba(233,30,99,.14);
+    transform:translateY(-1px);
+  }
+
+  .thumb.disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    border-style:dashed;
+  }
+
+  .p-body{
+    padding:8px 10px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  .p-name{
+    margin:0;
+    font-weight:950;
+    letter-spacing:-.02em;
+    color:var(--p-ink);
+    font-size:clamp(.95rem,2vw,1.02rem);
+    line-height:1.05;
+  }
+
+  .p-desc{
+    margin:0;
+    color:#475569;
+    font-weight:700;
+    font-size:clamp(.80rem,1.8vw,.88rem);
+    line-height:1.15;
+  }
+
+  .price{
+    margin-top:4px;
+    font-weight:1000;
+    letter-spacing:-.02em;
+    font-size:clamp(.98rem,2.2vw,1.06rem);
+    color:var(--p-ink);
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .price::before{ content:"✨"; font-size:.95em; }
+
+  .btn{
+    cursor:pointer;
+    display:inline-flex;
+    justify-content:center;
+    align-items:center;
+    padding:8px 10px;
+    border-radius:12px;
+    border:0;
+    font-weight:900;
+    transition:transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+  .btn.order{
+    margin-top:6px;
+    width:100%;
+    border-radius:14px;
+    padding:10px 10px;
+    color:#fff;
+    background:linear-gradient(90deg, var(--p-gradA), var(--p-gradB), var(--p-gradA));
+    background-size:200% 100%;
+    box-shadow:
+      0 12px 22px rgba(233,30,99,.16),
+      0 0 0 4px rgba(233,30,99,.05);
+    position:relative;
+    overflow:hidden;
+    animation:btnFlow 3.5s linear infinite;
+  }
+
+  .btn.order::after{
+    content:"";
+    position:absolute;
+    inset:-30% -70%;
+    background:linear-gradient(120deg, transparent 35%, rgba(255,255,255,.40) 50%, transparent 65%);
+    transform:translateX(-160%);
+    animation:btnShimmer 2.8s linear infinite;
+    mix-blend-mode:screen;
+    pointer-events:none;
+  }
+
+  @keyframes btnShimmer{ 0%{transform:translateX(-160%)} 100%{transform:translateX(160%)} }
+  @keyframes btnFlow{ 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+
+  @media (hover:hover){
+    .btn.order:hover{
+      transform:translateY(-2px);
+      box-shadow:
+        0 18px 34px rgba(233,30,99,.20),
+        0 0 0 5px rgba(139,92,246,.06);
+    }
+  }
+
+  .sheet{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    background:#fff;
+    border-top-left-radius:20px;
+    border-top-right-radius:20px;
+    box-shadow:0 -8px 24px rgba(0,0,0,.22);
+    max-height:85vh;
+    overflow:auto;
+    z-index:50;
+    transform:translate3d(0,100%,0);
+    transition:transform .28s ease;
+    pointer-events:none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+  }
+  .sheet.open{transform:translate3d(0,0,0);pointer-events:auto;}
+
+  .sheet-head{
+    position:sticky;
+    top:0;
+    background:#fff;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 10px;
+    border-bottom:1px solid #e5e7eb;
+    z-index:1;
+  }
+
+  .sheet-title{font-weight:800;font-size:.9rem}
+  .sheet-close{
+    background:#f3f4f6;
+    border:0;
+    border-radius:8px;
+    padding:6px 8px;
+    font-weight:700;
+    cursor:pointer
+  }
+
+  .sheet-body{
+    padding:12px;
+    padding-bottom:max(12px,env(safe-area-inset-bottom));
+  }
+
+  .form{
+    --bg:linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.94));
+    --stroke:rgba(15,23,42,.10);
+    --shadow2:0 8px 18px rgba(2,6,23,.07);
+
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    max-width:620px;
+    margin:0 auto;
+    padding:14px;
+    border-radius:16px;
+    background:var(--bg);
+    border:1px solid var(--stroke);
+    box-shadow:var(--shadow2);
+  }
+
+  .form-head{
+    grid-column:1/-1;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .form-title{
+    margin:0;
+    font-weight:900;
+    letter-spacing:-.02em;
+    color:#0f172a;
+    font-size:1.05rem;
+    line-height:1.1;
+  }
+
+  .form-sub{
+    margin:3px 0 0;
+    color:#475569;
+    font-size:.86rem;
+    line-height:1.2;
+  }
+
+  .trust{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    padding:6px 8px;
+    border-radius:10px;
+    background:rgba(233,30,99,.08);
+    border:1px solid rgba(233,30,99,.18);
+    color:#7a0f33;
+    font-weight:800;
+    font-size:.76rem;
+    white-space:nowrap;
+  }
+  .trust svg{width:13px;height:13px;flex:0 0 auto}
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+
+  label{
+    font-size:.8rem;
+    color:#334155;
+    font-weight:800;
+    letter-spacing:.01em;
+    margin-bottom:0;
+  }
+
+  label .req{color:var(--primary);font-weight:900;margin-left:4px}
+
+  .hint{
+    margin-top:0;
+    font-size:.74rem;
+    color:#64748b;
+    line-height:1.15;
+  }
+
+  input,select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(2,6,23,.12);
+    background:rgba(255,255,255,.96);
+    min-height:44px;
+    font-weight:800;
+    font-size:.95rem;
+    color:#0f172a;
+    outline:none;
+    transition: box-shadow .18s ease, border-color .18s ease, transform .12s ease;
+  }
+
+  input::placeholder{color:#94a3b8;font-weight:700}
+
+  input:focus, select:focus{
+    border-color:rgba(233,30,99,.55);
+    box-shadow:0 0 0 3px rgba(233,30,99,.12), 0 8px 16px rgba(2,6,23,.06);
+    background:#fff;
+  }
+
+  input:invalid:not(:placeholder-shown){
+    border-color:rgba(239,68,68,.55);
+    box-shadow:0 0 0 3px rgba(239,68,68,.10);
+  }
+
+  #couleurField{
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #64748b 50%),
+      linear-gradient(135deg, #64748b 50%, transparent 50%),
+      linear-gradient(to right, rgba(15,23,42,.12), rgba(15,23,42,.12));
+    background-position:
+      calc(100% - 15px) 50%,
+      calc(100% - 10px) 50%,
+      calc(100% - 34px) 50%;
+    background-size:5px 5px, 5px 5px, 1px 18px;
+    background-repeat:no-repeat;
+    padding-right:42px !important;
+  }
+
+  .total{
+    grid-column:1/-1;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:12px 14px;
+    border-radius:14px;
+    background:linear-gradient(135deg, #0f172a 0%, #111827 65%, #0b1220 100%);
+    color:#fff;
+    font-weight:900;
+    margin-top:4px;
+    position:sticky;
+    bottom:0;
+    max-width:620px;
+    margin-left:auto;
+    margin-right:auto;
+    box-shadow:0 6px 14px rgba(2,6,23,.12);
+  }
+
+  .total strong{
+    font-size:1rem;
+    letter-spacing:.01em;
+  }
+
+  #submitBtn{
+    grid-column:1/-1;
+    margin-top:4px;
+    min-height:48px;
+    border-radius:12px;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 8px 16px rgba(233,30,99,.14);
+    background:var(--primary);
+    color:#fff;
+    font-size:.95rem;
+  }
+
+  #submitBtn::after{
+    content:"";
+    position:absolute;
+    inset:-20% -60%;
+    background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.35) 50%,transparent 100%);
+    transform:translateX(-150%);
+    animation:shimmer2 3s linear infinite;
+    mix-blend-mode:screen;
+    pointer-events:none;
+  }
+
+  @keyframes shimmer2{0%{transform:translateX(-150%)}100%{transform:translateX(150%)}}
+
+  .popup-overlay,
+  .loader-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    visibility:hidden;
+    transition:.22s ease;
+    z-index:1000;
+    pointer-events:none;
+    touch-action:none;
+  }
+
+  .loader-overlay{z-index:9999}
+
+  .popup-overlay.active,
+  .loader-overlay.active{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+  }
+
+  .popup{
+    background:#fff;
+    max-width:320px;
+    width:min(88vw,320px);
+    border-radius:12px;
+    box-shadow:0 8px 18px rgba(0,0,0,.22);
+    padding:12px 10px 10px;
+  }
+
+  .popup h3{
+    margin:0 0 4px;
+    font-size:.95rem;
+    font-weight:800;
+    color:#0f172a;
+  }
+
+  .popup-text{
+    font-size:.84rem;
+    line-height:1.35;
+    color:#1f2937;
+    margin:0 0 10px;
+  }
+
+  .popup-actions{display:flex;justify-content:flex-end}
+
+  .loader-box{
+    background:#fff;
+    padding:16px 18px;
+    border-radius:14px;
+    box-shadow:0 10px 24px rgba(0,0,0,.25);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:700;
+    color:#0f172a;
+    min-width:200px;
+    justify-content:center;
+  }
+
+  .spinner{
+    width:20px;
+    height:20px;
+    border:3px solid #e5e7eb;
+    border-top-color:var(--primary);
+    border-radius:50%;
+    animation:spin .9s linear infinite
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .tes-auto{
+    max-width:800px;
+    margin:18px auto 0;
+    padding:10px 8px;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--beige) 0%,#fff 100%);
+    box-shadow:0 6px 14px rgba(45,20,10,.08);
+    color:var(--ink);
+  }
+
+  .nu-logo{text-align:center;margin-bottom:4px}
+  .nu-logo img{
+    width:48px;
+    height:48px;
+    object-fit:contain;
+    border-radius:50%;
+    border:1.5px solid var(--terracotta);
+    box-shadow:0 2px 6px rgba(109,7,26,.15);
+  }
+
+  .ta-head h2{
+    margin:2px 0;
+    font:700 clamp(15px,5vw,22px)/1.1 Poppins, system-ui, sans-serif;
+    background:linear-gradient(90deg,var(--bordeaux),var(--terracotta));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-align:center;
+  }
+
+  .ta-head p{
+    margin:0 0 6px;
+    text-align:center;
+    color:#8c6d60;
+    font-size:clamp(12px,3.5vw,14px);
+  }
+
+  @media (max-width:680px){
+    :root{--gap:12px}
+
+    .thumbs{gap:5px;padding:8px}
+    .thumbs::before{
+      top:-12px;
+      left:8px;
+      font-size:.66rem;
+      padding:5px 8px;
+    }
+
+    .form{
+      grid-template-columns:1fr;
+      max-width:100%;
+      padding:12px;
+      border-radius:14px;
+      gap:8px;
+    }
+
+    .trust{display:none}
+
+    .sheet{
+      border-top-left-radius:0;
+      border-top-right-radius:0;
+      max-height:calc(100vh - env(safe-area-inset-top));
+    }
+
+    .sheet-body{
+      padding:10px;
+      padding-bottom:max(10px,env(safe-area-inset-bottom));
+    }
+
+    .total{
+      border-radius:0;
+      margin-left:-10px;
+      margin-right:-10px;
+      padding:12px 14px;
+      max-width:none;
+    }
+
+    .p-card::after{display:none}
+    .btn.order::after{opacity:.28}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important}
+    html{scroll-behavior:auto}
+    .p-card::after,
+    .p-media::after,
+    .btn.order::after{display:none}
+  }
+</style>
+</head>
+
+<body>
+
+<main class="container">
+  <section class="grid" id="productGrid">
+
+    <article class="p-card"
+      data-sku="ROBE AMINA"
+      data-name="ROBE AMINA"
+      data-price="35"
+      data-variants='{"Taille":[],"Couleur":["Noir / Blanc","Kaki / Terracotta","Blanc / Noir","Terracotta / Jaune","Noir / Bleu ciel","Blanc / Bleu bic","Noir / Saumon","Noir / Vert Treillis","Noir / Orange","Noir / Bleu bic","Kaki / Blanc","Rouge Bordeaux / Noir"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141624-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/inverse_les_couleur_202604142227-1-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604230320.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604171254-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">AMINA</h3>
+        <p class="p-desc">Pensée pour sublimer chaque silhouette.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="Robe Havila"
+      data-name="Robe Havila"
+      data-price="45"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Noir / Blanc","Terracotta / Kaki","Rouge Bordeaux / Blanc","Vert Treillis / Blanc","Rose / Blanc","Rose / Kaki"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141420-2.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141552-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141359-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604152246-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Havila</h3>
+        <p class="p-desc">Une élégance qui attire tous les regards.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="ROBE AMINA"
+      data-name="ROBE AMINA"
+      data-price="35"
+      data-variants='{"Taille":[],"Couleur":["Noir / Blanc","Kaki / Terracotta","Blanc / Noir","Terracotta / Jaune","Noir / Bleu ciel","Blanc / Bleu bic","Noir / Saumon","Noir / Vert Treillis","Noir / Orange","Noir / Bleu bic","Kaki / Blanc","Rouge Bordeaux / Noir"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141749.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141901-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/enleve_la_fleur_202604141907-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/WhatsApp-Image-2026-04-28-at-13.13.57.jpeg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">AMINA</h3>
+        <p class="p-desc">Pensée pour sublimer chaque silhouette.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="Robe Havila"
+      data-name="Robe Havila"
+      data-price="45"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Noir / Blanc","Terracotta / Kaki","Rouge Bordeaux / Blanc","Vert Treillis / Blanc","Rose / Blanc","Rose / Kaki"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141336-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141404-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/suprie_limage_de_202604141605-2.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141425-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Havila</h3>
+        <p class="p-desc">Une élégance qui attire tous les regards.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+
+    <article class="p-card"
+      data-sku="ROBE AMINA"
+      data-name="ROBE AMINA"
+      data-price="35"
+      data-variants='{"Taille":[],"Couleur":["Noir / Blanc","Kaki / Terracotta","Blanc / Noir","Terracotta / Jaune","Noir / Bleu ciel","Blanc / Bleu bic","Noir / Saumon","Noir / Vert Treillis","Noir / Orange","Noir / Bleu bic","Kaki / Blanc","Rouge Bordeaux / Noir"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141634-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141723-2.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141632-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604142234-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">AMINA</h3>
+        <p class="p-desc">Pensée pour sublimer chaque silhouette.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="Robe Havila"
+      data-name="Robe Havila"
+      data-price="45"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Noir / Blanc","Terracotta / Kaki","Rouge Bordeaux / Blanc","Vert Treillis / Blanc","Rose / Blanc","Rose / Kaki"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/la_longueur_juste_202604152257-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141539-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141334-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141425-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Havila</h3>
+        <p class="p-desc">Une élégance qui attire tous les regards.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="ROBE AMINA"
+      data-name="ROBE AMINA"
+      data-price="35"
+      data-variants='{"Taille":[],"Couleur":["Noir / Blanc","Kaki / Terracotta","Blanc / Noir","Terracotta / Jaune","Noir / Bleu ciel","Blanc / Bleu bic","Noir / Saumon","Noir / Vert Treillis","Noir / Orange","Noir / Bleu bic","Kaki / Blanc","Rouge Bordeaux / Noir"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/WhatsApp-Image-2026-04-28-at-13.13.57-2.jpeg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604142236-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141716-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604171243-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">AMINA</h3>
+        <p class="p-desc">Pensée pour sublimer chaque silhouette.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+    <article class="p-card"
+      data-sku="Robe Havila"
+      data-name="Robe Havila"
+      data-price="45"
+      data-variants='{"Taille":["S","M","L","XL","2XL","3XL"],"Couleur":["Noir / Blanc","Terracotta / Kaki","Rouge Bordeaux / Blanc","Vert Treillis / Blanc","Rose / Blanc","Rose / Kaki"]}'
+      data-images='[
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141559-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604161452-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604141607-1.jpg",
+        "https://nousunique.com/wp-content/uploads/2026/04/fait_porter_la_202604161445-1.jpg"
+      ]'>
+      <div class="p-media" aria-label="Image produit"></div>
+      <div class="thumbs"></div>
+      <div class="p-body">
+        <h3 class="p-name">Havila</h3>
+        <p class="p-desc">Une élégance qui attire tous les regards.</p>
+        <div class="price" data-bind="price"></div>
+        <button class="btn order js-open-sheet">Commander</button>
+      </div>
+    </article>
+
+
+  </section>
+</main>
+
+<section class="tes-auto">
+  <header class="ta-head">
+    <div class="nu-logo">
+      <img src="https://africastoresh.site/wp-content/uploads/2025/10/Copie-de-Black-White-Yellow-Simple-Initial-Name-Logo.pdf.png" alt="Logo" loading="lazy" decoding="async">
+    </div>
+    <h2>Elles adorent leurs tenues Nous Unique</h2>
+    <p>Élégance, confort et finitions soignées.</p>
+  </header>
+</section>
+
+<aside class="sheet" id="orderSheet" aria-hidden="true">
+  <div class="sheet-head">
+    <div class="sheet-title">Finaliser ma commande</div>
+    <button class="sheet-close" id="closeSheetBtn" aria-label="Fermer">Fermer</button>
+  </div>
+  <div class="sheet-body">
+    <form class="form" id="orderForm" novalidate aria-label="Formulaire de commande">
+      <div class="form-head">
+        <div>
+          <h3 class="form-title">Finaliser en 30 secondes</h3>
+          <p class="form-sub"></p>
+        </div>
+        <div class="trust" aria-label="Paiement à la livraison">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M8.5 12l2.3 2.3L15.8 9.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Paiement à la livraison
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="clientField">Nom &amp; Prénom</label>
+        <input id="clientField" name="client" placeholder="Ex: Marie Dupont" autocomplete="name" inputmode="text" enterkeyhint="next" />
+        <div class="hint">Optionnel</div>
+      </div>
+
+      <div class="field">
+        <label for="phoneField">Téléphone <span class="req">*</span></label>
+        <input id="phoneField" required name="phone" placeholder="Ex: +33 6 00 00 00 00" inputmode="tel" autocomplete="tel"
+               enterkeyhint="next" aria-describedby="phoneHint" />
+        <div class="hint" id="phoneHint">Tous les formats de numéro sont acceptés</div>
+      </div>
+
+      <div class="field" id="tailleWrap" style="display:none;">
+        <label for="tailleField">Taille <span class="req">*</span></label>
+        <select id="tailleField" name="taille" aria-label="Choisir la taille"></select>
+        <div class="hint">Choisissez votre taille habituelle.</div>
+      </div>
+
+      <div class="field">
+        <label for="couleurField">Couleur <span class="req">*</span></label>
+        <select id="couleurField" name="couleur" required aria-label="Choisir la couleur"></select>
+        <div class="hint">Choisissez la couleur souhaitée</div>
+      </div>
+
+      <div class="field" style="grid-column:1/-1">
+        <label for="villeField">Ville</label>
+        <input id="villeField" name="ville" placeholder="Ex: Paris, Lyon, Marseille..." autocomplete="address-level2"
+               inputmode="text" enterkeyhint="done" />
+        <div class="hint">Optionnel</div>
+      </div>
+
+      <div class="total" role="status" aria-live="polite">
+        <span>Total</span>
+        <strong id="total">0 EUR</strong>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn" aria-label="Confirmer la commande">
+        Confirmer la commande
+      </button>
+    </form>
+  </div>
+</aside>
+
+<div class="popup-overlay" id="popupLivraison" aria-hidden="true">
+  <div class="popup">
+    <h3>Information livraison</h3>
+    <p class="popup-text">
+      ✨ <strong>Chères clientes</strong><br/>
+      Nos robes sont confectionnées avec soin et livrées rapidement après votre commande afin que vous puissiez en profiter au plus vite. 🚚✨<br/><br/>
+    </p>
+    <div class="popup-actions">
+      <button type="button" class="btn" id="popupFinaliser" style="background:var(--primary);color:#fff">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<div class="loader-overlay" id="loader">
+  <div class="loader-box">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Envoi de votre commande…</span>
+  </div>
+</div>
+
+<script>
+(() => {
+  // 🇫🇷 TUNNEL DE VENTE FRANCE
+  const API_URL = 'https://atelier-confection.vercel.app/api/commandes/public';
+  const SECRET_TOKEN = 'NOUSUNIQUE123';
+  const COUNTRY_CODE = 'FR';
+  // ⚠️ A REMPLACER par l'URL Web App de ton Apps Script du Sheet FR.
+  // Pour l'obtenir : Sheet FR -> Extensions -> Apps Script -> Deployer -> URL Web App.
+  const GOOGLE_SCRIPT_URL = 'COLLE_TON_URL_APPS_SCRIPT_FR_ICI';
+  const THANK_YOU_URL = 'https://nousunique.com/merciaminahavila/';
+
+  const sheet = document.getElementById('orderSheet');
+  const closeBtn = document.getElementById('closeSheetBtn');
+  const form = document.getElementById('orderForm');
+  const totalEl = document.getElementById('total');
+  const submitBtn = document.getElementById('submitBtn');
+  const loader = document.getElementById('loader');
+  const popup = document.getElementById('popupLivraison');
+  const popupFinaliser = document.getElementById('popupFinaliser');
+  const tailleWrap = document.getElementById('tailleWrap');
+  const tailleSel = document.getElementById('tailleField');
+  const couleurSel = document.getElementById('couleurField');
+  const cards = Array.from(document.querySelectorAll('.p-card'));
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isMobile = window.matchMedia('(max-width: 680px)').matches;
+  const ENABLE_AUTOPLAY = !reduceMotion;
+
+  let __scrollY = 0;
+  let sheetIsOpen = false;
+  let pendingProduct = null;
+  let current = { sku:'', name:'', price:0, variants:{}, images:[], imageIndex:0 };
+
+  const cardState = new WeakMap();
+  const visibleCards = new Set();
+  let autoplayTimer = null;
+
+  function parseJSON(value, fallback){
+    try { return JSON.parse(value || ''); } catch(_) { return fallback; }
+  }
+
+  function cleanPhoneValue(v){
+    return String(v || '').trim();
+  }
+
+  function addPlaceholder(selectEl, text){
+    selectEl.innerHTML = '';
+    const ph = new Option(text, '');
+    ph.disabled = true;
+    ph.selected = true;
+    selectEl.add(ph);
+  }
+
+  function productHasSizes(product){
+    return Array.isArray(product?.variants?.Taille) && product.variants.Taille.length > 0;
+  }
+
+  function lockScroll(){
+    __scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${__scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function unlockScroll(){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    window.scrollTo(0, __scrollY);
+  }
+
+  function openSheet(){
+    if(sheetIsOpen) return;
+    lockScroll();
+    sheet.classList.add('open');
+    sheet.setAttribute('aria-hidden', 'false');
+    sheetIsOpen = true;
+  }
+
+  function closeSheet(){
+    if(!sheetIsOpen) return;
+    sheet.classList.remove('open');
+    sheet.setAttribute('aria-hidden', 'true');
+    unlockScroll();
+    sheetIsOpen = false;
+  }
+
+  function openPopup(){
+    popup.classList.add('active');
+    popup.setAttribute('aria-hidden', 'false');
+  }
+
+  function closePopup(){
+    popup.classList.remove('active');
+    popup.setAttribute('aria-hidden', 'true');
+  }
+
+  function showLoader(){ loader.classList.add('active'); }
+  function hideLoader(){ loader.classList.remove('active'); }
+
+  function triggerFlash(el){
+    if(reduceMotion) return;
+    el.classList.remove('flash');
+    requestAnimationFrame(() => el.classList.add('flash'));
+  }
+
+  function setMainImage(state, index, flash = false){
+    const src = state.images[index];
+    if(!src || index === state.imageIndex && !flash) return;
+
+    state.imageIndex = index;
+    state.mediaEl.style.backgroundImage = `url("${src}")`;
+
+    const thumbs = state.thumbsEl.children;
+    for(let i = 0; i < thumbs.length; i++){
+      thumbs[i].classList.toggle('active', i === index);
+    }
+
+    if(flash) triggerFlash(state.mediaEl);
+  }
+
+  function prepareCard(card){
+    const product = {
+      sku: card.dataset.sku || '',
+      name: card.dataset.name || '',
+      price: parseInt(card.dataset.price, 10) || 0,
+      variants: parseJSON(card.dataset.variants, {}),
+      images: [...new Set(parseJSON(card.dataset.images, []).filter(Boolean))].slice(0,4),
+      imageIndex: 0
+    };
+
+    const mediaEl = card.querySelector('.p-media');
+    const thumbsEl = card.querySelector('.thumbs');
+    const priceEl = card.querySelector('[data-bind="price"]');
+
+    if(priceEl){
+      priceEl.textContent = product.price.toLocaleString('fr-FR') + ' EUR';
+    }
+
+    const state = {
+      ...product,
+      card,
+      mediaEl,
+      thumbsEl,
+      initialized: false
+    };
+
+    cardState.set(card, state);
+    return state;
+  }
+
+  function initCard(state){
+    if(state.initialized) return;
+    state.initialized = true;
+
+    state.thumbsEl.innerHTML = '';
+
+    state.images.forEach((src, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'thumb' + (idx === 0 ? ' active' : '');
+      btn.dataset.thumbIndex = String(idx);
+      btn.setAttribute('aria-label', `Image ${idx + 1}`);
+      btn.style.backgroundImage = `url("${src}")`;
+      state.thumbsEl.appendChild(btn);
+    });
+
+    if(state.images[0]){
+      state.mediaEl.style.backgroundImage = `url("${state.images[0]}")`;
+      if(state.images[1]){
+        const prefetch = new Image();
+        prefetch.decoding = 'async';
+        prefetch.src = state.images[1];
+      }
+    }
+  }
+
+  function startAutoplay(){
+    if(!ENABLE_AUTOPLAY || autoplayTimer) return;
+
+    autoplayTimer = setInterval(() => {
+      if(document.hidden || visibleCards.size === 0) return;
+
+      visibleCards.forEach(card => {
+        const state = cardState.get(card);
+        if(!state || !state.initialized || state.images.length < 2) return;
+        const next = (state.imageIndex + 1) % state.images.length;
+        setMainImage(state, next, true);
+      });
+    }, 2600);
+  }
+
+  cards.forEach(prepareCard);
+
+  const cardObserver = new IntersectionObserver((entries) => {
+    for(const entry of entries){
+      const card = entry.target;
+      const state = cardState.get(card);
+      if(!state) continue;
+
+      if(entry.isIntersecting){
+        initCard(state);
+        visibleCards.add(card);
+      } else {
+        visibleCards.delete(card);
+      }
+    }
+  }, {
+    rootMargin: '250px 0px',
+    threshold: 0.15
+  });
+
+  cards.forEach(card => cardObserver.observe(card));
+  startAutoplay();
+
+  document.addEventListener('click', (e) => {
+    const thumb = e.target.closest('.thumb');
+    if(thumb){
+      const card = thumb.closest('.p-card');
+      const state = cardState.get(card);
+      if(!state) return;
+      const idx = Number(thumb.dataset.thumbIndex);
+      if(Number.isInteger(idx)) setMainImage(state, idx, true);
+      return;
+    }
+
+    const btn = e.target.closest('.js-open-sheet');
+    if(btn){
+      const card = btn.closest('.p-card');
+      const state = cardState.get(card);
+      if(!state) return;
+
+      initCard(state);
+
+      pendingProduct = {
+        sku: state.sku,
+        name: state.name,
+        price: state.price,
+        variants: state.variants,
+        images: state.images,
+        imageIndex: state.imageIndex
+      };
+
+      openPopup();
+      return;
+    }
+
+    if(e.target === popup) closePopup();
+    if(e.target === sheet) closeSheet();
+  }, { passive: true });
+
+  closeBtn.addEventListener('click', closeSheet, { passive: true });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      closePopup();
+      closeSheet();
+    }
+  });
+
+  window.addEventListener('pageshow', () => {
+    closeSheet();
+    closePopup();
+    hideLoader();
+    pendingProduct = null;
+    submitBtn.disabled = false;
+  });
+
+  popupFinaliser.addEventListener('click', () => {
+    if(!pendingProduct) return;
+
+    current = { ...pendingProduct };
+
+    const needSize = productHasSizes(current);
+    couleurSel.required = true;
+    tailleSel.required = needSize;
+
+    if(needSize){
+      tailleWrap.style.display = '';
+      addPlaceholder(tailleSel, 'Choisir une taille');
+
+      const tailles = current.variants?.Taille || [];
+      if(!tailles.length){
+        closePopup();
+        alert("⚠️ Ce produit doit avoir des tailles. Vérifie data-variants -> Taille.");
+        return;
+      }
+
+      for(const v of tailles){
+        tailleSel.add(new Option(v, v));
+      }
+    } else {
+      tailleWrap.style.display = 'none';
+      tailleSel.required = false;
+      tailleSel.innerHTML = '';
+    }
+
+    addPlaceholder(couleurSel, 'Choisir une couleur');
+
+    const couleurs = current.variants?.Couleur || [];
+    if(!couleurs.length){
+      closePopup();
+      alert("⚠️ Ce produit n'a pas de couleurs configurées. Vérifie data-variants.");
+      return;
+    }
+
+    const terr = 'Terracotta';
+    const ordered = couleurs.includes(terr)
+      ? [terr, ...couleurs.filter(c => c !== terr)]
+      : couleurs.slice();
+
+    for(const v of ordered){
+      couleurSel.add(new Option(v, v));
+    }
+
+    form.reset();
+    couleurSel.value = '';
+    if(needSize) tailleSel.value = '';
+    totalEl.textContent = current.price.toLocaleString('fr-FR') + ' EUR';
+
+    closePopup();
+    openSheet();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const clientEl = form.elements.client;
+    const phoneEl = form.elements.phone;
+    const villeEl = form.elements.ville;
+    const couleurEl = form.elements.couleur;
+    const tailleEl = form.elements.taille;
+    const needSize = productHasSizes(current);
+
+    if(!current || !current.sku){
+      alert("Veuillez d'abord choisir un produit (bouton Commander).");
+      return;
+    }
+
+    const cleanPhone = cleanPhoneValue(phoneEl?.value || '');
+    if(!cleanPhone){
+      alert('Veuillez renseigner votre téléphone.');
+      phoneEl?.focus();
+      return;
+    }
+
+    if(!couleurEl?.value){
+      alert('Veuillez choisir une couleur.');
+      couleurEl?.focus();
+      return;
+    }
+
+    if(needSize && !tailleEl?.value){
+      alert('Veuillez choisir une taille.');
+      tailleEl?.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    showLoader();
+
+    // 🇫🇷 Le champ "country: 'FR'" force l'API a creer la commande
+    // dans le pays France (sinon par defaut elle va dans CI).
+    const payloadApi = {
+      token: SECRET_TOKEN,
+      country: COUNTRY_CODE,
+      client: (clientEl?.value || '').trim(),
+      phone: cleanPhone,
+      ville: (villeEl?.value || '').trim(),
+      sku: current.sku,
+      name: current.name,
+      taille: (needSize ? tailleEl.value : 'Standard'),
+      couleur: couleurEl.value,
+      price: String(current.price),
+      source: location.href
+    };
+
+    try{
+      const payloadSheet = { ...payloadApi };
+      const params = new URLSearchParams(payloadSheet).toString();
+
+      const fetches = [
+        fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payloadApi)
+        })
+      ];
+
+      // N'envoyer au Sheet que si l'URL est configuree
+      if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.indexOf('script.google.com') >= 0) {
+        fetches.push(
+          fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params
+          })
+        );
+      } else {
+        console.warn('⚠️ GOOGLE_SCRIPT_URL non configure : la commande FR ne sera pas archivee dans le Sheet.');
+      }
+
+      const results = await Promise.allSettled(fetches);
+      const apiResult = results[0];
+      const sheetResult = results[1];
+
+      if(apiResult.status !== 'fulfilled'){
+        console.error('API fetch failed:', apiResult.reason);
+        throw new Error('API indisponible');
+      }
+
+      const apiRes = apiResult.value;
+      let apiJson = null;
+      try { apiJson = await apiRes.json(); } catch(_){}
+
+      if(!(apiRes.ok && apiJson && apiJson.success)){
+        alert('❌ Erreur API: ' + (apiJson?.message || ('HTTP ' + apiRes.status)));
+        return;
+      }
+
+      if (sheetResult) {
+        if(sheetResult.status === 'fulfilled'){
+          const sheetRes = sheetResult.value;
+          const raw = await sheetRes.text();
+          let sheetJson = null;
+          try { sheetJson = JSON.parse(raw); } catch(_){}
+          if(!(sheetRes.ok && sheetJson?.success)){
+            console.warn('⚠️ Commande OK dans l’app, mais Google Sheets a échoué:', sheetRes.status, sheetJson || raw);
+          }
+        } else {
+          console.warn('⚠️ Commande OK dans l’app, mais envoi Google Sheets échoué:', sheetResult.reason);
+        }
+      }
+
+      window.location.href = THANK_YOU_URL;
+    } catch(err){
+      console.error(err);
+      alert('❌ Réseau indisponible.');
+    } finally {
+      hideLoader();
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
