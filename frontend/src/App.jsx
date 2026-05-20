@@ -17,6 +17,7 @@ import Stock from './pages/Stock';
 import Modeles from './pages/Modeles';
 import Livraisons from './pages/Livraisons';
 import CaisseLivreurs from './pages/CaisseLivreurs';
+import Comptabilite from './pages/Comptabilite';
 import Performances from './pages/Performances';
 import Statistiques from './pages/Statistiques';
 import Utilisateurs from './pages/Utilisateurs';
@@ -160,6 +161,13 @@ function App() {
           <Route path="caisse-livreurs" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <CaisseLivreurs />
+            </ProtectedRoute>
+          } />
+          
+          {/* Comptabilité - bilan des dépôts */}
+          <Route path="comptabilite" element={
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+              <Comptabilite />
             </ProtectedRoute>
           } />
           
