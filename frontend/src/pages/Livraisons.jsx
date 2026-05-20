@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { Truck, CheckCircle, XCircle, AlertCircle, Package, Phone } from 'lucide-react';
+import { Truck, CheckCircle, XCircle, AlertCircle, Package, Phone, Calendar, RotateCcw } from 'lucide-react';
 
 const Livraisons = () => {
   const { user } = useAuthStore();
@@ -90,7 +90,29 @@ const Livraisons = () => {
 
     try {
       await api.post(`/livraisons/${id}/refusee`, { motifRefus: motif });
-      toast.success('Refus enregistré');
+      toast.success('Refus enregistré, stock mis à jour automatiquement');
+      fetchLivraisons();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur');
+    }
+  };
+
+  const handleReportee = async (id) => {
+    const motif = prompt('Motif du report (optionnel):') || '';
+
+    try {
+      await api.post(`/livraisons/${id}/reportee`, { motifReport: motif });
+      toast.success('Livraison reportée — le colis reste avec toi');
+      fetchLivraisons();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur');
+    }
+  };
+
+  const handleReprendre = async (id) => {
+    try {
+      await api.post(`/livraisons/${id}/reprendre`);
+      toast.success('Livraison reprise — repart en tournée');
       fetchLivraisons();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
@@ -113,7 +135,8 @@ const Livraisons = () => {
       en_cours: 'badge-primary',
       livree: 'badge-success',
       refusee: 'badge-danger',
-      retournee: 'badge-secondary'
+      retournee: 'badge-secondary',
+      reportee: 'badge-warning'
     };
     return badges[statut] || 'badge-secondary';
   };
@@ -123,7 +146,8 @@ const Livraisons = () => {
       en_cours: 'En cours',
       livree: 'Livrée',
       refusee: 'Refusée',
-      retournee: 'Retournée'
+      retournee: 'Retournée',
+      reportee: 'Reportée'
     };
     return labels[statut] || statut;
   };
@@ -201,7 +225,7 @@ const Livraisons = () => {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 max-w-full">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 max-w-full">
         <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
           <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase mb-0.5 sm:mb-1 truncate">Total</p>
           <p className="text-xl sm:text-2xl font-black text-gray-900">{livraisons.length}</p>
@@ -216,6 +240,12 @@ const Livraisons = () => {
           <p className="text-[10px] sm:text-xs font-semibold text-green-600 uppercase mb-0.5 sm:mb-1 truncate">✅ Livrées</p>
           <p className="text-xl sm:text-2xl font-black text-green-900">
             {livraisons.filter(l => l.statut === 'livree').length}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
+          <p className="text-[10px] sm:text-xs font-semibold text-orange-600 uppercase mb-0.5 sm:mb-1 truncate">📅 Reportées</p>
+          <p className="text-xl sm:text-2xl font-black text-orange-900">
+            {livraisons.filter(l => l.statut === 'reportee').length}
           </p>
         </div>
         <div className="bg-white rounded-xl p-2 sm:p-3 shadow-sm max-w-full overflow-hidden">
@@ -261,6 +291,16 @@ const Livraisons = () => {
             }`}
           >
             ✅ Livrées ({livraisons.filter(l => l.statut === 'livree').length})
+          </button>
+          <button
+            onClick={() => setFilterStatut('reportee')}
+            className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all ${
+              filterStatut === 'reportee'
+                ? 'bg-orange-600 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            📅 Reportées ({livraisons.filter(l => l.statut === 'reportee').length})
           </button>
           <button
             onClick={() => setFilterStatut('refusee')}
@@ -376,7 +416,9 @@ const Livraisons = () => {
                       ? 'border-green-200' 
                       : livraison.statut === 'refusee' 
                         ? 'border-red-200' 
-                        : 'border-gray-200'
+                        : livraison.statut === 'reportee'
+                          ? 'border-orange-300 bg-orange-50/30'
+                          : 'border-gray-200'
                 }`}
               >
                 {/* Badge urgent en haut à droite */}
@@ -404,11 +446,13 @@ const Livraisons = () => {
                     livraison.statut === 'livree' ? 'bg-green-100 text-green-800' :
                     livraison.statut === 'refusee' ? 'bg-red-100 text-red-800' :
                     livraison.statut === 'retournee' ? 'bg-gray-100 text-gray-800' :
+                    livraison.statut === 'reportee' ? 'bg-orange-100 text-orange-800' :
                     'bg-blue-100 text-blue-800'
                   }`}>
                     {livraison.statut === 'livree' && '✅ '}
                     {livraison.statut === 'refusee' && '❌ '}
                     {livraison.statut === 'retournee' && '↩️ '}
+                    {livraison.statut === 'reportee' && '📅 '}
                     {livraison.statut === 'en_cours' && '🚚 '}
                     {getStatutLabel(livraison.statut)}
                   </span>
@@ -455,7 +499,7 @@ const Livraisons = () => {
                   </div>
                 )}
 
-                {/* Boutons d'action */}
+                {/* Boutons d'action - LIVREUR : 3 boutons (Livrée / Reportée / Refusée) */}
                 {user?.role === 'livreur' && livraison.statut === 'en_cours' && (
                   <div className="space-y-2">
                     <button
@@ -464,6 +508,13 @@ const Livraisons = () => {
                     >
                       <CheckCircle size={14} />
                       <span>LIVRÉE</span>
+                    </button>
+                    <button
+                      onClick={() => handleReportee(livraison._id)}
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center justify-center space-x-1"
+                    >
+                      <Calendar size={14} />
+                      <span>REPORTÉE</span>
                     </button>
                     <button
                       onClick={() => handleRefusee(livraison._id)}
@@ -475,15 +526,14 @@ const Livraisons = () => {
                   </div>
                 )}
 
-                {['gestionnaire', 'administrateur'].includes(user?.role) && 
-                 livraison.statut === 'refusee' && 
-                 !livraison.verifieParGestionnaire && (
+                {/* Livreur : reprendre une livraison reportée */}
+                {user?.role === 'livreur' && livraison.statut === 'reportee' && (
                   <button
-                    onClick={() => handleConfirmerRetour(livraison._id)}
+                    onClick={() => handleReprendre(livraison._id)}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold text-xs transition-colors flex items-center justify-center space-x-1"
                   >
-                    <Package size={14} />
-                    <span>RETOUR</span>
+                    <RotateCcw size={14} />
+                    <span>REPRENDRE</span>
                   </button>
                 )}
               </div>

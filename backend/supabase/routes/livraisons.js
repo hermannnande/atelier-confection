@@ -285,17 +285,27 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    const livraisonCountry = livraison.pays_code || 'CI';
 
+    // Marquer la livraison comme retournée directement (retour stock automatique)
     await supabase
       .from('livraisons')
-      .update({ statut: 'refusee', motif_refus: motifRefus, date_livraison: new Date().toISOString() })
+      .update({
+        statut: 'retournee',
+        motif_refus: motifRefus,
+        date_livraison: new Date().toISOString(),
+        date_retour: new Date().toISOString(),
+        verifie_par_gestionnaire: true,
+        gestionnaire_id: req.userId,
+        commentaire_gestionnaire: 'Retour automatique au stock après refus',
+      })
       .eq('id', req.params.id);
 
     const { data: commande } = await supabase.from('commandes').select('*').eq('id', livraison.commande_id).single();
     if (commande) {
       const historique = Array.isArray(commande.historique) ? commande.historique : [];
       historique.push({
-        action: 'Livraison refusée par le client',
+        action: 'Livraison refusée par le client (retour stock automatique)',
         statut: 'refusee',
         utilisateur: req.userId,
         date: new Date().toISOString(),
@@ -306,9 +316,119 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         .from('commandes')
         .update({ statut: 'refusee', motif_refus: motifRefus, historique })
         .eq('id', commande.id);
+
+      // Retour automatique au stock principal
+      const { data: stockItem } = await supabase
+        .from('stock')
+        .select('*')
+        .eq('pays_code', livraisonCountry)
+        .eq('modele', commande.modele?.nom)
+        .eq('taille', commande.taille)
+        .eq('couleur', commande.couleur)
+        .maybeSingle();
+
+      if (stockItem) {
+        const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
+        mouvements.push({
+          type: 'retour',
+          quantite: 1,
+          source: 'Stock en livraison',
+          destination: 'Stock principal',
+          commande: commande.id,
+          utilisateur: req.userId,
+          date: new Date().toISOString(),
+          commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
+        });
+
+        await supabase
+          .from('stock')
+          .update({
+            quantite_en_livraison: Math.max(0, (stockItem.quantite_en_livraison || 0) - 1),
+            quantite_principale: (stockItem.quantite_principale || 0) + 1,
+            mouvements,
+          })
+          .eq('id', stockItem.id);
+      }
     }
 
-    return res.json({ message: 'Refus enregistré', livraison: mapLivraison(livraison) });
+    return res.json({ message: 'Refus enregistré et stock mis à jour', livraison: mapLivraison(livraison) });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
+// Reporter une livraison au lendemain : le colis reste avec le livreur, pas de retour au stock
+router.post('/:id/reportee', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const { motifReport } = req.body;
+    const supabase = getSupabaseAdmin();
+    const { data: livraison, error: e1 } = await supabase
+      .from('livraisons')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
+
+    const { data: updated, error: e2 } = await supabase
+      .from('livraisons')
+      .update({
+        statut: 'reportee',
+        commentaire_gestionnaire: motifReport || null,
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (e2) return res.status(500).json({ message: 'Erreur lors du report', error: e2.message });
+
+    // Historique sur la commande (statut commande reste en_livraison)
+    const { data: commande } = await supabase
+      .from('commandes')
+      .select('historique')
+      .eq('id', livraison.commande_id)
+      .single();
+    if (commande) {
+      const historique = Array.isArray(commande.historique) ? commande.historique : [];
+      historique.push({
+        action: 'Livraison reportée au lendemain',
+        statut: 'reportee',
+        utilisateur: req.userId,
+        date: new Date().toISOString(),
+        commentaire: motifReport || null,
+      });
+      await supabase.from('commandes').update({ historique }).eq('id', livraison.commande_id);
+    }
+
+    return res.json({ message: 'Livraison reportée', livraison: mapLivraison(updated) });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
+// Remettre une livraison "reportee" en cours (livreur reprend sa tournée le lendemain)
+router.post('/:id/reprendre', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: livraison, error: e1 } = await supabase
+      .from('livraisons')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
+    if (livraison.statut !== 'reportee') {
+      return res.status(400).json({ message: 'Seules les livraisons reportées peuvent être reprises' });
+    }
+
+    const { data: updated, error: e2 } = await supabase
+      .from('livraisons')
+      .update({ statut: 'en_cours' })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (e2) return res.status(500).json({ message: 'Erreur lors de la reprise', error: e2.message });
+
+    return res.json({ message: 'Livraison reprise', livraison: mapLivraison(updated) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
   }
@@ -377,7 +497,72 @@ router.post('/:id/confirmer-retour', authenticate, resolveCountry, authorize('ge
   }
 });
 
-// Marquer l'argent comme remis pour un livreur
+// Marquer l'argent comme reçu sur une sélection de livraisons (dépôt partiel)
+router.post('/marquer-paiement-recu-batch', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { livraisonIds } = req.body;
+
+    if (!Array.isArray(livraisonIds) || livraisonIds.length === 0) {
+      return res.status(400).json({ message: 'livraisonIds doit être un tableau non vide' });
+    }
+
+    // Vérifier que toutes les livraisons appartiennent au pays actif, sont livrées et non payées
+    const { data: livraisons, error: selectError } = await supabase
+      .from('livraisons')
+      .select('id, commande_id, livreur_id, pays_code, statut, paiement_recu')
+      .in('id', livraisonIds)
+      .eq('pays_code', req.country);
+
+    if (selectError) {
+      return res.status(500).json({ message: 'Erreur lors de la récupération', error: selectError.message });
+    }
+
+    const eligibles = (livraisons || []).filter(
+      (l) => l.statut === 'livree' && l.paiement_recu === false
+    );
+
+    if (eligibles.length === 0) {
+      return res.status(400).json({ message: 'Aucune livraison éligible (doit être livrée et non payée)' });
+    }
+
+    const idsEligibles = eligibles.map((l) => l.id);
+
+    // Calculer le montant total à partir des commandes
+    const commandeIds = eligibles.map((l) => l.commande_id);
+    const { data: commandes } = await supabase
+      .from('commandes')
+      .select('id, prix')
+      .in('id', commandeIds);
+
+    const montantTotal = (commandes || []).reduce((sum, c) => sum + (c.prix || 0), 0);
+
+    // Marquer comme payées
+    const { error: updateError } = await supabase
+      .from('livraisons')
+      .update({
+        paiement_recu: true,
+        date_paiement: new Date().toISOString(),
+        gestionnaire_id: req.userId,
+      })
+      .in('id', idsEligibles);
+
+    if (updateError) {
+      return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: updateError.message });
+    }
+
+    return res.json({
+      message: 'Paiements enregistrés',
+      nombreLivraisons: idsEligibles.length,
+      montantTotal,
+      livraisonIds: idsEligibles,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
+// Marquer l'argent comme remis pour un livreur (legacy : tout en bloc)
 router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();

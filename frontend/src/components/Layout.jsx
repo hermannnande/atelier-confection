@@ -44,7 +44,7 @@ const Layout = () => {
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier', 'styliste'], gradient: 'from-rose-500 to-red-500' },
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
-    { name: 'Caisse Livreurs', href: '/caisse-livreurs', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
+    { name: 'Livreurs', href: '/caisse-livreurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Gestion Avancée', href: '/gestion-commandes', icon: Shield, roles: ['administrateur', 'gestionnaire'], gradient: 'from-red-500 to-pink-600' },
     { name: 'Notifications SMS', href: '/notifications-sms', icon: MessageSquare, roles: ['administrateur', 'gestionnaire'], gradient: 'from-green-500 to-emerald-500' },
     { name: 'Statistiques', href: '/statistiques', icon: BarChart3, roles: ['administrateur', 'gestionnaire'], gradient: 'from-pink-500 to-rose-500' },
