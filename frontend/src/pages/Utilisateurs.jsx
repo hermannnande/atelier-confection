@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Users, UserPlus, Edit, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, Eye, EyeOff, Wand2, Copy } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+
+// Génère un mot de passe robuste de 10 caractères (lettres maj/min + chiffres)
+function generatePassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  let pwd = '';
+  for (let i = 0; i < 10; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
 
 const EMPTY_FORM = {
   nom: '',
@@ -20,6 +30,7 @@ const Utilisateurs = () => {
   const [editingUser, setEditingUser] = useState(null); // null = création, sinon = user en cours d'édition
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isEditMode = Boolean(editingUser);
 
@@ -42,6 +53,7 @@ const Utilisateurs = () => {
   const openCreateModal = () => {
     setEditingUser(null);
     setFormData(EMPTY_FORM);
+    setShowPassword(false);
     setShowModal(true);
   };
 
@@ -50,10 +62,11 @@ const Utilisateurs = () => {
     setFormData({
       nom: user.nom || '',
       email: user.email || '',
-      password: '',
+      password: '', // vide par défaut : seul le remplissage déclenche une mise à jour
       role: user.role || '',
       telephone: user.telephone || '',
     });
+    setShowPassword(false);
     setShowModal(true);
   };
 
@@ -61,6 +74,29 @@ const Utilisateurs = () => {
     setShowModal(false);
     setEditingUser(null);
     setFormData(EMPTY_FORM);
+    setShowPassword(false);
+  };
+
+  const handleGeneratePassword = async () => {
+    const newPwd = generatePassword();
+    setFormData((f) => ({ ...f, password: newPwd }));
+    setShowPassword(true);
+    try {
+      await navigator.clipboard?.writeText(newPwd);
+      toast.success('Mot de passe généré et copié dans le presse-papier');
+    } catch {
+      toast.success('Mot de passe généré (copie manuelle)');
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (!formData.password) return;
+    try {
+      await navigator.clipboard.writeText(formData.password);
+      toast.success('Copié !');
+    } catch {
+      toast.error('Impossible de copier');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -75,8 +111,21 @@ const Utilisateurs = () => {
           role: formData.role,
           telephone: formData.telephone,
         };
+        // Mot de passe ENVOYÉ uniquement s'il est rempli (sinon on ne le change pas)
+        if (formData.password && formData.password.trim()) {
+          if (formData.password.trim().length < 6) {
+            toast.error('Mot de passe : minimum 6 caractères');
+            setSubmitting(false);
+            return;
+          }
+          payload.password = formData.password.trim();
+        }
         await api.put(`/users/${editingUser._id || editingUser.id}`, payload);
-        toast.success('Utilisateur modifié !');
+        toast.success(
+          payload.password
+            ? 'Utilisateur modifié — nouveau mot de passe enregistré'
+            : 'Utilisateur modifié !'
+        );
       } else {
         await api.post('/auth/register', formData);
         toast.success('Utilisateur créé !');
@@ -270,19 +319,68 @@ const Utilisateurs = () => {
                   className="input"
                 />
               </div>
-              {!isEditMode && (
-                <div>
-                  <label className="label">Mot de passe *</label>
+              <div>
+                <label className="label flex items-center justify-between">
+                  <span>
+                    {isEditMode ? (
+                      <>
+                        Nouveau mot de passe{' '}
+                        <span className="text-gray-400 font-normal">
+                          (laisser vide pour ne pas modifier)
+                        </span>
+                      </>
+                    ) : (
+                      <>Mot de passe *</>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="text-xs text-primary-600 hover:text-primary-800 font-semibold inline-flex items-center gap-1"
+                    title="Générer un mot de passe sécurisé"
+                  >
+                    <Wand2 size={12} />
+                    Générer
+                  </button>
+                </label>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    minLength="6"
-                    className="input"
+                    required={!isEditMode}
+                    minLength={6}
+                    className="input pr-20"
+                    placeholder={isEditMode ? '••••••• (inchangé)' : 'Au moins 6 caractères'}
+                    autoComplete="new-password"
                   />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {formData.password && (
+                      <button
+                        type="button"
+                        onClick={handleCopyPassword}
+                        className="p-1 text-gray-500 hover:text-gray-800"
+                        title="Copier"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="p-1 text-gray-500 hover:text-gray-800"
+                      title={showPassword ? 'Masquer' : 'Afficher'}
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
                 </div>
-              )}
+                {isEditMode && formData.password && (
+                  <p className="text-[11px] text-amber-700 mt-1 italic">
+                    ⚠️ Pense à transmettre ce nouveau mot de passe à l'utilisateur.
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="label">Rôle *</label>
                 <select
@@ -315,11 +413,6 @@ const Utilisateurs = () => {
                   className="input"
                 />
               </div>
-              {isEditMode && (
-                <p className="text-xs text-gray-500 italic">
-                  💡 Le mot de passe ne peut pas être modifié ici. Pour le réinitialiser, utilise la fonction "Mot de passe oublié" sur la page de connexion.
-                </p>
-              )}
               <div className="flex items-center justify-end space-x-3 mt-6">
                 <button
                   type="button"

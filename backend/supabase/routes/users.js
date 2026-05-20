@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
@@ -51,7 +52,7 @@ router.get('/:id', authenticate, resolveCountry, async (req, res) => {
 
 router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
-    const { nom, email, role, telephone, actif, pays_code, pays_autorises } = req.body;
+    const { nom, email, role, telephone, actif, pays_code, pays_autorises, password } = req.body;
     const supabase = getSupabaseAdmin();
 
     // Verifier acces au user cible
@@ -69,6 +70,15 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'admi
     if (role) update.role = role;
     if (telephone !== undefined) update.telephone = telephone;
     if (actif !== undefined) update.actif = actif;
+
+    // Reinitialiser le mot de passe (admin/gestionnaire uniquement, deja autorise par authorize())
+    if (password !== undefined && password !== null && String(password).length > 0) {
+      const pwd = String(password);
+      if (pwd.length < 6) {
+        return res.status(400).json({ message: 'Le mot de passe doit faire au moins 6 caractères' });
+      }
+      update.password = await bcrypt.hash(pwd, 10);
+    }
 
     // Multi-pays : modification autorisee uniquement pour les administrateurs
     // (un gestionnaire ne peut pas reassigner un user a un autre pays).
