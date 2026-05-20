@@ -7,6 +7,24 @@ import smsService from '../../services/sms.service.js';
 
 const router = express.Router();
 
+// 🔧 Paginer les .in() pour éviter de dépasser la limite Supabase/PostgREST
+// (longueur d'URL ~8KB → ~200 UUID max par requête en pratique)
+async function fetchInChunks(supabase, table, ids, select = '*') {
+  if (!ids || ids.length === 0) return [];
+  const CHUNK = 150; // marge confortable sous la limite d'URL
+  const results = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const { data, error } = await supabase.from(table).select(select).in('id', slice);
+    if (error) {
+      console.error(`[hydrate] ${table} chunk ${i}-${i + slice.length}:`, error.message);
+      continue;
+    }
+    if (Array.isArray(data) && data.length) results.push(...data);
+  }
+  return results;
+}
+
 async function hydrateLivraisons(supabase, livRows) {
   const commandeIds = Array.from(new Set(livRows.map((l) => l.commande_id).filter(Boolean)));
   const userIds = new Set();
@@ -15,13 +33,9 @@ async function hydrateLivraisons(supabase, livRows) {
     if (l.gestionnaire_id) userIds.add(l.gestionnaire_id);
   }
 
-  let commandesById = new Map();
-  if (commandeIds.length) {
-    const { data } = await supabase.from('commandes').select('*').in('id', commandeIds);
-    commandesById = new Map((data || []).map((c) => [c.id, mapCommande(c)]));
-  }
+  const commandesRows = await fetchInChunks(supabase, 'commandes', commandeIds, '*');
+  const commandesById = new Map(commandesRows.map((c) => [c.id, mapCommande(c)]));
 
-  // Ajouter aussi les userIds des commandes (livreur/styliste/...)
   for (const c of commandesById.values()) {
     if (c.appelant_id) userIds.add(c.appelant_id);
     if (c.styliste_id) userIds.add(c.styliste_id);
@@ -29,23 +43,20 @@ async function hydrateLivraisons(supabase, livRows) {
     if (c.livreur_id) userIds.add(c.livreur_id);
   }
 
-  let usersById = new Map();
-  if (userIds.size) {
-    const { data } = await supabase
-      .from('users')
-      .select('id, nom, email, role, telephone, actif, created_at, updated_at')
-      .in('id', Array.from(userIds));
-    usersById = new Map((data || []).map((u) => [u.id, mapUser(u)]));
-  }
+  const usersRows = await fetchInChunks(
+    supabase,
+    'users',
+    Array.from(userIds),
+    'id, nom, email, role, telephone, actif, created_at, updated_at'
+  );
+  const usersById = new Map(usersRows.map((u) => [u.id, mapUser(u)]));
 
-  const out = livRows.map((l) => {
+  return livRows.map((l) => {
     const commande = commandesById.get(l.commande_id);
     const livreur = l.livreur_id ? usersById.get(l.livreur_id) : undefined;
     const gestionnaire = l.gestionnaire_id ? usersById.get(l.gestionnaire_id) : undefined;
     return mapLivraison({ ...l, commande, livreur, gestionnaire });
   });
-
-  return out;
 }
 
 router.get('/', authenticate, resolveCountry, async (req, res) => {
