@@ -4,18 +4,24 @@ import toast from 'react-hot-toast';
 import { Users, UserPlus, Edit, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
+const EMPTY_FORM = {
+  nom: '',
+  email: '',
+  password: '',
+  role: '',
+  telephone: '',
+};
+
 const Utilisateurs = () => {
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    nom: '',
-    email: '',
-    password: '',
-    role: '',
-    telephone: ''
-  });
+  const [editingUser, setEditingUser] = useState(null); // null = création, sinon = user en cours d'édition
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+
+  const isEditMode = Boolean(editingUser);
 
   useEffect(() => {
     fetchUsers();
@@ -33,22 +39,54 @@ const Utilisateurs = () => {
     }
   };
 
+  const openCreateModal = () => {
+    setEditingUser(null);
+    setFormData(EMPTY_FORM);
+    setShowModal(true);
+  };
+
+  const openEditModal = (user) => {
+    setEditingUser(user);
+    setFormData({
+      nom: user.nom || '',
+      email: user.email || '',
+      password: '',
+      role: user.role || '',
+      telephone: user.telephone || '',
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingUser(null);
+    setFormData(EMPTY_FORM);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      await api.post('/auth/register', formData);
-      toast.success('Utilisateur créé !');
-      setShowModal(false);
-      setFormData({
-        nom: '',
-        email: '',
-        password: '',
-        role: '',
-        telephone: ''
-      });
+      if (isEditMode) {
+        const payload = {
+          nom: formData.nom,
+          email: formData.email,
+          role: formData.role,
+          telephone: formData.telephone,
+        };
+        await api.put(`/users/${editingUser._id || editingUser.id}`, payload);
+        toast.success('Utilisateur modifié !');
+      } else {
+        await api.post('/auth/register', formData);
+        toast.success('Utilisateur créé !');
+      }
+      closeModal();
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -115,7 +153,7 @@ const Utilisateurs = () => {
           <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1 truncate">Gérez les comptes de votre équipe</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openCreateModal}
           className="btn btn-primary inline-flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
         >
           <UserPlus size={18} className="flex-shrink-0" />
@@ -179,7 +217,11 @@ const Utilisateurs = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button className="btn btn-secondary btn-sm">
+                      <button
+                        onClick={() => openEditModal(user)}
+                        className="btn btn-secondary btn-sm"
+                        title="Modifier"
+                      >
                         <Edit size={14} />
                       </button>
                       {currentUser?.role === 'administrateur' && (
@@ -200,11 +242,13 @@ const Utilisateurs = () => {
         </div>
       </div>
 
-      {/* Modal de création */}
+      {/* Modal création / édition */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Créer un Utilisateur</h2>
+          <div className="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">
+              {isEditMode ? `Modifier ${editingUser?.nom || 'l\'utilisateur'}` : 'Créer un Utilisateur'}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="label">Nom complet *</label>
@@ -226,17 +270,19 @@ const Utilisateurs = () => {
                   className="input"
                 />
               </div>
-              <div>
-                <label className="label">Mot de passe *</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  minLength="6"
-                  className="input"
-                />
-              </div>
+              {!isEditMode && (
+                <div>
+                  <label className="label">Mot de passe *</label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength="6"
+                    className="input"
+                  />
+                </div>
+              )}
               <div>
                 <label className="label">Rôle *</label>
                 <select
@@ -269,16 +315,22 @@ const Utilisateurs = () => {
                   className="input"
                 />
               </div>
+              {isEditMode && (
+                <p className="text-xs text-gray-500 italic">
+                  💡 Le mot de passe ne peut pas être modifié ici. Pour le réinitialiser, utilise la fonction "Mot de passe oublié" sur la page de connexion.
+                </p>
+              )}
               <div className="flex items-center justify-end space-x-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                   className="btn btn-secondary"
+                  disabled={submitting}
                 >
                   Annuler
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Créer
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? '...' : isEditMode ? 'Enregistrer' : 'Créer'}
                 </button>
               </div>
             </form>
