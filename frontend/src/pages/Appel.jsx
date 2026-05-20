@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus, Search } from 'lucide-react';
 
 const Appel = () => {
   const [commandesAppel, setCommandesAppel] = useState([]);
@@ -13,6 +13,7 @@ const Appel = () => {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [noteAppelant, setNoteAppelant] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -250,6 +251,31 @@ const Appel = () => {
     return 'Non spécifié';
   };
 
+  const normalizePhone = (str) => String(str || '').replace(/\D/g, '');
+
+  const filteredCommandes = commandesAppel.filter((commande) => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return true;
+
+    const termDigits = normalizePhone(searchTerm);
+
+    const numero = (commande.numeroCommande || '').toLowerCase();
+    const nomClient = getClientNom(commande).toLowerCase();
+    const contactRaw = String(getClientContact(commande) || '');
+    const contactDigits = normalizePhone(contactRaw);
+    const modele = getModeleNom(commande.modele).toLowerCase();
+    const ville = getVille(commande).toLowerCase();
+
+    return (
+      numero.includes(term) ||
+      nomClient.includes(term) ||
+      modele.includes(term) ||
+      ville.includes(term) ||
+      contactRaw.toLowerCase().includes(term) ||
+      (termDigits.length > 0 && contactDigits.includes(termDigits))
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -326,6 +352,37 @@ const Appel = () => {
         </div>
       </div>
 
+      {/* Barre de recherche */}
+      {commandesAppel.length > 0 && (
+        <div className="stat-card !p-3 sm:!p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Rechercher par n°, client, téléphone, modèle ou ville..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input pl-10 pr-10 text-sm sm:text-base w-full"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Effacer la recherche"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          {searchTerm && (
+            <p className="text-xs text-gray-500 mt-2 font-medium">
+              {filteredCommandes.length} résultat{filteredCommandes.length > 1 ? 's' : ''} sur {commandesAppel.length} commande{commandesAppel.length > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Grille des commandes */}
       {commandesAppel.length === 0 ? (
         <div className="stat-card text-center py-16">
@@ -335,9 +392,24 @@ const Appel = () => {
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun appel en attente</h3>
           <p className="text-gray-600">Toutes les commandes ont été traitées ! 🎉</p>
         </div>
+      ) : filteredCommandes.length === 0 ? (
+        <div className="stat-card text-center py-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-full mb-4">
+            <Search className="text-gray-500" size={40} />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun résultat</h3>
+          <p className="text-gray-600">Aucune commande ne correspond à « {searchTerm} »</p>
+          <button
+            onClick={() => setSearchTerm('')}
+            className="mt-4 btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded-lg inline-flex items-center gap-1.5"
+          >
+            <X size={14} />
+            <span>Effacer la recherche</span>
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {commandesAppel.map((commande, index) => {
+          {filteredCommandes.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
             const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
             const dateSource =

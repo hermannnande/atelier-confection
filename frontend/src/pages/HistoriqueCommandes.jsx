@@ -73,12 +73,28 @@ const HistoriqueCommandes = () => {
     setDateFin('');
   };
 
+  const normalizePhone = (str) => String(str || '').replace(/\D/g, '');
+
   const filteredCommandes = commandes
     .filter((commande) => {
-      const matchSearch = 
-        commande.numeroCommande?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (typeof commande.client === 'object' ? commande.client?.nom : commande.client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (typeof commande.modele === 'object' ? commande.modele?.nom : commande.modele || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const term = searchTerm.trim().toLowerCase();
+      const termDigits = normalizePhone(searchTerm);
+
+      const numero = (commande.numeroCommande || '').toLowerCase();
+      const clientNom = (typeof commande.client === 'object' ? commande.client?.nom : commande.client || '').toLowerCase();
+      const clientContactRaw = commande.contactClient
+        || (typeof commande.client === 'object' ? commande.client?.contact : '')
+        || '';
+      const clientContactDigits = normalizePhone(clientContactRaw);
+      const modele = (typeof commande.modele === 'object' ? commande.modele?.nom : commande.modele || '').toLowerCase();
+
+      const matchSearch =
+        !term ||
+        numero.includes(term) ||
+        clientNom.includes(term) ||
+        modele.includes(term) ||
+        String(clientContactRaw).toLowerCase().includes(term) ||
+        (termDigits.length > 0 && clientContactDigits.includes(termDigits));
 
       const cmdDate = new Date(commande.createdAt || commande.dateCommande || commande.created_at);
       const matchDateDebut = !dateDebut || cmdDate >= new Date(dateDebut);
@@ -158,7 +174,7 @@ const HistoriqueCommandes = () => {
               <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher par n°, client ou modèle..."
+                placeholder="Rechercher par n°, client, téléphone ou modèle..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input pl-8 sm:pl-10 text-sm sm:text-base truncate"
