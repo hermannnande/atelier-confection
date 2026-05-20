@@ -62,6 +62,7 @@ export function mapLivraison(row) {
       livreur: row.livreur ?? undefined,
       gestionnaire: row.gestionnaire ?? undefined,
       dateAssignation: row.date_assignation,
+      dateTournee: row.date_tournee ?? row.date_assignation,
       dateLivraison: row.date_livraison,
       adresseLivraison: row.adresse_livraison,
       motifRefus: row.motif_refus,

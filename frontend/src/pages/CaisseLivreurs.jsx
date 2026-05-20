@@ -18,10 +18,67 @@ import {
   RotateCcw,
   Trash2,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  CalendarDays,
 } from 'lucide-react';
 
-const STATUTS_ACTIFS = ['en_cours', 'reportee', 'livree']; // colis encore sur le livreur ou argent dû
+// ─── helpers date ────────────────────────────────────────────────────────────
+function getJourKey(dateString) {
+  if (!dateString) return null;
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
 
+function todayKey() {
+  return getJourKey(new Date().toISOString());
+}
+
+function yesterdayKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getJourKey(d.toISOString());
+}
+
+function startOfWeekKey() {
+  const d = new Date();
+  const day = d.getDay(); // 0 = dim, 1 = lun ...
+  const diff = (day === 0 ? -6 : 1) - day; // lundi de cette semaine
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return getJourKey(d.toISOString());
+}
+
+function formatJourLong(jourKey) {
+  if (!jourKey) return '—';
+  const d = new Date(`${jourKey}T12:00:00`);
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatJourCourt(jourKey) {
+  if (!jourKey) return '—';
+  const d = new Date(`${jourKey}T12:00:00`);
+  const today = todayKey();
+  const yesterday = yesterdayKey();
+  if (jourKey === today) return "Aujourd'hui";
+  if (jourKey === yesterday) return 'Hier';
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+// ─── composant principal ─────────────────────────────────────────────────────
 const Livreurs = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -29,10 +86,13 @@ const Livreurs = () => {
   const [loading, setLoading] = useState(true);
   const [livreurs, setLivreurs] = useState([]);
   const [livraisons, setLivraisons] = useState([]);
-  const [selectedLivreur, setSelectedLivreur] = useState(null);
+  const [selectedTournee, setSelectedTournee] = useState(null); // { livreurId, jourKey, livreur, jourLabel }
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [dateFilter, setDateFilter] = useState('today'); // today | yesterday | week | all | custom
+  const [customDate, setCustomDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('desc'); // desc | asc
 
   useEffect(() => {
     if (user && !['gestionnaire', 'administrateur'].includes(user.role)) {
@@ -41,7 +101,7 @@ const Livreurs = () => {
       return;
     }
     fetchData();
-    const interval = setInterval(() => fetchData(true), 15000); // refresh silencieux
+    const interval = setInterval(() => fetchData(true), 15000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
@@ -64,40 +124,57 @@ const Livreurs = () => {
     }
   };
 
-  // Grouper les livraisons par livreur
-  const livraisonsByLivreur = useMemo(() => {
-    const map = new Map();
+  // ─── construction des tournées (livreur × jour) ────────────────────────────
+  const tournees = useMemo(() => {
+    const map = new Map(); // key = `${livreurId}|${jourKey}`
     for (const liv of livraisons) {
       const lid = liv.livreur?._id || liv.livreur?.id || liv.livreur_id;
       if (!lid) continue;
-      if (!map.has(lid)) map.set(lid, []);
-      map.get(lid).push(liv);
+      const jourKey = getJourKey(liv.dateTournee || liv.dateAssignation || liv.date_tournee || liv.date_assignation);
+      if (!jourKey) continue;
+      const key = `${lid}|${jourKey}`;
+      if (!map.has(key)) {
+        const livreurObj = liv.livreur || livreurs.find((l) => (l._id || l.id) === lid) || { _id: lid };
+        map.set(key, {
+          key,
+          livreurId: lid,
+          livreur: livreurObj,
+          jourKey,
+          livraisons: [],
+        });
+      }
+      map.get(key).livraisons.push(liv);
     }
-    return map;
-  }, [livraisons]);
+    return Array.from(map.values());
+  }, [livraisons, livreurs]);
 
-  const getStatsForLivreur = (lid) => {
-    const all = livraisonsByLivreur.get(lid) || [];
-    const enCours = all.filter((l) => l.statut === 'en_cours');
-    const reportees = all.filter((l) => l.statut === 'reportee');
-    const livreesNonPayees = all.filter((l) => l.statut === 'livree' && !l.paiementRecu);
-    const refuseesNonRetournees = all.filter(
-      (l) => l.statut === 'refusee' && !l.verifieParGestionnaire
-    );
-    const argentDu = livreesNonPayees.reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
-
+  // ─── statistiques d'une tournée ────────────────────────────────────────────
+  const getStatsTournee = (livs) => {
+    const enCours = livs.filter((l) => l.statut === 'en_cours');
+    const reportees = livs.filter((l) => l.statut === 'reportee');
+    const livreesNonPayees = livs.filter((l) => l.statut === 'livree' && !l.paiementRecu);
+    const livreesPayees = livs.filter((l) => l.statut === 'livree' && l.paiementRecu);
+    const refusees = livs.filter((l) => l.statut === 'refusee' || l.statut === 'retournee');
+    const argentDu = livreesNonPayees.reduce((s, l) => s + (l.commande?.prix || 0), 0);
+    const argentDepose = livreesPayees.reduce((s, l) => s + (l.commande?.prix || 0), 0);
     return {
-      sur_lui: enCours.length + reportees.length,
+      total: livs.length,
       enCours: enCours.length,
       reportees: reportees.length,
       livreesNonPayees: livreesNonPayees.length,
-      refuseesNonRetournees: refuseesNonRetournees.length,
+      livreesPayees: livreesPayees.length,
+      refusees: refusees.length,
       argentDu,
-      total: all.length,
+      argentDepose,
+      soldee:
+        enCours.length === 0 &&
+        reportees.length === 0 &&
+        livreesNonPayees.length === 0 &&
+        livs.filter((l) => l.statut === 'refusee' && !l.verifieParGestionnaire).length === 0,
     };
   };
 
-  // Stats globales
+  // ─── stats globales ────────────────────────────────────────────────────────
   const statsGlobales = useMemo(() => {
     let colisDehors = 0;
     let argentDu = 0;
@@ -108,44 +185,69 @@ const Livreurs = () => {
     return { colisDehors, argentDu };
   }, [livraisons]);
 
-  const livreursFiltres = useMemo(() => {
+  // ─── filtres date + recherche ──────────────────────────────────────────────
+  const tourneesFiltres = useMemo(() => {
+    const today = todayKey();
+    const yesterday = yesterdayKey();
+    const weekStart = startOfWeekKey();
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return livreurs;
-    return livreurs.filter(
-      (l) =>
-        l.nom?.toLowerCase().includes(term) ||
-        l.telephone?.toLowerCase().includes(term) ||
-        l.email?.toLowerCase().includes(term)
-    );
-  }, [livreurs, searchTerm]);
 
-  const livraisonsDuLivreurSelectionne = useMemo(() => {
-    if (!selectedLivreur) return [];
-    const lid = selectedLivreur._id || selectedLivreur.id;
-    return livraisonsByLivreur.get(lid) || [];
-  }, [selectedLivreur, livraisonsByLivreur]);
+    let result = tournees.filter((t) => {
+      // filtre date
+      if (dateFilter === 'today' && t.jourKey !== today) return false;
+      if (dateFilter === 'yesterday' && t.jourKey !== yesterday) return false;
+      if (dateFilter === 'week' && t.jourKey < weekStart) return false;
+      if (dateFilter === 'custom' && customDate && t.jourKey !== customDate) return false;
 
-  const groupedSelectedLivreur = useMemo(() => {
+      // filtre livreur
+      if (term) {
+        const nom = (t.livreur?.nom || '').toLowerCase();
+        const tel = (t.livreur?.telephone || '').toLowerCase();
+        if (!nom.includes(term) && !tel.includes(term)) return false;
+      }
+      return true;
+    });
+
+    // tri par date puis nom livreur
+    result.sort((a, b) => {
+      if (a.jourKey !== b.jourKey) {
+        return sortOrder === 'desc' ? b.jourKey.localeCompare(a.jourKey) : a.jourKey.localeCompare(b.jourKey);
+      }
+      return (a.livreur?.nom || '').localeCompare(b.livreur?.nom || '');
+    });
+
+    return result;
+  }, [tournees, dateFilter, customDate, searchTerm, sortOrder]);
+
+  // ─── tournée sélectionnée ──────────────────────────────────────────────────
+  const livraisonsTourneeSelectionnee = useMemo(() => {
+    if (!selectedTournee) return [];
+    const t = tournees.find((x) => x.key === selectedTournee.key);
+    return t?.livraisons || [];
+  }, [selectedTournee, tournees]);
+
+  const groupedSelected = useMemo(() => {
     const enCours = [];
     const reportees = [];
     const livreesNonPayees = [];
     const refuseesNonRetournees = [];
-    for (const l of livraisonsDuLivreurSelectionne) {
+    for (const l of livraisonsTourneeSelectionnee) {
       if (l.statut === 'en_cours') enCours.push(l);
       else if (l.statut === 'reportee') reportees.push(l);
       else if (l.statut === 'livree' && !l.paiementRecu) livreesNonPayees.push(l);
       else if (l.statut === 'refusee' && !l.verifieParGestionnaire) refuseesNonRetournees.push(l);
     }
     return { enCours, reportees, livreesNonPayees, refuseesNonRetournees };
-  }, [livraisonsDuLivreurSelectionne]);
+  }, [livraisonsTourneeSelectionnee]);
 
   const montantSelectionne = useMemo(() => {
     if (selectedIds.size === 0) return 0;
-    return groupedSelectedLivreur.livreesNonPayees
+    return groupedSelected.livreesNonPayees
       .filter((l) => selectedIds.has(l._id || l.id))
       .reduce((sum, l) => sum + (l.commande?.prix || 0), 0);
-  }, [selectedIds, groupedSelectedLivreur]);
+  }, [selectedIds, groupedSelected]);
 
+  // ─── handlers ──────────────────────────────────────────────────────────────
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -156,14 +258,14 @@ const Livreurs = () => {
   };
 
   const selectAll = () => {
-    const all = groupedSelectedLivreur.livreesNonPayees.map((l) => l._id || l.id);
+    const all = groupedSelected.livreesNonPayees.map((l) => l._id || l.id);
     setSelectedIds(new Set(all));
   };
 
   const unselectAll = () => setSelectedIds(new Set());
 
-  const handleOpenLivreur = (livreur) => {
-    setSelectedLivreur(livreur);
+  const handleOpenTournee = (tournee) => {
+    setSelectedTournee(tournee);
     setSelectedIds(new Set());
   };
 
@@ -172,16 +274,20 @@ const Livreurs = () => {
       toast.error('Sélectionne au moins une livraison');
       return;
     }
-    if (!confirm(`Confirmer le dépôt de ${montantSelectionne.toLocaleString('fr-FR')} F pour ${selectedIds.size} livraison(s) ?`)) {
+    if (
+      !confirm(
+        `Confirmer le dépôt de ${montantSelectionne.toLocaleString('fr-FR')} F pour ${selectedIds.size} livraison(s) ?`
+      )
+    ) {
       return;
     }
     setProcessing(true);
     try {
       const livraisonIds = Array.from(selectedIds);
-      const { data } = await api.post('/livraisons/marquer-paiement-recu-batch', {
-        livraisonIds,
-      });
-      toast.success(`${data.nombreLivraisons} livraison(s) payée(s) — ${(data.montantTotal || 0).toLocaleString('fr-FR')} F`);
+      const { data } = await api.post('/livraisons/marquer-paiement-recu-batch', { livraisonIds });
+      toast.success(
+        `${data.nombreLivraisons} livraison(s) payée(s) — ${(data.montantTotal || 0).toLocaleString('fr-FR')} F`
+      );
       setSelectedIds(new Set());
       await fetchData(true);
     } catch (error) {
@@ -205,8 +311,28 @@ const Livreurs = () => {
     }
   };
 
+  const handleReprendre = async (livraisonId) => {
+    if (!confirm("Reprendre cette livraison reportée ?\n\nElle basculera dans la tournée d'aujourd'hui pour ce livreur.")) {
+      return;
+    }
+    setProcessing(true);
+    try {
+      await api.post(`/livraisons/${livraisonId}/reprendre`);
+      toast.success("Livraison reprise — bascule dans la tournée du jour");
+      await fetchData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleSupprimerOrpheline = async (livraisonId) => {
-    if (!confirm('⚠️ Supprimer définitivement cette livraison orpheline ?\n\nElle pointe vers une commande qui n\'existe plus.')) {
+    if (
+      !confirm(
+        "⚠️ Supprimer définitivement cette livraison orpheline ?\n\nElle pointe vers une commande qui n'existe plus."
+      )
+    ) {
       return;
     }
     setProcessing(true);
@@ -242,7 +368,7 @@ const Livreurs = () => {
               Livreurs
             </h1>
             <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium truncate">
-              Suivi colis + dépôt d'argent
+              Tournées journalières · suivi des dépôts
             </p>
           </div>
         </div>
@@ -251,16 +377,12 @@ const Livreurs = () => {
       {/* Stats globales */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <div className="stat-card bg-gradient-to-br from-blue-50 to-indigo-50">
-          <p className="text-xs sm:text-sm font-semibold text-blue-700 uppercase truncate">
-            📦 Colis dehors
-          </p>
+          <p className="text-xs sm:text-sm font-semibold text-blue-700 uppercase truncate">📦 Colis dehors</p>
           <p className="text-3xl sm:text-4xl font-black text-blue-900">{statsGlobales.colisDehors}</p>
           <p className="text-xs text-blue-600 mt-1">chez les livreurs</p>
         </div>
         <div className="stat-card bg-gradient-to-br from-emerald-50 to-teal-50">
-          <p className="text-xs sm:text-sm font-semibold text-emerald-700 uppercase truncate">
-            💰 Argent dû
-          </p>
+          <p className="text-xs sm:text-sm font-semibold text-emerald-700 uppercase truncate">💰 Argent dû</p>
           <p className="text-3xl sm:text-4xl font-black text-emerald-900">
             {statsGlobales.argentDu.toLocaleString('fr-FR')} F
           </p>
@@ -268,13 +390,78 @@ const Livreurs = () => {
         </div>
       </div>
 
-      {/* Recherche */}
-      <div className="stat-card !p-3 sm:!p-4">
+      {/* Filtres date + recherche */}
+      <div className="stat-card !p-3 sm:!p-4 space-y-3">
+        {/* Boutons filtre rapide */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: 'today', label: "📅 Aujourd'hui" },
+            { id: 'yesterday', label: 'Hier' },
+            { id: 'week', label: 'Cette semaine' },
+            { id: 'all', label: 'Tout' },
+          ].map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => {
+                setDateFilter(f.id);
+                setCustomDate('');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                dateFilter === f.id
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+
+          {/* Date picker */}
+          <div className="flex items-center gap-1">
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => {
+                setCustomDate(e.target.value);
+                if (e.target.value) setDateFilter('custom');
+              }}
+              className="text-xs sm:text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              title="Choisir une date précise"
+            />
+            {customDate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomDate('');
+                  setDateFilter('today');
+                }}
+                className="text-xs text-gray-500 hover:text-gray-800 px-1"
+                title="Effacer la date"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Tri */}
+          <button
+            type="button"
+            onClick={() => setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc'))}
+            className="ml-auto px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1"
+            title="Inverser le tri"
+          >
+            {sortOrder === 'desc' ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            {sortOrder === 'desc' ? 'Récent' : 'Ancien'}
+          </button>
+        </div>
+
+        {/* Recherche */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Rechercher un livreur (nom, téléphone, email)..."
+            placeholder="Rechercher un livreur (nom, téléphone)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input pl-10 pr-10 text-sm sm:text-base w-full"
@@ -284,7 +471,6 @@ const Livreurs = () => {
               type="button"
               onClick={() => setSearchTerm('')}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              aria-label="Effacer la recherche"
             >
               <X size={16} />
             </button>
@@ -292,102 +478,68 @@ const Livreurs = () => {
         </div>
       </div>
 
-      {/* Cartes livreurs */}
-      {livreursFiltres.length === 0 ? (
+      {/* Liste des tournées */}
+      {tourneesFiltres.length === 0 ? (
         <div className="stat-card text-center py-12">
-          <Users className="mx-auto text-gray-400 mb-3" size={40} />
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Aucun livreur trouvé</h3>
+          <CalendarDays className="mx-auto text-gray-400 mb-3" size={40} />
+          <h3 className="text-lg font-bold text-gray-900 mb-1">Aucune tournée trouvée</h3>
           <p className="text-sm text-gray-600">
-            {searchTerm ? 'Essaie une autre recherche' : 'Aucun livreur actif dans le système'}
+            {dateFilter === 'today'
+              ? "Aucun livreur n'a reçu de colis aujourd'hui"
+              : dateFilter === 'yesterday'
+              ? "Aucune tournée hier"
+              : 'Essaie un autre filtre'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {livreursFiltres.map((livreur) => {
-            const lid = livreur._id || livreur.id;
-            const stats = getStatsForLivreur(lid);
-            const aDeFait =
-              stats.sur_lui === 0 &&
-              stats.livreesNonPayees === 0 &&
-              stats.refuseesNonRetournees === 0;
-            return (
-              <button
-                key={lid}
-                type="button"
-                onClick={() => handleOpenLivreur(livreur)}
-                className={`stat-card text-left hover:shadow-xl transition-all cursor-pointer ${
-                  aDeFait
-                    ? 'border-l-4 border-emerald-500'
-                    : stats.argentDu > 0
-                    ? 'border-l-4 border-amber-500'
-                    : 'border-l-4 border-blue-500'
-                }`}
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-xl shadow-md flex-shrink-0">
-                    {livreur.nom?.charAt(0).toUpperCase() || '?'}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-gray-900 truncate">{livreur.nom}</h3>
-                    <p className="text-xs text-gray-500 truncate flex items-center gap-1">
-                      <Phone size={11} />
-                      {livreur.telephone || '—'}
-                    </p>
-                  </div>
-                  {aDeFait && (
-                    <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold flex-shrink-0">
-                      ✓ À jour
-                    </span>
-                  )}
+        <div className="space-y-4">
+          {/* Grouper visuellement par jour */}
+          {groupParJour(tourneesFiltres, sortOrder).map(({ jourKey, items }) => (
+            <div key={jourKey} className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-black px-3 py-1 rounded-full shadow-md uppercase tracking-wide">
+                  {formatJourCourt(jourKey)}
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-blue-50 rounded-lg p-2">
-                    <p className="text-blue-600 font-semibold uppercase text-[10px]">📦 Sur lui</p>
-                    <p className="text-2xl font-black text-blue-900">{stats.sur_lui}</p>
-                    {stats.reportees > 0 && (
-                      <p className="text-[10px] text-orange-600 font-bold">{stats.reportees} reporté(s)</p>
-                    )}
-                  </div>
-                  <div className="bg-emerald-50 rounded-lg p-2">
-                    <p className="text-emerald-600 font-semibold uppercase text-[10px]">✅ Livrées</p>
-                    <p className="text-2xl font-black text-emerald-900">{stats.livreesNonPayees}</p>
-                    <p className="text-[10px] text-emerald-700 font-bold truncate">
-                      {stats.argentDu.toLocaleString('fr-FR')} F
-                    </p>
-                  </div>
-                </div>
-
-                {stats.refuseesNonRetournees > 0 && (
-                  <div className="mt-2 bg-red-50 rounded-lg p-2 text-xs">
-                    <p className="text-red-700 font-bold flex items-center gap-1">
-                      <XCircle size={12} />
-                      {stats.refuseesNonRetournees} refusée(s) à confirmer
-                    </p>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                <p className="text-xs text-gray-500 hidden sm:block">{formatJourLong(jourKey)}</p>
+                <p className="text-xs text-gray-400 ml-auto">
+                  {items.length} tournée{items.length > 1 ? 's' : ''}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {items.map((t) => {
+                  const stats = getStatsTournee(t.livraisons);
+                  return (
+                    <TourneeCard
+                      key={t.key}
+                      tournee={t}
+                      stats={stats}
+                      onClick={() => handleOpenTournee(t)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Modal détail livreur */}
-      {selectedLivreur && (
-        <LivreurDetailModal
-          livreur={selectedLivreur}
-          grouped={groupedSelectedLivreur}
+      {/* Modal détail tournée */}
+      {selectedTournee && (
+        <TourneeDetailModal
+          tournee={selectedTournee}
+          grouped={groupedSelected}
           selectedIds={selectedIds}
           toggleSelect={toggleSelect}
           selectAll={selectAll}
           unselectAll={unselectAll}
           montantSelectionne={montantSelectionne}
           onClose={() => {
-            setSelectedLivreur(null);
+            setSelectedTournee(null);
             setSelectedIds(new Set());
           }}
           onDeposer={handleDeposerArgent}
           onConfirmerRetour={handleConfirmerRetourRefuse}
+          onReprendre={handleReprendre}
           onSupprimerOrpheline={handleSupprimerOrpheline}
           processing={processing}
           userRole={user?.role}
@@ -397,8 +549,89 @@ const Livreurs = () => {
   );
 };
 
-function LivreurDetailModal({
-  livreur,
+// ─── grouper les tournées par jour pour affichage en sections ───────────────
+function groupParJour(tournees, sortOrder) {
+  const map = new Map();
+  for (const t of tournees) {
+    if (!map.has(t.jourKey)) map.set(t.jourKey, []);
+    map.get(t.jourKey).push(t);
+  }
+  const entries = Array.from(map.entries()).map(([jourKey, items]) => ({ jourKey, items }));
+  entries.sort((a, b) =>
+    sortOrder === 'desc' ? b.jourKey.localeCompare(a.jourKey) : a.jourKey.localeCompare(b.jourKey)
+  );
+  return entries;
+}
+
+// ─── carte tournée ───────────────────────────────────────────────────────────
+function TourneeCard({ tournee, stats, onClick }) {
+  const livreur = tournee.livreur;
+  const borderColor = stats.soldee
+    ? 'border-l-4 border-emerald-500'
+    : stats.argentDu > 0
+    ? 'border-l-4 border-amber-500'
+    : 'border-l-4 border-blue-500';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`stat-card text-left hover:shadow-xl transition-all cursor-pointer ${borderColor} !p-3`}
+    >
+      <div className="flex items-start gap-2 mb-2">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-sm shadow-md flex-shrink-0">
+          {livreur?.nom?.charAt(0).toUpperCase() || '?'}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-gray-900 truncate text-sm">{livreur?.nom || '—'}</h3>
+          <p className="text-[11px] text-gray-500 truncate flex items-center gap-1">
+            <Phone size={10} />
+            {livreur?.telephone || '—'}
+          </p>
+        </div>
+        {stats.soldee && (
+          <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold flex-shrink-0">
+            ✓ Soldée
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-4 gap-1 text-[10px]">
+        <div className="bg-blue-50 rounded p-1.5 text-center">
+          <p className="text-blue-600 font-semibold uppercase text-[9px]">Total</p>
+          <p className="text-lg font-black text-blue-900 leading-none">{stats.total}</p>
+        </div>
+        <div className="bg-emerald-50 rounded p-1.5 text-center">
+          <p className="text-emerald-600 font-semibold uppercase text-[9px]">Livré</p>
+          <p className="text-lg font-black text-emerald-900 leading-none">
+            {stats.livreesNonPayees + stats.livreesPayees}
+          </p>
+        </div>
+        <div className="bg-orange-50 rounded p-1.5 text-center">
+          <p className="text-orange-600 font-semibold uppercase text-[9px]">Repor.</p>
+          <p className="text-lg font-black text-orange-900 leading-none">{stats.reportees}</p>
+        </div>
+        <div className="bg-red-50 rounded p-1.5 text-center">
+          <p className="text-red-600 font-semibold uppercase text-[9px]">Refusé</p>
+          <p className="text-lg font-black text-red-900 leading-none">{stats.refusees}</p>
+        </div>
+      </div>
+
+      {stats.enCours > 0 && (
+        <p className="text-[11px] text-blue-700 mt-2 font-bold">📦 {stats.enCours} en cours</p>
+      )}
+      {stats.argentDu > 0 && (
+        <p className="text-[11px] text-amber-700 mt-1 font-bold">
+          💰 {stats.argentDu.toLocaleString('fr-FR')} F à déposer
+        </p>
+      )}
+    </button>
+  );
+}
+
+// ─── modal détail tournée ────────────────────────────────────────────────────
+function TourneeDetailModal({
+  tournee,
   grouped,
   selectedIds,
   toggleSelect,
@@ -408,6 +641,7 @@ function LivreurDetailModal({
   onClose,
   onDeposer,
   onConfirmerRetour,
+  onReprendre,
   onSupprimerOrpheline,
   processing,
   userRole,
@@ -416,6 +650,7 @@ function LivreurDetailModal({
     (sum, l) => sum + (l.commande?.prix || 0),
     0
   );
+  const livreur = tournee.livreur;
 
   return (
     <div
@@ -430,13 +665,13 @@ function LivreurDetailModal({
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-5 text-white flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white font-black text-xl flex-shrink-0">
-              {livreur.nom?.charAt(0).toUpperCase()}
+              {livreur?.nom?.charAt(0).toUpperCase() || '?'}
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-black truncate">{livreur.nom}</h2>
+              <h2 className="text-xl sm:text-2xl font-black truncate">{livreur?.nom || '—'}</h2>
               <p className="text-sm text-emerald-50 truncate flex items-center gap-1">
-                <Phone size={12} />
-                {livreur.telephone || '—'}
+                <Calendar size={12} />
+                {formatJourLong(tournee.jourKey)}
               </p>
             </div>
           </div>
@@ -452,14 +687,14 @@ function LivreurDetailModal({
 
         {/* Body scrollable */}
         <div className="overflow-y-auto p-4 sm:p-5 space-y-5 flex-1">
-          {/* SECTION 1 - À LIVRER */}
+          {/* À LIVRER */}
           <section>
             <h3 className="text-sm font-black text-blue-700 uppercase mb-2 flex items-center gap-2">
               <Package size={16} />
               À LIVRER ({grouped.enCours.length})
             </h3>
             {grouped.enCours.length === 0 ? (
-              <p className="text-xs text-gray-500 italic px-2">Aucun colis à livrer</p>
+              <p className="text-xs text-gray-500 italic px-2">Aucun colis à livrer dans cette tournée</p>
             ) : (
               <div className="space-y-2">
                 {grouped.enCours.map((l) => (
@@ -476,19 +711,23 @@ function LivreurDetailModal({
             )}
           </section>
 
-          {/* SECTION 2 - REPORTÉES */}
+          {/* REPORTÉES — À REPRENDRE */}
           {grouped.reportees.length > 0 && (
             <section>
               <h3 className="text-sm font-black text-orange-700 uppercase mb-2 flex items-center gap-2">
                 <Calendar size={16} />
-                REPORTÉES ({grouped.reportees.length})
+                REPORTÉES — À REPRENDRE ({grouped.reportees.length})
               </h3>
+              <p className="text-[11px] text-orange-700 mb-2 italic">
+                Ces colis attendent leur reprise. Quand le livreur clique "Reprendre", le colis basculera dans la tournée du jour.
+              </p>
               <div className="space-y-2">
                 {grouped.reportees.map((l) => (
                   <LivraisonRow
                     key={l._id || l.id}
                     livraison={l}
                     variant="reportee"
+                    onReprendre={() => onReprendre(l._id || l.id)}
                     onSupprimerOrpheline={onSupprimerOrpheline}
                     processing={processing}
                     userRole={userRole}
@@ -498,7 +737,7 @@ function LivreurDetailModal({
             </section>
           )}
 
-          {/* SECTION 3 - LIVRÉES NON PAYÉES (sélection) */}
+          {/* LIVRÉES — ARGENT DÛ */}
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-black text-emerald-700 uppercase flex items-center gap-2">
@@ -553,9 +792,7 @@ function LivreurDetailModal({
                 <div className="mt-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-3 sm:p-4 border-2 border-emerald-200">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold text-emerald-700 uppercase">
-                        Sélectionné
-                      </p>
+                      <p className="text-xs font-semibold text-emerald-700 uppercase">Sélectionné</p>
                       <p className="text-2xl font-black text-emerald-900">
                         {selectedIds.size} / {grouped.livreesNonPayees.length} ·{' '}
                         <span className="text-emerald-700">
@@ -573,7 +810,7 @@ function LivreurDetailModal({
                       className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
                     >
                       <Wallet size={18} />
-                      <span>{processing ? 'Dépôt...' : 'DÉPOSER L\'ARGENT'}</span>
+                      <span>{processing ? 'Dépôt...' : "DÉPOSER L'ARGENT"}</span>
                     </button>
                   </div>
                 </div>
@@ -581,7 +818,7 @@ function LivreurDetailModal({
             )}
           </section>
 
-          {/* SECTION 4 - REFUSÉES À CONFIRMER (rare car automatique maintenant) */}
+          {/* REFUSÉES À CONFIRMER */}
           {grouped.refuseesNonRetournees.length > 0 && (
             <section>
               <h3 className="text-sm font-black text-red-700 uppercase mb-2 flex items-center gap-2">
@@ -595,21 +832,23 @@ function LivreurDetailModal({
                     livraison={l}
                     variant="refusee"
                     onConfirmerRetour={() => onConfirmerRetour(l._id || l.id)}
+                    onSupprimerOrpheline={onSupprimerOrpheline}
                     processing={processing}
+                    userRole={userRole}
                   />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Note bas de page */}
+          {/* Note bas */}
           <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800">
             <p className="font-bold mb-1">💡 Comment ça marche :</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>Le livreur marque ses colis depuis son interface (Livrée / Reportée / Refusée)</li>
-              <li>Les refus déclenchent un retour au stock automatique</li>
-              <li>Coche les livraisons dont l'argent est déposé, puis clique <strong>DÉPOSER L'ARGENT</strong></li>
-              <li>Les colis reportés restent chez le livreur pour le lendemain</li>
+              <li>Cette carte = 1 tournée d'1 livreur 1 jour donné</li>
+              <li>Les colis assignés un autre jour apparaissent dans une autre carte</li>
+              <li>Les colis "Reportés" restent dans leur tournée d'origine avec étiquette orange</li>
+              <li>Quand le livreur "Reprend" un colis reporté, il bascule dans la tournée du jour</li>
             </ul>
           </div>
         </div>
@@ -618,12 +857,14 @@ function LivreurDetailModal({
   );
 }
 
+// ─── ligne livraison ─────────────────────────────────────────────────────────
 function LivraisonRow({
   livraison,
   variant,
   checked,
   onToggle,
   onConfirmerRetour,
+  onReprendre,
   onSupprimerOrpheline,
   processing,
   userRole,
@@ -631,7 +872,7 @@ function LivraisonRow({
   const commande = livraison.commande;
   const isOrphan = !commande || !commande.numeroCommande;
 
-  // Cas spécial : livraison orpheline (commande introuvable ou supprimée)
+  // Cas orpheline
   if (isOrphan) {
     const livraisonId = livraison._id || livraison.id;
     return (
@@ -687,18 +928,14 @@ function LivraisonRow({
     );
   }
 
-  // Cas normal
   const clientNom = commande.client?.nom || (typeof commande.client === 'string' ? commande.client : '—');
-  const clientVille =
-    commande.client?.ville ||
-    livraison.adresseLivraison?.ville ||
-    '—';
+  const clientVille = commande.client?.ville || livraison.adresseLivraison?.ville || '—';
   const clientContact = commande.client?.contact || '';
   const motif = livraison.motifRefus || livraison.commentaireGestionnaire;
 
   const borderColor = {
     en_cours: 'border-blue-200 bg-blue-50/40',
-    reportee: 'border-orange-200 bg-orange-50/40',
+    reportee: 'border-orange-300 bg-orange-50',
     livree: checked
       ? 'border-emerald-400 bg-emerald-50 shadow-sm'
       : 'border-gray-200 bg-white hover:border-emerald-300',
@@ -718,13 +955,16 @@ function LivraisonRow({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="font-bold text-sm text-gray-900 truncate">
-              {commande.numeroCommande || '—'}
-            </p>
+            <p className="font-bold text-sm text-gray-900 truncate">{commande.numeroCommande || '—'}</p>
             <p className="font-black text-sm text-gray-900 flex-shrink-0">
               {(commande.prix || 0).toLocaleString('fr-FR')} F
             </p>
           </div>
+          {variant === 'reportee' && (
+            <span className="inline-block bg-orange-200 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
+              🔄 À REPRENDRE
+            </span>
+          )}
           <p className="text-xs text-gray-700 truncate">
             <span className="font-semibold">{clientNom}</span>
             {clientVille && (
@@ -739,10 +979,11 @@ function LivraisonRow({
           </p>
           {commande.modele && (
             <p className="text-[11px] text-gray-500 truncate">
-              {typeof commande.modele === 'string' ? commande.modele : commande.modele.nom} · {commande.taille} · {commande.couleur}
+              {typeof commande.modele === 'string' ? commande.modele : commande.modele.nom} · {commande.taille} ·{' '}
+              {commande.couleur}
             </p>
           )}
-          {clientContact && variant === 'en_cours' && (
+          {clientContact && (variant === 'en_cours' || variant === 'reportee') && (
             <a
               href={`tel:${clientContact}`}
               className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 mt-1"
@@ -751,13 +992,21 @@ function LivraisonRow({
               {clientContact}
             </a>
           )}
-          {motif && (
-            <p className="text-[11px] text-gray-600 italic mt-1 line-clamp-2">
-              📝 {motif}
-            </p>
-          )}
+          {motif && <p className="text-[11px] text-gray-600 italic mt-1 line-clamp-2">📝 {motif}</p>}
         </div>
       </div>
+
+      {variant === 'reportee' && onReprendre && (
+        <button
+          type="button"
+          onClick={onReprendre}
+          disabled={processing}
+          className="mt-2 w-full bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50"
+        >
+          <RotateCcw size={12} />
+          Reprendre (basculer dans la tournée du jour)
+        </button>
+      )}
 
       {variant === 'refusee' && onConfirmerRetour && (
         <button

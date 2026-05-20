@@ -104,6 +104,7 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       .maybeSingle();
 
     // Créer livraison (même si stock vide)
+    const nowIso = new Date().toISOString();
     const { data: livraison, error: e3 } = await supabase
       .from('livraisons')
       .insert({
@@ -113,6 +114,8 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
         statut: 'en_cours',
         adresse_livraison: { ville: commande.client?.ville, details: '' },
         instructions: instructions || commande.note_appelant,
+        date_assignation: nowIso,
+        date_tournee: nowIso, // sera aussi mis par le trigger BD, mais on l'écrit explicitement pour la clarté
       })
       .select('*')
       .single();
@@ -438,6 +441,7 @@ router.post('/:id/reportee', authenticate, resolveCountry, authorize('livreur', 
 });
 
 // Remettre une livraison "reportee" en cours (livreur reprend sa tournée le lendemain)
+// → date_tournee est mise à NOW() pour que le colis bascule dans la carte du jour courant
 router.post('/:id/reprendre', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -452,13 +456,36 @@ router.post('/:id/reprendre', authenticate, resolveCountry, authorize('livreur',
       return res.status(400).json({ message: 'Seules les livraisons reportées peuvent être reprises' });
     }
 
+    const nowIso = new Date().toISOString();
     const { data: updated, error: e2 } = await supabase
       .from('livraisons')
-      .update({ statut: 'en_cours' })
+      .update({
+        statut: 'en_cours',
+        date_tournee: nowIso, // bascule dans la carte du jour courant
+      })
       .eq('id', req.params.id)
       .select()
       .single();
     if (e2) return res.status(500).json({ message: 'Erreur lors de la reprise', error: e2.message });
+
+    // Trace dans l'historique commande
+    try {
+      const { data: cmd } = await supabase
+        .from('commandes')
+        .select('historique')
+        .eq('id', livraison.commande_id)
+        .single();
+      if (cmd) {
+        const historique = Array.isArray(cmd.historique) ? cmd.historique : [];
+        historique.push({
+          action: 'Livraison reprise (nouvelle tournée)',
+          statut: 'en_cours',
+          utilisateur: req.userId,
+          date: nowIso,
+        });
+        await supabase.from('commandes').update({ historique }).eq('id', livraison.commande_id);
+      }
+    } catch {}
 
     return res.json({ message: 'Livraison reprise', livraison: mapLivraison(updated) });
   } catch (error) {
