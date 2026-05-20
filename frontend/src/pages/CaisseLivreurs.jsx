@@ -55,20 +55,7 @@ const Livreurs = () => {
       ]);
       const livreursActifs = (usersRes.data.users || []).filter((u) => u.actif);
       setLivreurs(livreursActifs);
-
-      const livs = livraisonsRes.data.livraisons || [];
-      // 🐛 DEBUG : inspecter la structure des livraisons (à retirer une fois le bug fixé)
-      if (livs.length > 0) {
-        console.log('🚚 [DEBUG] Total livraisons reçues:', livs.length);
-        console.log('🚚 [DEBUG] Première livraison brute:', livs[0]);
-        console.log('🚚 [DEBUG] Première livraison.commande:', livs[0]?.commande);
-        const sansCommande = livs.filter((l) => !l.commande || !l.commande.numeroCommande);
-        console.log(`🚚 [DEBUG] Livraisons SANS commande hydratée: ${sansCommande.length}/${livs.length}`);
-        if (sansCommande.length > 0) {
-          console.log('🚚 [DEBUG] Exemple livraison sans commande:', sansCommande[0]);
-        }
-      }
-      setLivraisons(livs);
+      setLivraisons(livraisonsRes.data.livraisons || []);
     } catch (error) {
       if (!silent) toast.error('Erreur lors du chargement');
       console.error(error);
