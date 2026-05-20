@@ -173,6 +173,27 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
   }
 });
 
+// Supprimer une livraison (notamment les orphelines : commande_id pointe vers une commande inexistante)
+router.delete('/:id', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: livraison, error: e1 } = await supabase
+      .from('livraisons')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (!ensureCountryAccess(livraison, req, res)) return;
+
+    const { error: e2 } = await supabase.from('livraisons').delete().eq('id', req.params.id);
+    if (e2) return res.status(500).json({ message: 'Erreur lors de la suppression', error: e2.message });
+
+    return res.json({ message: 'Livraison supprimée', livraisonId: req.params.id });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 // Mettre à jour une livraison (pour paiement, etc.)
 router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {

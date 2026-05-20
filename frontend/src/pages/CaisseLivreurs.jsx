@@ -16,6 +16,8 @@ import {
   Search,
   Loader2,
   RotateCcw,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 const STATUTS_ACTIFS = ['en_cours', 'reportee', 'livree']; // colis encore sur le livreur ou argent dû
@@ -53,7 +55,20 @@ const Livreurs = () => {
       ]);
       const livreursActifs = (usersRes.data.users || []).filter((u) => u.actif);
       setLivreurs(livreursActifs);
-      setLivraisons(livraisonsRes.data.livraisons || []);
+
+      const livs = livraisonsRes.data.livraisons || [];
+      // 🐛 DEBUG : inspecter la structure des livraisons (à retirer une fois le bug fixé)
+      if (livs.length > 0) {
+        console.log('🚚 [DEBUG] Total livraisons reçues:', livs.length);
+        console.log('🚚 [DEBUG] Première livraison brute:', livs[0]);
+        console.log('🚚 [DEBUG] Première livraison.commande:', livs[0]?.commande);
+        const sansCommande = livs.filter((l) => !l.commande || !l.commande.numeroCommande);
+        console.log(`🚚 [DEBUG] Livraisons SANS commande hydratée: ${sansCommande.length}/${livs.length}`);
+        if (sansCommande.length > 0) {
+          console.log('🚚 [DEBUG] Exemple livraison sans commande:', sansCommande[0]);
+        }
+      }
+      setLivraisons(livs);
     } catch (error) {
       if (!silent) toast.error('Erreur lors du chargement');
       console.error(error);
@@ -198,6 +213,22 @@ const Livreurs = () => {
       await fetchData(true);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleSupprimerOrpheline = async (livraisonId) => {
+    if (!confirm('⚠️ Supprimer définitivement cette livraison orpheline ?\n\nElle pointe vers une commande qui n\'existe plus.')) {
+      return;
+    }
+    setProcessing(true);
+    try {
+      await api.delete(`/livraisons/${livraisonId}`);
+      toast.success('Livraison orpheline supprimée');
+      await fetchData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
     } finally {
       setProcessing(false);
     }
@@ -370,7 +401,9 @@ const Livreurs = () => {
           }}
           onDeposer={handleDeposerArgent}
           onConfirmerRetour={handleConfirmerRetourRefuse}
+          onSupprimerOrpheline={handleSupprimerOrpheline}
           processing={processing}
+          userRole={user?.role}
         />
       )}
     </div>
@@ -388,7 +421,9 @@ function LivreurDetailModal({
   onClose,
   onDeposer,
   onConfirmerRetour,
+  onSupprimerOrpheline,
   processing,
+  userRole,
 }) {
   const totalLivreesNonPayees = grouped.livreesNonPayees.reduce(
     (sum, l) => sum + (l.commande?.prix || 0),
@@ -441,7 +476,14 @@ function LivreurDetailModal({
             ) : (
               <div className="space-y-2">
                 {grouped.enCours.map((l) => (
-                  <LivraisonRow key={l._id || l.id} livraison={l} variant="en_cours" />
+                  <LivraisonRow
+                    key={l._id || l.id}
+                    livraison={l}
+                    variant="en_cours"
+                    onSupprimerOrpheline={onSupprimerOrpheline}
+                    processing={processing}
+                    userRole={userRole}
+                  />
                 ))}
               </div>
             )}
@@ -456,7 +498,14 @@ function LivreurDetailModal({
               </h3>
               <div className="space-y-2">
                 {grouped.reportees.map((l) => (
-                  <LivraisonRow key={l._id || l.id} livraison={l} variant="reportee" />
+                  <LivraisonRow
+                    key={l._id || l.id}
+                    livraison={l}
+                    variant="reportee"
+                    onSupprimerOrpheline={onSupprimerOrpheline}
+                    processing={processing}
+                    userRole={userRole}
+                  />
                 ))}
               </div>
             </section>
@@ -505,6 +554,9 @@ function LivreurDetailModal({
                         variant="livree"
                         checked={checked}
                         onToggle={() => toggleSelect(id)}
+                        onSupprimerOrpheline={onSupprimerOrpheline}
+                        processing={processing}
+                        userRole={userRole}
                       />
                     );
                   })}
@@ -579,8 +631,76 @@ function LivreurDetailModal({
   );
 }
 
-function LivraisonRow({ livraison, variant, checked, onToggle, onConfirmerRetour, processing }) {
-  const commande = livraison.commande || {};
+function LivraisonRow({
+  livraison,
+  variant,
+  checked,
+  onToggle,
+  onConfirmerRetour,
+  onSupprimerOrpheline,
+  processing,
+  userRole,
+}) {
+  const commande = livraison.commande;
+  const isOrphan = !commande || !commande.numeroCommande;
+
+  // Cas spécial : livraison orpheline (commande introuvable ou supprimée)
+  if (isOrphan) {
+    const livraisonId = livraison._id || livraison.id;
+    return (
+      <div className="rounded-lg border-2 border-red-300 bg-red-50 p-3 transition-all">
+        <div className="flex items-start gap-3">
+          {variant === 'livree' && (
+            <input
+              type="checkbox"
+              checked={checked || false}
+              onChange={onToggle}
+              className="mt-1 w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer flex-shrink-0"
+              disabled
+              title="Désactivé : commande introuvable"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="text-red-600 flex-shrink-0" size={16} />
+              <p className="font-bold text-sm text-red-800">Livraison orpheline</p>
+            </div>
+            <p className="text-xs text-red-700">
+              La commande liée n'existe plus en base (supprimée ou ID corrompu).
+            </p>
+            <p className="text-[10px] text-red-600 mt-1 font-mono break-all">
+              Livraison ID : {livraisonId?.slice(0, 13) || '?'}…
+              {livraison.commande_id && (
+                <>
+                  <br />
+                  Commande ID : {String(livraison.commande_id).slice(0, 13)}…
+                </>
+              )}
+            </p>
+            {livraison.adresseLivraison?.ville && (
+              <p className="text-[11px] text-red-700 mt-1">
+                Ville stockée : {livraison.adresseLivraison.ville}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {userRole === 'administrateur' && onSupprimerOrpheline && (
+          <button
+            type="button"
+            onClick={() => onSupprimerOrpheline(livraisonId)}
+            disabled={processing}
+            className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50"
+          >
+            <Trash2 size={12} />
+            Supprimer cette livraison
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Cas normal
   const clientNom = commande.client?.nom || (typeof commande.client === 'string' ? commande.client : '—');
   const clientVille =
     commande.client?.ville ||
