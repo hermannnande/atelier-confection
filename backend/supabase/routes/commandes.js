@@ -49,12 +49,59 @@ function attachUsers(row, usersById) {
   return clone;
 }
 
+const STATUTS_PREPARATION_COLIS = ['en_decoupe', 'en_couture', 'en_stock'];
+/** Colis encore chez le livreur ou assignés (affichage Préparation Colis uniquement) */
+const LIVRAISON_STATUTS_ACTIFS = ['assignee', 'en_cours', 'reportee'];
+
+async function getCommandeIdsMasquesPreparationColis(supabase, country) {
+  const masques = new Set();
+
+  const { data: livraisons, error: livErr } = await supabase
+    .from('livraisons')
+    .select('commande_id, statut')
+    .eq('pays_code', country)
+    .not('commande_id', 'is', null);
+
+  if (livErr) return { masques, error: livErr };
+
+  for (const l of livraisons || []) {
+    if (!l.commande_id) continue;
+    if (LIVRAISON_STATUTS_ACTIFS.includes(l.statut)) {
+      masques.add(l.commande_id);
+    }
+  }
+
+  // En stock mais livraison déjà livrée = données incohérentes, masquer quand même
+  const { data: enStock, error: stockErr } = await supabase
+    .from('commandes')
+    .select('id')
+    .eq('pays_code', country)
+    .eq('statut', 'en_stock');
+
+  if (stockErr) return { masques, error: stockErr };
+
+  const enStockIds = new Set((enStock || []).map((c) => c.id));
+  for (const l of livraisons || []) {
+    if (l.statut === 'livree' && l.commande_id && enStockIds.has(l.commande_id)) {
+      masques.add(l.commande_id);
+    }
+  }
+
+  return { masques, error: null };
+}
+
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
-    const { statut, urgence } = req.query;
+    const { statut, urgence, preparationColis } = req.query;
     const supabase = getSupabaseAdmin();
+    const forPreparationColis =
+      preparationColis === '1' || preparationColis === 'true' || preparationColis === true;
 
     let q = supabase.from('commandes').select('*').eq('pays_code', req.country);
+
+    if (forPreparationColis) {
+      q = q.in('statut', STATUTS_PREPARATION_COLIS).is('livreur_id', null);
+    }
 
     // Filtres selon rôle
     if (req.user.role === 'appelant') {
@@ -83,7 +130,19 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
     const { data, error } = await q;
     if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
 
-    const rows = data || [];
+    let rows = data || [];
+
+    if (forPreparationColis) {
+      const { masques, error: maskErr } = await getCommandeIdsMasquesPreparationColis(supabase, req.country);
+      if (maskErr) {
+        return res.status(500).json({
+          message: 'Erreur lors du filtrage préparation colis',
+          error: maskErr.message,
+        });
+      }
+      rows = rows.filter((r) => !masques.has(r.id));
+    }
+
     const usersById = await hydrateUsersForCommandes(supabase, rows);
     const commandes = rows.map((r) => mapCommande(attachUsers(r, usersById)));
 
