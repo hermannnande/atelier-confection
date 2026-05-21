@@ -19,42 +19,6 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-/** Statuts affichés dans Préparation Colis (avant livraison) */
-const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
-
-/** Livraisons = colis déjà assignés (assignee = anciennes données) */
-const LIVRAISON_STATUTS_ASSIGNES = ['assignee', 'en_cours', 'reportee'];
-
-function commandeId(c) {
-  return String(c?._id || c?.id || '');
-}
-
-function hasLivreurAssigne(c) {
-  return !!(c?.livreur_id || c?.livreur?._id || c?.livreur?.id);
-}
-
-function isVisibleInPreparationColis(c, activeLivraisonCmdIds = new Set()) {
-  if (!c || !STATUTS_PREPARATION.includes(c.statut)) return false;
-  if (c.statut === 'en_livraison' || hasLivreurAssigne(c)) return false;
-  const id = commandeId(c);
-  if (id && activeLivraisonCmdIds.has(id)) return false;
-  return true;
-}
-
-function collectAssignedLivraisonCommandeIds(livraisons) {
-  const ids = new Set();
-  for (const l of livraisons || []) {
-    if (!LIVRAISON_STATUTS_ASSIGNES.includes(l.statut)) continue;
-    const id =
-      l.commande?._id ||
-      l.commande?.id ||
-      l.commande_id ||
-      (typeof l.commande === 'string' ? l.commande : null);
-    if (id) ids.add(String(id));
-  }
-  return ids;
-}
-
 const PreparationColis = () => {
   const { user } = useAuthStore();
   const [commandes, setCommandes] = useState([]);
@@ -85,18 +49,13 @@ const PreparationColis = () => {
 
   const fetchCommandes = async () => {
     try {
-      const [cmdRes, livRes] = await Promise.all([
-        api.get('/commandes', { params: { preparationColis: true } }),
-        api.get('/livraisons'),
-      ]);
-      const assignedLivraisonIds = collectAssignedLivraisonCommandeIds(livRes.data?.livraisons);
-      const filtered = (cmdRes.data?.commandes || []).filter((c) =>
-        isVisibleInPreparationColis(c, assignedLivraisonIds)
+      const response = await api.get('/commandes');
+      const filtered = response.data.commandes.filter((c) =>
+        ['en_decoupe', 'en_couture', 'en_stock'].includes(c.statut)
       );
       setCommandes(filtered);
     } catch (error) {
       console.error(error);
-      toast.error('Impossible de charger les commandes');
     } finally {
       setLoading(false);
     }
@@ -125,20 +84,16 @@ const PreparationColis = () => {
         livreurId: selectedLivreur,
       });
 
-      const assignedId = commandeId(selectedCommande);
-      setCommandes((prev) => prev.filter((c) => commandeId(c) !== assignedId));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(assignedId);
-        return next;
-      });
+      setCommandes((prev) =>
+        prev.filter((c) => (c._id || c.id) !== (selectedCommande._id || selectedCommande.id))
+      );
 
-      toast.success('Commande assignée au livreur ! Elle quitte la préparation colis.');
+      toast.success('Commande assignée au livreur ! Visible dans Livreurs.');
       setShowModal(false);
       setSelectedCommande(null);
       setSelectedLivreur('');
 
-      await fetchCommandes();
+      setTimeout(() => fetchCommandes(), 500);
     } catch (error) {
       toast.error(error.response?.data?.message || "Erreur lors de l'assignation");
       fetchCommandes();
@@ -227,7 +182,7 @@ const PreparationColis = () => {
     [selectedIds, commandesTriees]
   );
   const selectedEnStock = useMemo(
-    () => selectedCommandes.filter((c) => c.statut === 'en_stock' && !hasLivreurAssigne(c)),
+    () => selectedCommandes.filter((c) => c.statut === 'en_stock'),
     [selectedCommandes]
   );
 
@@ -705,7 +660,7 @@ function CardsView({
               )}
 
               <div className="space-y-2">
-                {commande.statut === 'en_stock' && !hasLivreurAssigne(commande) && (
+                {commande.statut === 'en_stock' && (
                   <button
                     onClick={() => onAssignOne(commande)}
                     className="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 hover:shadow-lg transition-all"
@@ -822,7 +777,7 @@ function ListView({
                   </td>
                   <td className="px-3 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
-                      {commande.statut === 'en_stock' && !hasLivreurAssigne(commande) && (
+                      {commande.statut === 'en_stock' && (
                         <button
                           type="button"
                           onClick={() => onAssignOne(commande)}
