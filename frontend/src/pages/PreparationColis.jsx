@@ -19,44 +19,6 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
-const LIVRAISON_STATUTS_ACTIFS = ['assignee', 'en_cours', 'reportee'];
-
-function commandeId(c) {
-  return String(c?._id || c?.id || '');
-}
-
-function hasLivreurAssigne(c) {
-  return !!(c?.livreur_id || c?.livreur?._id || c?.livreur?.id);
-}
-
-function collectMasquePreparationColis(livraisons) {
-  const actifs = new Set();
-  const livreeEnStock = new Set();
-
-  for (const l of livraisons || []) {
-    const id =
-      l.commande?._id ||
-      l.commande?.id ||
-      l.commande_id ||
-      (typeof l.commande === 'string' ? l.commande : null);
-    if (!id) continue;
-    const sid = String(id);
-    if (LIVRAISON_STATUTS_ACTIFS.includes(l.statut)) actifs.add(sid);
-    if (l.statut === 'livree') livreeEnStock.add(sid);
-  }
-  return { actifs, livreeEnStock };
-}
-
-function isVisibleInPreparationColis(c, { actifs, livreeEnStock }) {
-  if (!c || !STATUTS_PREPARATION.includes(c.statut)) return false;
-  if (hasLivreurAssigne(c)) return false;
-  const id = commandeId(c);
-  if (id && actifs.has(id)) return false;
-  if (c.statut === 'en_stock' && id && livreeEnStock.has(id)) return false;
-  return true;
-}
-
 const PreparationColis = () => {
   const { user } = useAuthStore();
   const [commandes, setCommandes] = useState([]);
@@ -87,18 +49,13 @@ const PreparationColis = () => {
 
   const fetchCommandes = async () => {
     try {
-      const [cmdRes, livRes] = await Promise.all([
-        api.get('/commandes', { params: { preparationColis: true } }),
-        api.get('/livraisons'),
-      ]);
-      const masques = collectMasquePreparationColis(livRes.data?.livraisons);
-      const filtered = (cmdRes.data?.commandes || []).filter((c) =>
-        isVisibleInPreparationColis(c, masques)
+      const response = await api.get('/commandes');
+      const filtered = response.data.commandes.filter((c) =>
+        ['en_decoupe', 'en_couture', 'en_stock'].includes(c.statut)
       );
       setCommandes(filtered);
     } catch (error) {
       console.error(error);
-      toast.error('Impossible de charger les commandes');
     } finally {
       setLoading(false);
     }
@@ -127,20 +84,16 @@ const PreparationColis = () => {
         livreurId: selectedLivreur,
       });
 
-      const assignedId = commandeId(selectedCommande);
-      setCommandes((prev) => prev.filter((c) => commandeId(c) !== assignedId));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(assignedId);
-        return next;
-      });
+      setCommandes((prev) =>
+        prev.filter((c) => (c._id || c.id) !== (selectedCommande._id || selectedCommande.id))
+      );
 
-      toast.success('Commande assignée au livreur !');
+      toast.success('Commande assignée au livreur ! Visible dans Livreurs.');
       setShowModal(false);
       setSelectedCommande(null);
       setSelectedLivreur('');
 
-      await fetchCommandes();
+      setTimeout(() => fetchCommandes(), 500);
     } catch (error) {
       toast.error(error.response?.data?.message || "Erreur lors de l'assignation");
       fetchCommandes();
@@ -229,7 +182,7 @@ const PreparationColis = () => {
     [selectedIds, commandesTriees]
   );
   const selectedEnStock = useMemo(
-    () => selectedCommandes.filter((c) => c.statut === 'en_stock' && !hasLivreurAssigne(c)),
+    () => selectedCommandes.filter((c) => c.statut === 'en_stock'),
     [selectedCommandes]
   );
 

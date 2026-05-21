@@ -91,21 +91,6 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       return res.status(400).json({ message: 'La commande doit être en stock pour être assignée à un livreur' });
     }
 
-    if (commande.livreur_id) {
-      return res.status(400).json({ message: 'Cette commande est déjà assignée à un livreur' });
-    }
-
-    const { data: livraisonExistante } = await supabase
-      .from('livraisons')
-      .select('id, statut')
-      .eq('commande_id', commandeId)
-      .in('statut', ['assignee', 'en_cours', 'reportee'])
-      .maybeSingle();
-
-    if (livraisonExistante) {
-      return res.status(400).json({ message: 'Cette commande a déjà une livraison en cours' });
-    }
-
     const commandeCountry = commande.pays_code || 'CI';
 
     // Vérifier le stock dans le pays de la commande (optionnel, ne bloque pas)
@@ -149,10 +134,7 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       .from('commandes')
       .update({ statut: 'en_livraison', livreur_id: livreurId, historique })
       .eq('id', commandeId);
-    if (e4) {
-      await supabase.from('livraisons').delete().eq('id', livraison.id);
-      return res.status(500).json({ message: "Erreur lors de l'assignation", error: e4.message });
-    }
+    if (e4) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e4.message });
 
     // Transférer stock principal -> en livraison (SI disponible)
     if (stockItem && (stockItem.quantite_principale || 0) >= 1) {
