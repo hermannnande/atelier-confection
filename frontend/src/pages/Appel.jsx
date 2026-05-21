@@ -503,12 +503,10 @@ const Appel = () => {
             const isValidDate = dateObj && !Number.isNaN(dateObj.getTime());
             
             // Déterminer le style de la carte selon le statut et la disponibilité en stock
+            // (la couleur ne change PAS si la carte est epinglee : badge + icone suffisent)
             let cardStyle = 'relative stat-card hover:scale-105 transition-all cursor-pointer group';
-            
-            if (pinned) {
-              // Commande epinglee : bordure jaune dorée prioritaire
-              cardStyle += ' border-4 border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-50 shadow-xl shadow-amber-500/30 ring-2 ring-amber-200';
-            } else if (estEnAttentePaiement) {
+
+            if (estEnAttentePaiement) {
               // Commande en attente de paiement = bordure orange + fond orange clair
               cardStyle += ' border-4 border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 shadow-xl shadow-orange-500/30';
             } else if (enStock) {
