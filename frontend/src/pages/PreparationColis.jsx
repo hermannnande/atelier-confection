@@ -19,6 +19,26 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
+const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
+
+function getCommandeIdFromLivraison(l) {
+  return (
+    l?.commande?._id ||
+    l?.commande?.id ||
+    l?.commande_id ||
+    (typeof l?.commande === 'string' ? l.commande : null) ||
+    null
+  );
+}
+
+function getCommandeKey(c) {
+  return String(c?._id || c?.id || '');
+}
+
+function hasLivreur(c) {
+  return !!(c?.livreur_id || c?.livreur?._id || c?.livreur?.id);
+}
+
 const PreparationColis = () => {
   const { user } = useAuthStore();
   const [commandes, setCommandes] = useState([]);
@@ -49,10 +69,27 @@ const PreparationColis = () => {
 
   const fetchCommandes = async () => {
     try {
-      const response = await api.get('/commandes');
-      const filtered = response.data.commandes.filter((c) =>
-        ['en_decoupe', 'en_couture', 'en_stock'].includes(c.statut)
-      );
+      const [cmdRes, livRes] = await Promise.all([
+        api.get('/commandes'),
+        api.get('/livraisons').catch(() => ({ data: { livraisons: [] } })),
+      ]);
+
+      const livraisons = livRes?.data?.livraisons || [];
+      const idsAvecLivraison = new Set();
+      for (const l of livraisons) {
+        const id = getCommandeIdFromLivraison(l);
+        if (!id) continue;
+        // Toute livraison existante = colis sorti de la préparation
+        // (assignee, en_cours, reportee, livree, refusee, retournee)
+        idsAvecLivraison.add(String(id));
+      }
+
+      const filtered = (cmdRes?.data?.commandes || []).filter((c) => {
+        if (!STATUTS_PREPARATION.includes(c.statut)) return false;
+        if (hasLivreur(c)) return false;
+        if (idsAvecLivraison.has(getCommandeKey(c))) return false;
+        return true;
+      });
       setCommandes(filtered);
     } catch (error) {
       console.error(error);
@@ -84,9 +121,13 @@ const PreparationColis = () => {
         livreurId: selectedLivreur,
       });
 
-      setCommandes((prev) =>
-        prev.filter((c) => (c._id || c.id) !== (selectedCommande._id || selectedCommande.id))
-      );
+      const assignedKey = getCommandeKey(selectedCommande);
+      setCommandes((prev) => prev.filter((c) => getCommandeKey(c) !== assignedKey));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(assignedKey);
+        return next;
+      });
 
       toast.success('Commande assignée au livreur ! Visible dans Livreurs.');
       setShowModal(false);
