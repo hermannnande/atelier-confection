@@ -1,10 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus, Search } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus, Search, Pin, PinOff } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+
+const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
+
+function loadEpingles() {
+  try {
+    const raw = localStorage.getItem(EPINGLES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveEpingles(ids) {
+  try {
+    localStorage.setItem(EPINGLES_STORAGE_KEY, JSON.stringify(ids));
+  } catch (_) {}
+}
 
 const Appel = () => {
+  const { user } = useAuthStore();
+  const canPin = user?.role === 'administrateur' || user?.role === 'gestionnaire';
+
   const [commandesAppel, setCommandesAppel] = useState([]);
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +37,32 @@ const Appel = () => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [noteAppelant, setNoteAppelant] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [epinglesIds, setEpinglesIds] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
+
+  const isPinned = (commande) => {
+    const id = String(commande?._id || commande?.id || '');
+    return epinglesIds.includes(id);
+  };
+
+  const togglePin = (commande, e) => {
+    if (e) e.stopPropagation();
+    if (!canPin) return;
+    const id = String(commande?._id || commande?.id || '');
+    if (!id) return;
+    setEpinglesIds((prev) => {
+      let next;
+      if (prev.includes(id)) {
+        next = prev.filter((x) => x !== id);
+        toast.success('Commande désépinglée');
+      } else {
+        next = [id, ...prev.filter((x) => x !== id)];
+        toast.success('Commande remontée en haut de la liste', { icon: '📌' });
+      }
+      saveEpingles(next);
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetchCommandesAppel();
@@ -253,28 +301,41 @@ const Appel = () => {
 
   const normalizePhone = (str) => String(str || '').replace(/\D/g, '');
 
-  const filteredCommandes = commandesAppel.filter((commande) => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return true;
+  const filteredCommandes = useMemo(() => {
+    const matched = commandesAppel.filter((commande) => {
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return true;
 
-    const termDigits = normalizePhone(searchTerm);
+      const termDigits = normalizePhone(searchTerm);
 
-    const numero = (commande.numeroCommande || '').toLowerCase();
-    const nomClient = getClientNom(commande).toLowerCase();
-    const contactRaw = String(getClientContact(commande) || '');
-    const contactDigits = normalizePhone(contactRaw);
-    const modele = getModeleNom(commande.modele).toLowerCase();
-    const ville = getVille(commande).toLowerCase();
+      const numero = (commande.numeroCommande || '').toLowerCase();
+      const nomClient = getClientNom(commande).toLowerCase();
+      const contactRaw = String(getClientContact(commande) || '');
+      const contactDigits = normalizePhone(contactRaw);
+      const modele = getModeleNom(commande.modele).toLowerCase();
+      const ville = getVille(commande).toLowerCase();
 
-    return (
-      numero.includes(term) ||
-      nomClient.includes(term) ||
-      modele.includes(term) ||
-      ville.includes(term) ||
-      contactRaw.toLowerCase().includes(term) ||
-      (termDigits.length > 0 && contactDigits.includes(termDigits))
-    );
-  });
+      return (
+        numero.includes(term) ||
+        nomClient.includes(term) ||
+        modele.includes(term) ||
+        ville.includes(term) ||
+        contactRaw.toLowerCase().includes(term) ||
+        (termDigits.length > 0 && contactDigits.includes(termDigits))
+      );
+    });
+
+    // Trie : epinglees en premier (selon l'ordre d'epinglage)
+    const pinnedOrder = new Map(epinglesIds.map((id, idx) => [id, idx]));
+    return [...matched].sort((a, b) => {
+      const aId = String(a._id || a.id || '');
+      const bId = String(b._id || b.id || '');
+      const aPin = pinnedOrder.has(aId) ? pinnedOrder.get(aId) : Infinity;
+      const bPin = pinnedOrder.has(bId) ? pinnedOrder.get(bId) : Infinity;
+      if (aPin !== bPin) return aPin - bPin;
+      return 0;
+    });
+  }, [commandesAppel, searchTerm, epinglesIds]);
 
   if (loading) {
     return (
@@ -412,6 +473,7 @@ const Appel = () => {
           {filteredCommandes.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
             const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
+            const pinned = isPinned(commande);
             const dateSource =
               commande.dateCommande ||
               commande.createdAt || // Supabase mapCommande -> createdAt
@@ -420,9 +482,12 @@ const Appel = () => {
             const isValidDate = dateObj && !Number.isNaN(dateObj.getTime());
             
             // Déterminer le style de la carte selon le statut et la disponibilité en stock
-            let cardStyle = 'stat-card hover:scale-105 transition-all cursor-pointer group';
+            let cardStyle = 'relative stat-card hover:scale-105 transition-all cursor-pointer group';
             
-            if (estEnAttentePaiement) {
+            if (pinned) {
+              // Commande epinglee : bordure jaune dorée prioritaire
+              cardStyle += ' border-4 border-amber-400 bg-gradient-to-br from-amber-50 to-yellow-50 shadow-xl shadow-amber-500/30 ring-2 ring-amber-200';
+            } else if (estEnAttentePaiement) {
               // Commande en attente de paiement = bordure orange + fond orange clair
               cardStyle += ' border-4 border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 shadow-xl shadow-orange-500/30';
             } else if (enStock) {
@@ -437,6 +502,30 @@ const Appel = () => {
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => setSelectedCommande(commande)}
             >
+              {/* Badge "epinglee" */}
+              {pinned && (
+                <div className="absolute -top-3 -left-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg flex items-center gap-1 z-10">
+                  <Pin size={10} fill="currentColor" strokeWidth={2.5} />
+                  ÉPINGLÉE
+                </div>
+              )}
+
+              {/* Bouton epingle (admin / gestionnaire uniquement) */}
+              {canPin && (
+                <button
+                  type="button"
+                  onClick={(e) => togglePin(commande, e)}
+                  title={pinned ? 'Désépingler' : 'Faire remonter en haut'}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-all z-10 ${
+                    pinned
+                      ? 'bg-amber-500 text-white shadow-md hover:bg-amber-600'
+                      : 'bg-white/90 text-gray-400 hover:text-amber-600 hover:bg-amber-50 shadow opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {pinned ? <PinOff size={14} strokeWidth={2.5} /> : <Pin size={14} strokeWidth={2.5} />}
+                </button>
+              )}
+
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -451,7 +540,7 @@ const Appel = () => {
                     {isValidDate ? dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 mt-7">
                   {estEnAttentePaiement ? (
                     <span className="badge bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs px-2 py-1 font-bold shadow-lg">
                       ⏳ Attente Paiement
