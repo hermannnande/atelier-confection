@@ -121,10 +121,14 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
 
     const urgenceFlag = req.body.urgence ?? req.body.urgent;
 
-    // Statut demandé (admin/gestionnaire uniquement)
+    // Statut demandé : admin/gestionnaire = libre ; appelant = 'nouvelle' ou 'validee' uniquement
     let statutInitial = 'nouvelle';
-    if (req.body.statut && ['administrateur', 'gestionnaire'].includes(req.user.role)) {
-      statutInitial = req.body.statut;
+    if (req.body.statut) {
+      if (['administrateur', 'gestionnaire'].includes(req.user.role)) {
+        statutInitial = req.body.statut;
+      } else if (req.user.role === 'appelant' && ['nouvelle', 'validee'].includes(req.body.statut)) {
+        statutInitial = req.body.statut;
+      }
     }
 
     // Validation des champs obligatoires

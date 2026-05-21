@@ -71,7 +71,6 @@ const STEPS = [
   { id: 1, label: 'Client', icon: User, color: 'from-blue-500 to-cyan-500' },
   { id: 2, label: 'Modèle', icon: Package, color: 'from-purple-500 to-pink-500' },
   { id: 3, label: 'Taille & Couleur', icon: Palette, color: 'from-emerald-500 to-teal-500' },
-  { id: 4, label: 'Finaliser', icon: ShoppingBag, color: 'from-amber-500 to-orange-500' },
 ];
 
 /* ---------- Sous-composants ---------- */
@@ -240,6 +239,9 @@ const NouvelleCommande = () => {
   const [bicolore1, setBicolore1] = useState('');
   const [bicolore2, setBicolore2] = useState('');
 
+  // Modal de finalisation (apparait apres l'etape 3)
+  const [showFinaliser, setShowFinaliser] = useState(false);
+
   const [formData, setFormData] = useState({
     client: { nom: '', contact: '', ville: '' },
     modele: { nom: '', image: '', description: '' },
@@ -374,24 +376,27 @@ const NouvelleCommande = () => {
   const isStep1Valid = formData.client.nom.trim() && formData.client.contact.trim() && formData.client.ville.trim();
   const isStep2Valid = !!selectedModel;
   const isStep3Valid = !!(formData.taille && formData.couleur);
-  const isStep4Valid = formData.prix && Number(formData.prix) > 0;
+  const isPriceValid = formData.prix && Number(formData.prix) > 0;
   const canGoNext =
     (currentStep === 1 && isStep1Valid) ||
     (currentStep === 2 && isStep2Valid) ||
-    (currentStep === 3 && isStep3Valid) ||
-    (currentStep === 4 && isStep4Valid);
+    (currentStep === 3 && isStep3Valid);
 
   const canJumpToStep = (target) => {
     if (target <= currentStep) return true;
     if (target === 2) return isStep1Valid;
     if (target === 3) return isStep1Valid && isStep2Valid;
-    if (target === 4) return isStep1Valid && isStep2Valid && isStep3Valid;
     return false;
   };
 
   const handleNext = () => {
     if (!canGoNext) return;
-    if (currentStep < 4) setCurrentStep((s) => s + 1);
+    if (currentStep < 3) {
+      setCurrentStep((s) => s + 1);
+    } else {
+      // Etape 3 OK : on ouvre le modal de finalisation (note, urgence, prix)
+      setShowFinaliser(true);
+    }
   };
 
   const handlePrev = () => {
@@ -399,15 +404,16 @@ const NouvelleCommande = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!isStep4Valid) {
-      toast.error('Vérifie les champs avant de créer la commande');
+    if (e?.preventDefault) e.preventDefault();
+    if (!isPriceValid) {
+      toast.error('Vérifie le prix avant de créer la commande');
       return;
     }
     setLoading(true);
     try {
-      const response = await api.post('/commandes', formData);
-      toast.success('Commande créée avec succès !', { icon: '✅' });
+      const payload = { ...formData, statut: 'validee' };
+      const response = await api.post('/commandes', payload);
+      toast.success('Commande créée et validée !', { icon: '✅' });
       navigate(`/commandes/${response.data.commande._id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la création');
@@ -799,101 +805,134 @@ const NouvelleCommande = () => {
     </div>
   );
 
-  const renderStep4 = () => (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-1 flex items-center gap-2">
-          <ShoppingBag size={22} className="text-amber-600" />
-          Finalise la commande
-        </h2>
-        <p className="text-sm text-gray-500">Prix, urgence et notes pour la confection</p>
-      </div>
-
-      {/* Prix */}
-      <div>
-        <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-          <Tag size={14} />
-          Prix de vente (FCFA) *
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            value={formData.prix}
-            onChange={(e) => setFormData((p) => ({ ...p, prix: e.target.value }))}
-            min="0"
-            className="w-full px-4 py-4 pr-20 bg-white border-2 border-emerald-300 rounded-xl text-2xl font-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-            placeholder="13000"
-          />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">FCFA</div>
-        </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {[10000, 13000, 15000, 18000, 20000, 25000].map((p) => (
+  const renderFinaliserModal = () => {
+    if (!showFinaliser) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+        <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[95vh] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center gap-3 p-5 border-b border-gray-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-md">
+              <ShoppingBag size={20} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-gray-900">Dernière touche</h3>
+              <p className="text-xs text-gray-500">Note optionnelle, puis on valide !</p>
+            </div>
             <button
-              key={p}
               type="button"
-              onClick={() => setFormData((prev) => ({ ...prev, prix: p }))}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                Number(formData.prix) === p
-                  ? 'bg-emerald-500 text-white shadow'
-                  : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
+              onClick={() => setShowFinaliser(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              disabled={loading}
+            >
+              <X size={20} className="text-gray-500" />
+            </button>
+          </div>
+
+          {/* Contenu scrollable */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            {/* Prix */}
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Tag size={14} />
+                Prix de vente (FCFA) *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={formData.prix}
+                  onChange={(e) => setFormData((p) => ({ ...p, prix: e.target.value }))}
+                  min="0"
+                  className="w-full px-4 py-3 pr-20 bg-white border-2 border-emerald-300 rounded-xl text-xl font-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  placeholder="13000"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">FCFA</div>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {[10000, 13000, 15000, 18000, 20000, 25000].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, prix: p }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      Number(formData.prix) === p
+                        ? 'bg-emerald-500 text-white shadow'
+                        : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {p.toLocaleString('fr-FR')} F
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Urgence */}
+            <button
+              type="button"
+              onClick={() => setFormData((p) => ({ ...p, urgence: !p.urgence }))}
+              className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 text-left ${
+                formData.urgence
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-transparent text-white shadow-lg'
+                  : 'bg-white border-gray-200 hover:border-amber-300'
               }`}
             >
-              {p.toLocaleString('fr-FR')} F
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${formData.urgence ? 'bg-white/20 backdrop-blur' : 'bg-amber-100'}`}>
+                <Zap size={18} className={formData.urgence ? 'text-white' : 'text-amber-600'} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`font-black text-sm ${formData.urgence ? 'text-white' : 'text-gray-900'}`}>
+                  Commande urgente
+                </p>
+                <p className={`text-xs ${formData.urgence ? 'text-white/90' : 'text-gray-500'}`}>
+                  {formData.urgence ? 'Sera priorisée' : 'Activer si urgent'}
+                </p>
+              </div>
+              <div className={`w-11 h-6 rounded-full transition-all relative ${formData.urgence ? 'bg-white/30' : 'bg-gray-200'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${formData.urgence ? 'left-5' : 'left-0.5'}`}></div>
+              </div>
             </button>
-          ))}
+
+            {/* Note */}
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <FileText size={14} />
+                Note pour la confection (optionnel)
+              </label>
+              <textarea
+                value={formData.noteAppelant}
+                onChange={(e) => setFormData((p) => ({ ...p, noteAppelant: e.target.value }))}
+                rows="3"
+                className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all resize-none"
+                placeholder="Instructions, modifications particulières... (peut être laissé vide)"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Vous pouvez laisser vide et valider directement.</p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFinaliser(false)}
+              disabled={loading}
+              className="px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm hover:bg-gray-200 transition-all disabled:opacity-50 sm:flex-shrink-0"
+            >
+              Modifier
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !isPriceValid}
+              className="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} strokeWidth={2.5} />}
+              <span>{loading ? 'Création...' : 'Créer la commande'}</span>
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Urgence */}
-      <button
-        type="button"
-        onClick={() => setFormData((p) => ({ ...p, urgence: !p.urgence }))}
-        className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 text-left ${
-          formData.urgence
-            ? 'bg-gradient-to-r from-amber-500 to-orange-500 border-transparent text-white shadow-lg'
-            : 'bg-white border-gray-200 hover:border-amber-300'
-        }`}
-      >
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${formData.urgence ? 'bg-white/20 backdrop-blur' : 'bg-amber-100'}`}>
-          <Zap size={22} className={formData.urgence ? 'text-white' : 'text-amber-600'} strokeWidth={2.5} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className={`font-black text-base ${formData.urgence ? 'text-white' : 'text-gray-900'}`}>
-            Commande urgente
-          </p>
-          <p className={`text-xs ${formData.urgence ? 'text-white/90' : 'text-gray-500'}`}>
-            {formData.urgence ? 'Cette commande sera priorisée' : 'Le client attend rapidement ?'}
-          </p>
-        </div>
-        <div
-          className={`w-12 h-7 rounded-full transition-all relative ${
-            formData.urgence ? 'bg-white/30' : 'bg-gray-200'
-          }`}
-        >
-          <div
-            className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${
-              formData.urgence ? 'left-6' : 'left-1'
-            }`}
-          ></div>
-        </div>
-      </button>
-
-      {/* Note */}
-      <div>
-        <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-          <FileText size={14} />
-          Note pour la confection
-        </label>
-        <textarea
-          value={formData.noteAppelant}
-          onChange={(e) => setFormData((p) => ({ ...p, noteAppelant: e.target.value }))}
-          rows="3"
-          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all resize-none"
-          placeholder="Instructions, modifications, attention particulière..."
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 animate-fade-in">
@@ -910,7 +949,7 @@ const NouvelleCommande = () => {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
             Nouvelle Commande
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 font-medium">Étape {currentStep} sur 4</p>
+          <p className="text-xs sm:text-sm text-gray-500 font-medium">Étape {currentStep} sur 3</p>
         </div>
       </div>
 
@@ -925,7 +964,6 @@ const NouvelleCommande = () => {
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
             {currentStep === 3 && renderStep3()}
-            {currentStep === 4 && renderStep4()}
           </div>
 
           {/* Navigation */}
@@ -942,11 +980,11 @@ const NouvelleCommande = () => {
 
             <div className="flex-1 text-center">
               <span className="text-xs font-bold text-gray-500">
-                {currentStep} / 4
+                {currentStep} / 3
               </span>
             </div>
 
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <button
                 type="button"
                 onClick={handleNext}
@@ -958,12 +996,13 @@ const NouvelleCommande = () => {
               </button>
             ) : (
               <button
-                type="submit"
-                disabled={loading || !canGoNext}
+                type="button"
+                onClick={handleNext}
+                disabled={!canGoNext || loading}
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
               >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} strokeWidth={2.5} />}
-                <span>{loading ? 'Création...' : 'Créer la commande'}</span>
+                <Check size={16} strokeWidth={3} />
+                <span>Valider la commande</span>
               </button>
             )}
           </div>
@@ -974,6 +1013,9 @@ const NouvelleCommande = () => {
           <RecapCard formData={formData} selectedModel={selectedModel} />
         </div>
       </div>
+
+      {/* Modal de finalisation */}
+      {renderFinaliserModal()}
     </div>
   );
 };
