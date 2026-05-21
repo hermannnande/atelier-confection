@@ -99,7 +99,7 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       .from('livraisons')
       .select('id, statut')
       .eq('commande_id', commandeId)
-      .in('statut', ['en_cours', 'reportee'])
+      .in('statut', ['assignee', 'en_cours', 'reportee'])
       .maybeSingle();
 
     if (livraisonExistante) {

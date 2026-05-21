@@ -49,12 +49,22 @@ function attachUsers(row, usersById) {
   return clone;
 }
 
+const STATUTS_PREPARATION_COLIS = ['en_decoupe', 'en_couture', 'en_stock'];
+/** Livraisons = colis déjà sortis de la préparation (assignee = ancien flux, en_cours, reportee) */
+const LIVRAISON_STATUTS_ASSIGNES = ['assignee', 'en_cours', 'reportee'];
+
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
-    const { statut, urgence } = req.query;
+    const { statut, urgence, preparationColis } = req.query;
     const supabase = getSupabaseAdmin();
+    const forPreparationColis =
+      preparationColis === '1' || preparationColis === 'true' || preparationColis === true;
 
     let q = supabase.from('commandes').select('*').eq('pays_code', req.country);
+
+    if (forPreparationColis) {
+      q = q.in('statut', STATUTS_PREPARATION_COLIS).is('livreur_id', null);
+    }
 
     // Filtres selon rôle
     if (req.user.role === 'appelant') {
@@ -83,7 +93,28 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
     const { data, error } = await q;
     if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
 
-    const rows = data || [];
+    let rows = data || [];
+
+    if (forPreparationColis) {
+      const { data: livraisonsAssignees, error: livErr } = await supabase
+        .from('livraisons')
+        .select('commande_id')
+        .eq('pays_code', req.country)
+        .in('statut', LIVRAISON_STATUTS_ASSIGNES);
+
+      if (livErr) {
+        return res.status(500).json({
+          message: 'Erreur lors du filtrage préparation colis',
+          error: livErr.message,
+        });
+      }
+
+      const dejaAssignees = new Set(
+        (livraisonsAssignees || []).map((l) => l.commande_id).filter(Boolean)
+      );
+      rows = rows.filter((r) => !dejaAssignees.has(r.id));
+    }
+
     const usersById = await hydrateUsersForCommandes(supabase, rows);
     const commandes = rows.map((r) => mapCommande(attachUsers(r, usersById)));
 

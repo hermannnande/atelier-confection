@@ -22,8 +22,8 @@ import { useAuthStore } from '../store/authStore';
 /** Statuts affichés dans Préparation Colis (avant livraison) */
 const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
 
-/** Livraisons encore "en tournée" → la commande ne doit plus apparaître ici */
-const LIVRAISON_STATUTS_ACTIFS = ['en_cours', 'reportee'];
+/** Livraisons = colis déjà assignés (assignee = anciennes données) */
+const LIVRAISON_STATUTS_ASSIGNES = ['assignee', 'en_cours', 'reportee'];
 
 function commandeId(c) {
   return String(c?._id || c?.id || '');
@@ -41,10 +41,10 @@ function isVisibleInPreparationColis(c, activeLivraisonCmdIds = new Set()) {
   return true;
 }
 
-function collectActiveLivraisonCommandeIds(livraisons) {
+function collectAssignedLivraisonCommandeIds(livraisons) {
   const ids = new Set();
   for (const l of livraisons || []) {
-    if (!LIVRAISON_STATUTS_ACTIFS.includes(l.statut)) continue;
+    if (!LIVRAISON_STATUTS_ASSIGNES.includes(l.statut)) continue;
     const id =
       l.commande?._id ||
       l.commande?.id ||
@@ -86,16 +86,17 @@ const PreparationColis = () => {
   const fetchCommandes = async () => {
     try {
       const [cmdRes, livRes] = await Promise.all([
-        api.get('/commandes'),
+        api.get('/commandes', { params: { preparationColis: true } }),
         api.get('/livraisons'),
       ]);
-      const activeLivraisonIds = collectActiveLivraisonCommandeIds(livRes.data?.livraisons);
+      const assignedLivraisonIds = collectAssignedLivraisonCommandeIds(livRes.data?.livraisons);
       const filtered = (cmdRes.data?.commandes || []).filter((c) =>
-        isVisibleInPreparationColis(c, activeLivraisonIds)
+        isVisibleInPreparationColis(c, assignedLivraisonIds)
       );
       setCommandes(filtered);
     } catch (error) {
       console.error(error);
+      toast.error('Impossible de charger les commandes');
     } finally {
       setLoading(false);
     }
