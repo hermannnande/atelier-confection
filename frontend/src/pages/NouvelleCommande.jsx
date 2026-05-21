@@ -535,9 +535,9 @@ const NouvelleCommande = () => {
       </div>
 
       {loadingStock ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="space-y-2 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:space-y-0">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse"></div>
+            <div key={i} className="h-20 sm:h-28 rounded-2xl bg-gray-100 animate-pulse"></div>
           ))}
         </div>
       ) : models.length === 0 ? (
@@ -548,7 +548,7 @@ const NouvelleCommande = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-2 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:space-y-0 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
           {models.map((model) => {
             const isSelected = selectedModel?.nom === model.nom;
             const enStock = model.quantiteTotal > 0;
@@ -558,34 +558,59 @@ const NouvelleCommande = () => {
                 type="button"
                 onClick={() => handleModelSelect(model)}
                 className={`
-                  relative text-left p-3 sm:p-4 rounded-2xl transition-all duration-200
+                  relative w-full text-left p-3 sm:p-4 rounded-2xl transition-all duration-200
                   ${isSelected
-                    ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 scale-[1.02] ring-4 ring-purple-200'
-                    : 'bg-white border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg hover:-translate-y-0.5'}
+                    ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/40 ring-4 ring-purple-200 sm:scale-[1.02]'
+                    : 'bg-white border-2 border-gray-200 hover:border-purple-400 hover:shadow-lg sm:hover:-translate-y-0.5'}
                 `}
               >
                 {isSelected && (
-                  <div className="absolute -top-2 -right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg">
+                  <div className="absolute -top-2 -right-2 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-lg z-10">
                     <Check size={16} className="text-purple-600" strokeWidth={3} />
                   </div>
                 )}
-                <div className="flex items-start gap-2 mb-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-white/20 backdrop-blur' : 'bg-gradient-to-br from-purple-500 to-pink-500'}`}>
-                    <Package className={isSelected ? 'text-white' : 'text-white'} size={18} strokeWidth={2.5} />
+
+                {/* Mobile : layout horizontal compact */}
+                <div className="flex sm:hidden items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-white/20 backdrop-blur' : 'bg-gradient-to-br from-purple-500 to-pink-500'}`}>
+                    <Package className="text-white" size={22} strokeWidth={2.5} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className={`font-black text-sm truncate ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                    <h3 className={`font-black text-base leading-tight ${isSelected ? 'text-white' : 'text-gray-900'}`} style={{ wordBreak: 'break-word' }}>
                       {model.nom}
                     </h3>
-                    <p className={`text-[11px] font-bold mt-0.5 ${isSelected ? 'text-white/90' : enStock ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      Stock : {model.quantiteTotal}
-                    </p>
+                    <div className={`flex items-center gap-2 text-[11px] font-bold mt-1 ${isSelected ? 'text-white/90' : 'text-gray-600'}`}>
+                      <span className={`px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20' : enStock ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        Stock : {model.quantiteTotal}
+                      </span>
+                      <span className={`${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                        {model.tailles.size}T · {model.couleurs.size}C
+                      </span>
+                    </div>
                   </div>
+                  <ArrowRight size={18} className={`flex-shrink-0 ${isSelected ? 'text-white' : 'text-gray-300'}`} strokeWidth={2.5} />
                 </div>
-                <div className={`flex items-center justify-between text-[11px] font-semibold ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
-                  <span>{model.tailles.size} tailles</span>
-                  <span>•</span>
-                  <span>{model.couleurs.size} couleurs</span>
+
+                {/* Desktop / tablette : layout vertical */}
+                <div className="hidden sm:block">
+                  <div className="flex items-start gap-2 mb-2">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-white/20 backdrop-blur' : 'bg-gradient-to-br from-purple-500 to-pink-500'}`}>
+                      <Package className="text-white" size={18} strokeWidth={2.5} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-black text-sm leading-tight ${isSelected ? 'text-white' : 'text-gray-900'}`} style={{ wordBreak: 'break-word' }}>
+                        {model.nom}
+                      </h3>
+                      <p className={`text-[11px] font-bold mt-0.5 ${isSelected ? 'text-white/90' : enStock ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        Stock : {model.quantiteTotal}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center justify-between text-[11px] font-semibold ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                    <span>{model.tailles.size} tailles</span>
+                    <span>•</span>
+                    <span>{model.couleurs.size} couleurs</span>
+                  </div>
                 </div>
               </button>
             );
