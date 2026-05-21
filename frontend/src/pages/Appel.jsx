@@ -7,20 +7,32 @@ import { useAuthStore } from '../store/authStore';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
 
+/**
+ * Stockage : objet { id: timestampMs } -> permet de comparer la date d'epinglage
+ * a la date de creation des autres commandes pour le tri.
+ * Compatibilite : ancien format (array d'IDs) migre automatiquement.
+ */
 function loadEpingles() {
   try {
     const raw = localStorage.getItem(EPINGLES_STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) return {};
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed)) {
+      const now = Date.now();
+      return parsed.reduce((acc, id) => {
+        acc[id] = now;
+        return acc;
+      }, {});
+    }
+    return typeof parsed === 'object' && parsed ? parsed : {};
   } catch (_) {
-    return [];
+    return {};
   }
 }
 
-function saveEpingles(ids) {
+function saveEpingles(obj) {
   try {
-    localStorage.setItem(EPINGLES_STORAGE_KEY, JSON.stringify(ids));
+    localStorage.setItem(EPINGLES_STORAGE_KEY, JSON.stringify(obj));
   } catch (_) {}
 }
 
@@ -37,12 +49,12 @@ const Appel = () => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [noteAppelant, setNoteAppelant] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [epinglesIds, setEpinglesIds] = useState(() => loadEpingles());
+  const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
 
   const isPinned = (commande) => {
     const id = String(commande?._id || commande?.id || '');
-    return epinglesIds.includes(id);
+    return !!epingles[id];
   };
 
   const togglePin = (commande, e) => {
@@ -50,14 +62,14 @@ const Appel = () => {
     if (!canPin) return;
     const id = String(commande?._id || commande?.id || '');
     if (!id) return;
-    setEpinglesIds((prev) => {
-      let next;
-      if (prev.includes(id)) {
-        next = prev.filter((x) => x !== id);
+    setEpingles((prev) => {
+      const next = { ...prev };
+      if (next[id]) {
+        delete next[id];
         toast.success('Commande désépinglée');
       } else {
-        next = [id, ...prev.filter((x) => x !== id)];
-        toast.success('Commande remontée en haut de la liste', { icon: '📌' });
+        next[id] = Date.now();
+        toast.success('Commande remontée', { icon: '📌' });
       }
       saveEpingles(next);
       return next;
@@ -325,17 +337,26 @@ const Appel = () => {
       );
     });
 
-    // Trie : epinglees en premier (selon l'ordre d'epinglage)
-    const pinnedOrder = new Map(epinglesIds.map((id, idx) => [id, idx]));
+    /**
+     * Tri par date "effective" decroissante :
+     *  - commande epinglee = max(dateCreation, dateEpinglage)
+     *  - commande normale  = dateCreation
+     * => une nouvelle commande recente passe au-dessus d'une epinglee plus ancienne.
+     */
+    const getDateMs = (c) => {
+      const src = c.dateCommande || c.createdAt || c.created_at;
+      const d = src ? new Date(src).getTime() : 0;
+      return Number.isFinite(d) ? d : 0;
+    };
+
     return [...matched].sort((a, b) => {
       const aId = String(a._id || a.id || '');
       const bId = String(b._id || b.id || '');
-      const aPin = pinnedOrder.has(aId) ? pinnedOrder.get(aId) : Infinity;
-      const bPin = pinnedOrder.has(bId) ? pinnedOrder.get(bId) : Infinity;
-      if (aPin !== bPin) return aPin - bPin;
-      return 0;
+      const aEff = Math.max(getDateMs(a), epingles[aId] || 0);
+      const bEff = Math.max(getDateMs(b), epingles[bId] || 0);
+      return bEff - aEff;
     });
-  }, [commandesAppel, searchTerm, epinglesIds]);
+  }, [commandesAppel, searchTerm, epingles]);
 
   if (loading) {
     return (
