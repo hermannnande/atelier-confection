@@ -16,6 +16,7 @@ import {
   Users,
   Trash2,
   Loader2,
+  Phone,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -43,6 +44,14 @@ function getCommandeKey(c) {
 
 function hasLivreur(c) {
   return !!(c?.livreur_id || c?.livreur?._id || c?.livreur?.id);
+}
+
+function getClientContact(commande) {
+  if (commande?.contactClient) return commande.contactClient;
+  if (commande?.client && typeof commande.client === 'object') {
+    return commande.client.contact || commande.client.telephone || '';
+  }
+  return '';
 }
 
 const PreparationColis = () => {
@@ -749,6 +758,16 @@ function CardsView({
                 <p className="font-bold text-gray-900">
                   {typeof commande.client === 'object' ? commande.client.nom : commande.client}
                 </p>
+                {getClientContact(commande) && (
+                  <a
+                    href={`tel:${getClientContact(commande)}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-semibold hover:underline mt-0.5"
+                  >
+                    <Phone size={13} />
+                    <span>{getClientContact(commande)}</span>
+                  </a>
+                )}
                 <p className="text-sm text-gray-600">
                   {typeof commande.client === 'object' ? commande.client.ville : ''}
                 </p>
@@ -917,8 +936,20 @@ function ListView({
                       <span className="sm:hidden">{statutInfo.emoji}</span>
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-gray-700 hidden sm:table-cell truncate max-w-[140px]">
-                    {typeof commande.client === 'object' ? commande.client.nom : commande.client}
+                  <td className="px-3 py-3 text-gray-700 hidden sm:table-cell max-w-[180px]">
+                    <div className="truncate font-semibold text-gray-900">
+                      {typeof commande.client === 'object' ? commande.client.nom : commande.client}
+                    </div>
+                    {getClientContact(commande) && (
+                      <a
+                        href={`tel:${getClientContact(commande)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        <Phone size={10} />
+                        <span>{getClientContact(commande)}</span>
+                      </a>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-gray-700 truncate max-w-[120px]">
                     {typeof commande.modele === 'object' ? commande.modele.nom : commande.modele}
