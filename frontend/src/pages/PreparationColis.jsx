@@ -3,6 +3,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Package,
+  PackageCheck,
   Eye,
   Scissors,
   Shirt,
@@ -20,6 +21,26 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
+
+/* ---------- Etat "emballé" (localStorage uniquement) ---------- */
+const EMBALLES_STORAGE_KEY = 'preparation_colis_embballes';
+
+function loadEmballes() {
+  try {
+    const raw = localStorage.getItem(EMBALLES_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveEmballes(obj) {
+  try {
+    localStorage.setItem(EMBALLES_STORAGE_KEY, JSON.stringify(obj));
+  } catch (_) {}
+}
 
 function getCommandeIdFromLivraison(l) {
   return (
@@ -41,10 +62,49 @@ function hasLivreur(c) {
 
 const PreparationColis = () => {
   const { user } = useAuthStore();
+  const canTagEmballe = user?.role === 'administrateur' || user?.role === 'gestionnaire';
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatut, setFilterStatut] = useState('');
   const [livreurs, setLivreurs] = useState([]);
+  const [emballes, setEmballes] = useState(() => loadEmballes());
+
+  const isEmballe = (commande) => {
+    const id = getCommandeKey(commande);
+    return !!emballes[id];
+  };
+
+  const toggleEmballe = (commande, e) => {
+    if (e) e.stopPropagation();
+    if (!canTagEmballe) return;
+    const id = getCommandeKey(commande);
+    if (!id) return;
+    setEmballes((prev) => {
+      const next = { ...prev };
+      if (next[id]) {
+        delete next[id];
+        toast.success('Étiquette « emballé » retirée');
+      } else {
+        next[id] = Date.now();
+        toast.success('Colis marqué comme emballé', { icon: '📦' });
+      }
+      saveEmballes(next);
+      return next;
+    });
+  };
+
+  // Quand un colis est assigné, on nettoie son état "emballé" automatiquement
+  const clearEmballeFor = (commande) => {
+    const id = getCommandeKey(commande);
+    if (!id) return;
+    setEmballes((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev };
+      delete next[id];
+      saveEmballes(next);
+      return next;
+    });
+  };
 
   // Assignation simple (un seul colis)
   const [showModal, setShowModal] = useState(false);
@@ -128,6 +188,7 @@ const PreparationColis = () => {
         next.delete(assignedKey);
         return next;
       });
+      clearEmballeFor(selectedCommande);
 
       toast.success('Commande assignée au livreur ! Visible dans Livreurs.');
       setShowModal(false);
@@ -255,6 +316,7 @@ const PreparationColis = () => {
     results.forEach((r, idx) => {
       if (r.status === 'fulfilled') {
         success++;
+        clearEmballeFor(selectedEnStock[idx]);
       } else {
         failed++;
         errors.push({
@@ -536,6 +598,9 @@ const PreparationColis = () => {
             setSelectedCommande(cmd);
             setShowModal(true);
           }}
+          isEmballe={isEmballe}
+          toggleEmballe={toggleEmballe}
+          canTagEmballe={canTagEmballe}
         />
       ) : (
         <ListView
@@ -549,6 +614,9 @@ const PreparationColis = () => {
             setSelectedCommande(cmd);
             setShowModal(true);
           }}
+          isEmballe={isEmballe}
+          toggleEmballe={toggleEmballe}
+          canTagEmballe={canTagEmballe}
         />
       )}
 
@@ -603,6 +671,9 @@ function CardsView({
   toggleSelectAll,
   getStatutInfo,
   onAssignOne,
+  isEmballe,
+  toggleEmballe,
+  canTagEmballe,
 }) {
   return (
     <>
@@ -626,12 +697,15 @@ function CardsView({
           const checked = selectedIds.has(id);
           const statutInfo = getStatutInfo(commande.statut);
           const StatutIcon = statutInfo.icon;
+          const emballe = isEmballe(commande);
           return (
             <div
               key={id}
-              className={`card bg-white hover:shadow-lg transition-all relative ${
-                checked ? 'ring-2 ring-purple-500 shadow-lg' : ''
-              }`}
+              className={`card hover:shadow-lg transition-all relative ${
+                emballe
+                  ? 'bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-pink-300 ring-2 ring-pink-200'
+                  : 'bg-white'
+              } ${checked ? 'ring-2 ring-purple-500 shadow-lg' : ''}`}
             >
               {/* Checkbox */}
               <input
@@ -641,6 +715,14 @@ function CardsView({
                 className="absolute top-3 right-3 w-5 h-5 rounded text-purple-600 focus:ring-purple-500 cursor-pointer z-10"
                 aria-label={`Sélectionner ${commande.numeroCommande}`}
               />
+
+              {/* Etiquette "EMBALLÉ" */}
+              {emballe && (
+                <div className="absolute -top-3 -left-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg flex items-center gap-1 z-10">
+                  <PackageCheck size={11} strokeWidth={2.5} />
+                  EMBALLÉ
+                </div>
+              )}
 
               <div className="flex items-center justify-between mb-3 pr-8">
                 <h3 className="text-lg font-bold text-gray-900">{commande.numeroCommande}</h3>
@@ -701,6 +783,21 @@ function CardsView({
               )}
 
               <div className="space-y-2">
+                {canTagEmballe && commande.statut === 'en_stock' && (
+                  <button
+                    type="button"
+                    onClick={(e) => toggleEmballe(commande, e)}
+                    className={`w-full px-4 py-2 rounded-lg font-semibold text-sm flex items-center justify-center space-x-2 transition-all ${
+                      emballe
+                        ? 'bg-white border-2 border-pink-400 text-pink-700 hover:bg-pink-50'
+                        : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:shadow-lg'
+                    }`}
+                  >
+                    <PackageCheck size={16} />
+                    <span>{emballe ? 'Retirer « emballé »' : 'Marquer comme emballé'}</span>
+                  </button>
+                )}
+
                 {commande.statut === 'en_stock' && (
                   <button
                     onClick={() => onAssignOne(commande)}
@@ -735,6 +832,9 @@ function ListView({
   toggleSelectAll,
   getStatutInfo,
   onAssignOne,
+  isEmballe,
+  toggleEmballe,
+  canTagEmballe,
 }) {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -773,11 +873,16 @@ function ListView({
               const checked = selectedIds.has(id);
               const statutInfo = getStatutInfo(commande.statut);
               const StatutIcon = statutInfo.icon;
+              const emballe = isEmballe(commande);
               return (
                 <tr
                   key={id}
-                  className={`hover:bg-purple-50/40 transition-colors cursor-pointer ${
-                    checked ? 'bg-purple-50' : ''
+                  className={`transition-colors cursor-pointer ${
+                    emballe
+                      ? 'bg-pink-50 hover:bg-pink-100'
+                      : checked
+                      ? 'bg-purple-50'
+                      : 'hover:bg-purple-50/40'
                   }`}
                   onClick={() => toggleSelect(id)}
                 >
@@ -791,9 +896,15 @@ function ListView({
                     />
                   </td>
                   <td className="px-3 py-3 font-bold text-gray-900">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span className="truncate">{commande.numeroCommande}</span>
                       {commande.urgence && <span className="text-red-500" title="Urgent">🔥</span>}
+                      {emballe && (
+                        <span className="inline-flex items-center gap-1 bg-pink-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                          <PackageCheck size={9} strokeWidth={2.5} />
+                          EMBALLÉ
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-3">
@@ -818,6 +929,21 @@ function ListView({
                   </td>
                   <td className="px-3 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
+                      {canTagEmballe && commande.statut === 'en_stock' && (
+                        <button
+                          type="button"
+                          onClick={(e) => toggleEmballe(commande, e)}
+                          className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors ${
+                            emballe
+                              ? 'bg-white border border-pink-400 text-pink-700 hover:bg-pink-50'
+                              : 'bg-pink-500 hover:bg-pink-600 text-white'
+                          }`}
+                          title={emballe ? 'Retirer l’étiquette « emballé »' : 'Marquer comme emballé'}
+                        >
+                          <PackageCheck size={12} />
+                          <span className="hidden lg:inline">{emballe ? 'Retirer' : 'Emballé'}</span>
+                        </button>
+                      )}
                       {commande.statut === 'en_stock' && (
                         <button
                           type="button"
