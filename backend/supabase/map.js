@@ -33,6 +33,8 @@ export function mapCommande(row) {
       dateCouture: row.date_couture,
       dateLivraison: row.date_livraison,
       motifRefus: row.motif_refus,
+      emballeAt: row.emballe_at,
+      emballeParId: row.emballe_par_id,
     })
   );
 }

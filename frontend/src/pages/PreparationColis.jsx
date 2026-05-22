@@ -22,24 +22,9 @@ import { useAuthStore } from '../store/authStore';
 
 const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
 
-/* ---------- Etat "emballé" (localStorage uniquement) ---------- */
-const EMBALLES_STORAGE_KEY = 'preparation_colis_embballes';
-
-function loadEmballes() {
-  try {
-    const raw = localStorage.getItem(EMBALLES_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed ? parsed : {};
-  } catch (_) {
-    return {};
-  }
-}
-
-function saveEmballes(obj) {
-  try {
-    localStorage.setItem(EMBALLES_STORAGE_KEY, JSON.stringify(obj));
-  } catch (_) {}
+/* ---------- Etat "emballé" : lu directement depuis la commande ---------- */
+function isCommandeEmballe(commande) {
+  return !!(commande?.emballeAt || commande?.emballe_at);
 }
 
 function getCommandeIdFromLivraison(l) {
@@ -67,43 +52,61 @@ const PreparationColis = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatut, setFilterStatut] = useState('');
   const [livreurs, setLivreurs] = useState([]);
-  const [emballes, setEmballes] = useState(() => loadEmballes());
+  const [emballeBusyId, setEmballeBusyId] = useState(null);
 
-  const isEmballe = (commande) => {
-    const id = getCommandeKey(commande);
-    return !!emballes[id];
-  };
+  const isEmballe = (commande) => isCommandeEmballe(commande);
 
-  const toggleEmballe = (commande, e) => {
+  // Toggle "emballé" côté serveur (partagé entre tous les utilisateurs)
+  const toggleEmballe = async (commande, e) => {
     if (e) e.stopPropagation();
     if (!canTagEmballe) return;
-    const id = getCommandeKey(commande);
-    if (!id) return;
-    setEmballes((prev) => {
-      const next = { ...prev };
-      if (next[id]) {
-        delete next[id];
-        toast.success('Étiquette « emballé » retirée');
-      } else {
-        next[id] = Date.now();
-        toast.success('Colis marqué comme emballé', { icon: '📦' });
-      }
-      saveEmballes(next);
-      return next;
-    });
-  };
+    const id = commande?._id || commande?.id;
+    if (!id || emballeBusyId === id) return;
 
-  // Quand un colis est assigné, on nettoie son état "emballé" automatiquement
-  const clearEmballeFor = (commande) => {
-    const id = getCommandeKey(commande);
-    if (!id) return;
-    setEmballes((prev) => {
-      if (!prev[id]) return prev;
-      const next = { ...prev };
-      delete next[id];
-      saveEmballes(next);
-      return next;
-    });
+    const wasEmballe = isCommandeEmballe(commande);
+
+    // Optimiste : on met à jour l'UI tout de suite
+    setEmballeBusyId(id);
+    setCommandes((prev) =>
+      prev.map((c) =>
+        (c._id || c.id) === id
+          ? {
+              ...c,
+              emballeAt: wasEmballe ? null : new Date().toISOString(),
+              emballe_at: wasEmballe ? null : new Date().toISOString(),
+            }
+          : c
+      )
+    );
+
+    try {
+      const res = await api.post(`/commandes/${id}/emballe`);
+      if (res.data?.commande) {
+        setCommandes((prev) =>
+          prev.map((c) => ((c._id || c.id) === id ? res.data.commande : c))
+        );
+      }
+      toast.success(
+        wasEmballe ? 'Étiquette « emballé » retirée' : 'Colis marqué comme emballé',
+        wasEmballe ? {} : { icon: '📦' }
+      );
+    } catch (err) {
+      // Rollback en cas d'erreur
+      setCommandes((prev) =>
+        prev.map((c) =>
+          (c._id || c.id) === id
+            ? {
+                ...c,
+                emballeAt: wasEmballe ? new Date().toISOString() : null,
+                emballe_at: wasEmballe ? new Date().toISOString() : null,
+              }
+            : c
+        )
+      );
+      toast.error(err.response?.data?.message || 'Erreur lors du marquage');
+    } finally {
+      setEmballeBusyId(null);
+    }
   };
 
   // Assignation simple (un seul colis)
@@ -188,7 +191,6 @@ const PreparationColis = () => {
         next.delete(assignedKey);
         return next;
       });
-      clearEmballeFor(selectedCommande);
 
       toast.success('Commande assignée au livreur ! Visible dans Livreurs.');
       setShowModal(false);
@@ -316,7 +318,6 @@ const PreparationColis = () => {
     results.forEach((r, idx) => {
       if (r.status === 'fulfilled') {
         success++;
-        clearEmballeFor(selectedEnStock[idx]);
       } else {
         failed++;
         errors.push({

@@ -573,6 +573,45 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
   }
 });
 
+// 📦 Marquer / démarquer un colis comme "emballé" (Préparation Colis)
+// - Toggle simple : si emballe_at est NULL on le met, sinon on le retire.
+// - N'altère JAMAIS le statut, livreur_id, ou tout autre champ métier.
+// - Réservé aux gestionnaires et administrateurs.
+router.post('/:id/emballe', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: e1 } = await supabase
+      .from('commandes')
+      .select('id, pays_code, statut, emballe_at')
+      .eq('id', req.params.id)
+      .single();
+    if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    const isEmballe = !!existing.emballe_at;
+    const update = isEmballe
+      ? { emballe_at: null, emballe_par_id: null }
+      : { emballe_at: new Date().toISOString(), emballe_par_id: req.userId };
+
+    const { data, error } = await supabase
+      .from('commandes')
+      .update(update)
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) return res.status(500).json({ message: 'Erreur lors du marquage', error: error.message });
+
+    return res.json({
+      message: isEmballe ? 'Étiquette « emballé » retirée' : 'Colis marqué comme emballé',
+      emballe: !isEmballe,
+      commande: mapCommande(data),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors du marquage', error: error.message });
+  }
+});
+
 router.post('/:id/annuler', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
