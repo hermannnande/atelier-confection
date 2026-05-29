@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarDays,
+  Undo2,
 } from 'lucide-react';
 
 // ─── helpers date ────────────────────────────────────────────────────────────
@@ -327,6 +328,42 @@ const Livreurs = () => {
     }
   };
 
+  const handleRenvoyerEnPreparation = async (livraison) => {
+    const livraisonId = livraison?._id || livraison?.id;
+    if (!livraisonId) return;
+
+    const numero = livraison?.commande?.numeroCommande || 'cette commande';
+    const livreurNom = livraison?.livreur?.nom || 'le livreur actuel';
+
+    if (
+      !confirm(
+        `Renvoyer ${numero} en préparation ?\n\n` +
+          `• Elle sera retirée de la tournée de ${livreurNom}\n` +
+          `• Elle réapparaîtra dans "Préparation Colis" pour être assignée à un autre livreur\n` +
+          `• Le stock sera restauré (en livraison → principal)`
+      )
+    ) {
+      return;
+    }
+    const motif = window.prompt('Motif (optionnel) :') || '';
+
+    setProcessing(true);
+    try {
+      await api.post(`/livraisons/${livraisonId}/renvoyer-preparation`, { motif });
+      toast.success('Commande renvoyée en préparation');
+      // Si la tournée ouverte n'a plus aucune livraison après le renvoi, on ferme le modal
+      const restantes = livraisonsTourneeSelectionnee.filter((l) => (l._id || l.id) !== livraisonId);
+      if (restantes.length === 0) {
+        setSelectedTournee(null);
+      }
+      await fetchData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors du renvoi');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleSupprimerOrpheline = async (livraisonId) => {
     if (
       !confirm(
@@ -541,6 +578,7 @@ const Livreurs = () => {
           onConfirmerRetour={handleConfirmerRetourRefuse}
           onReprendre={handleReprendre}
           onSupprimerOrpheline={handleSupprimerOrpheline}
+          onRenvoyerEnPreparation={handleRenvoyerEnPreparation}
           processing={processing}
           userRole={user?.role}
         />
@@ -643,9 +681,11 @@ function TourneeDetailModal({
   onConfirmerRetour,
   onReprendre,
   onSupprimerOrpheline,
+  onRenvoyerEnPreparation,
   processing,
   userRole,
 }) {
+  const canRenvoyer = userRole === 'gestionnaire' || userRole === 'administrateur';
   const totalLivreesNonPayees = grouped.livreesNonPayees.reduce(
     (sum, l) => sum + (l.commande?.prix || 0),
     0
@@ -703,6 +743,9 @@ function TourneeDetailModal({
                     livraison={l}
                     variant="en_cours"
                     onSupprimerOrpheline={onSupprimerOrpheline}
+                    onRenvoyerEnPreparation={
+                      canRenvoyer ? () => onRenvoyerEnPreparation(l) : undefined
+                    }
                     processing={processing}
                     userRole={userRole}
                   />
@@ -729,6 +772,9 @@ function TourneeDetailModal({
                     variant="reportee"
                     onReprendre={() => onReprendre(l._id || l.id)}
                     onSupprimerOrpheline={onSupprimerOrpheline}
+                    onRenvoyerEnPreparation={
+                      canRenvoyer ? () => onRenvoyerEnPreparation(l) : undefined
+                    }
                     processing={processing}
                     userRole={userRole}
                   />
@@ -866,6 +912,7 @@ function LivraisonRow({
   onConfirmerRetour,
   onReprendre,
   onSupprimerOrpheline,
+  onRenvoyerEnPreparation,
   processing,
   userRole,
 }) {
@@ -1017,6 +1064,20 @@ function LivraisonRow({
         >
           <RotateCcw size={12} />
           Confirmer retour stock
+        </button>
+      )}
+
+      {/* Renvoyer en préparation : réservé gestionnaire / admin sur en_cours et reportee */}
+      {(variant === 'en_cours' || variant === 'reportee') && onRenvoyerEnPreparation && (
+        <button
+          type="button"
+          onClick={onRenvoyerEnPreparation}
+          disabled={processing}
+          title="Retirer la livraison du livreur et renvoyer la commande dans Préparation Colis"
+          className="mt-2 w-full bg-white border-2 border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50 transition-colors"
+        >
+          <Undo2 size={12} />
+          Renvoyer en préparation (réassigner)
         </button>
       )}
     </div>

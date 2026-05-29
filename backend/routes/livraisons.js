@@ -269,6 +269,75 @@ router.post('/:id/confirmer-retour', authenticate, authorize('gestionnaire', 'ad
   }
 });
 
+// Renvoyer une livraison en préparation (gestionnaire / administrateur)
+// → supprime la livraison, remet la commande à 'en_stock' (livreur = null),
+//   restaure le stock principal et historise l'action.
+router.post('/:id/renvoyer-preparation', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const { motif } = req.body || {};
+    const livraison = await Livraison.findById(req.params.id).populate('commande');
+
+    if (!livraison) {
+      return res.status(404).json({ message: 'Livraison non trouvée' });
+    }
+
+    const STATUTS_RENVOYABLES = ['assignee', 'en_cours', 'reportee'];
+    if (!STATUTS_RENVOYABLES.includes(livraison.statut)) {
+      return res.status(400).json({
+        message:
+          "Seules les livraisons en cours, à reprendre ou simplement assignées peuvent être renvoyées en préparation.",
+      });
+    }
+
+    const commande = livraison.commande;
+
+    if (commande) {
+      commande.statut = 'en_stock';
+      commande.livreur = null;
+      commande.historique.push({
+        action: 'Commande renvoyée en préparation (livreur dé-assigné)',
+        statut: 'en_stock',
+        utilisateur: req.userId,
+        date: new Date(),
+        commentaire: motif || null,
+      });
+      await commande.save();
+
+      // Restaurer le stock : en livraison → principal
+      const stockItem = await Stock.findOne({
+        modele: commande.modele.nom,
+        taille: commande.taille,
+        couleur: commande.couleur,
+      });
+
+      if (stockItem && stockItem.quantiteEnLivraison >= 1) {
+        stockItem.quantiteEnLivraison -= 1;
+        stockItem.quantitePrincipale += 1;
+        stockItem.mouvements.push({
+          type: 'retour',
+          quantite: 1,
+          source: 'Stock en livraison',
+          destination: 'Stock principal',
+          commande: commande._id,
+          utilisateur: req.userId,
+          commentaire: `Renvoi en préparation${motif ? ` : ${motif}` : ''}`,
+        });
+        await stockItem.save();
+      }
+    }
+
+    await Livraison.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: 'Commande renvoyée en préparation',
+      commandeId: commande?._id,
+      numeroCommande: commande?.numeroCommande,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
 // Marquer l'argent comme remis pour un livreur
 router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {

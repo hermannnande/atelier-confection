@@ -440,6 +440,126 @@ router.post('/:id/reportee', authenticate, resolveCountry, authorize('livreur', 
   }
 });
 
+// Renvoyer une livraison "en_cours"/"reportee" en préparation
+// → supprime la livraison, remet la commande à 'en_stock' (livreur_id = null),
+//   restaure le stock principal, garde une trace dans l'historique commande.
+//   La commande réapparaît dans la page "Préparation Colis" pour être réassignée.
+router.post(
+  '/:id/renvoyer-preparation',
+  authenticate,
+  resolveCountry,
+  authorize('gestionnaire', 'administrateur'),
+  async (req, res) => {
+    try {
+      const { motif } = req.body || {};
+      const supabase = getSupabaseAdmin();
+
+      const { data: livraison, error: e1 } = await supabase
+        .from('livraisons')
+        .select('*')
+        .eq('id', req.params.id)
+        .single();
+      if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+      if (!ensureCountryAccess(livraison, req, res)) return;
+
+      const STATUTS_RENVOYABLES = ['assignee', 'en_cours', 'reportee'];
+      if (!STATUTS_RENVOYABLES.includes(livraison.statut)) {
+        return res.status(400).json({
+          message:
+            "Seules les livraisons en cours, à reprendre (reportées) ou simplement assignées peuvent être renvoyées en préparation.",
+        });
+      }
+
+      const livraisonCountry = livraison.pays_code || 'CI';
+
+      // Récupérer la commande liée
+      const { data: commande, error: e2 } = await supabase
+        .from('commandes')
+        .select('*')
+        .eq('id', livraison.commande_id)
+        .single();
+      if (e2 || !commande) {
+        // Si commande introuvable on supprime juste la livraison orpheline
+        await supabase.from('livraisons').delete().eq('id', req.params.id);
+        return res.json({ message: 'Livraison orpheline supprimée' });
+      }
+
+      const nowIso = new Date().toISOString();
+
+      // 1) Restaurer la commande : statut en_stock, libérer le livreur, tracer l'historique
+      const historique = Array.isArray(commande.historique) ? commande.historique : [];
+      historique.push({
+        action: 'Commande renvoyée en préparation (livreur dé-assigné)',
+        statut: 'en_stock',
+        utilisateur: req.userId,
+        date: nowIso,
+        commentaire: motif || null,
+      });
+
+      const { error: e3 } = await supabase
+        .from('commandes')
+        .update({
+          statut: 'en_stock',
+          livreur_id: null,
+          historique,
+        })
+        .eq('id', commande.id);
+      if (e3) {
+        return res.status(500).json({ message: 'Erreur lors de la mise à jour de la commande', error: e3.message });
+      }
+
+      // 2) Restaurer le stock : en livraison → principal (si une ligne existe)
+      const { data: stockItem } = await supabase
+        .from('stock')
+        .select('*')
+        .eq('pays_code', livraisonCountry)
+        .eq('modele', commande.modele?.nom)
+        .eq('taille', commande.taille)
+        .eq('couleur', commande.couleur)
+        .maybeSingle();
+
+      if (stockItem && (stockItem.quantite_en_livraison || 0) >= 1) {
+        const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
+        mouvements.push({
+          type: 'retour',
+          quantite: 1,
+          source: 'Stock en livraison',
+          destination: 'Stock principal',
+          commande: commande.id,
+          utilisateur: req.userId,
+          date: nowIso,
+          commentaire: `Renvoi en préparation${motif ? ` : ${motif}` : ''}`,
+        });
+
+        await supabase
+          .from('stock')
+          .update({
+            quantite_en_livraison: Math.max(0, (stockItem.quantite_en_livraison || 0) - 1),
+            quantite_principale: (stockItem.quantite_principale || 0) + 1,
+            mouvements,
+          })
+          .eq('id', stockItem.id);
+      }
+
+      // 3) Supprimer la livraison (la commande réapparaîtra dans "Préparation Colis")
+      const { error: e4 } = await supabase.from('livraisons').delete().eq('id', req.params.id);
+      if (e4) {
+        return res
+          .status(500)
+          .json({ message: 'Erreur lors de la suppression de la livraison', error: e4.message });
+      }
+
+      return res.json({
+        message: 'Commande renvoyée en préparation',
+        commandeId: commande.id,
+        numeroCommande: commande.numero_commande,
+      });
+    } catch (error) {
+      return res.status(500).json({ message: 'Erreur', error: error.message });
+    }
+  }
+);
+
 // Remettre une livraison "reportee" en cours (livreur reprend sa tournée le lendemain)
 // → date_tournee est mise à NOW() pour que le colis bascule dans la carte du jour courant
 router.post('/:id/reprendre', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
