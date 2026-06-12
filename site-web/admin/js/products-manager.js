@@ -7,7 +7,7 @@ let selectedSizes = []; // Tailles sélectionnées
 let selectedColors = []; // Couleurs sélectionnées {name, hex}
 
 // Tailles prédéfinies
-const PREDEFINED_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+const PREDEFINED_SIZES = ['Taille standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
 // Couleurs prédéfinies
 const PREDEFINED_COLORS = [
