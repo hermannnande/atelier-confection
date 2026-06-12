@@ -793,8 +793,46 @@ const renderDebugPanel = () => {
   document.body.appendChild(panel);
 };
 
+// ===== FALLBACK API =====
+// Convertit un produit serveur (snake_case) vers le format attendu par la page
+const mapApiProduct = (row) => ({
+  id: String(row.id),
+  name: row.name || '',
+  category: row.category || '',
+  price: Number(row.price) || 0,
+  originalPrice: Number(row.original_price) || 0,
+  stock: Number(row.stock) || 0,
+  description: row.description || '',
+  sizes: Array.isArray(row.sizes) ? row.sizes : [],
+  colors: Array.isArray(row.colors) ? row.colors : [],
+  images: Array.isArray(row.images) ? row.images : [],
+  video: row.video || '',
+  thumbnail: row.thumbnail || '',
+  active: row.active !== false,
+});
+
+const fetchProductFromApi = async (id) => {
+  try {
+    const res = await fetch(`/api/ecommerce/products/${encodeURIComponent(id)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.product) return null;
+    const product = mapApiProduct(data.product);
+    // Mettre en cache pour le panier et les prochaines visites
+    try {
+      const cache = readJsonArray('atelier-products-cache');
+      const without = cache.filter((p) => String(p.id) !== String(product.id));
+      without.push(product);
+      localStorage.setItem('atelier-products-cache', JSON.stringify(without));
+    } catch (e) { /* cache non bloquant */ }
+    return product;
+  } catch (e) {
+    return null;
+  }
+};
+
 // ===== BOOT =====
-const boot = () => {
+const boot = async () => {
   // base init (page statique)
   bindSizeButtons();
   bindColorButtons();
@@ -820,6 +858,15 @@ const boot = () => {
   if (adminProduct) {
     applyProductToPage(adminProduct);
     return;
+  }
+
+  // Pas trouvé en local: tenter l'API serveur (produit créé sur un autre appareil)
+  if (id) {
+    const fetched = await fetchProductFromApi(id);
+    if (fetched) {
+      applyProductToPage(fetched);
+      return;
+    }
   }
 
   // Aucun produit trouvé: ne pas afficher l'ancien contenu statique
