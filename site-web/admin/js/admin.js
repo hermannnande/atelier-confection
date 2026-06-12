@@ -138,6 +138,54 @@ const AdminStore = (() => {
   };
   
   const getProduct = (id) => getProducts().find(p => p.id === id);
+
+  // Convertir un produit serveur (snake_case) vers le format admin (camelCase)
+  const mapServerProduct = (row) => ({
+    id: String(row.id),
+    name: row.name || '',
+    category: row.category || '',
+    price: Number(row.price) || 0,
+    originalPrice: Number(row.original_price) || 0,
+    stock: Number(row.stock) || 0,
+    description: row.description || '',
+    sizes: Array.isArray(row.sizes) ? row.sizes : [],
+    colors: Array.isArray(row.colors) ? row.colors : [],
+    images: Array.isArray(row.images) ? row.images : [],
+    video: row.video || '',
+    thumbnail: row.thumbnail || '',
+    active: row.active !== false,
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || new Date().toISOString(),
+  });
+
+  // Recharger le catalogue depuis le serveur (Supabase) et fusionner avec le local.
+  // Permet de voir les produits crees depuis un autre navigateur/appareil.
+  const refreshProductsFromServer = async () => {
+    try {
+      const origin = resolveEcommerceSyncUrl().replace('/api/ecommerce/products/sync', '');
+      const res = await fetch(`${origin}/api/ecommerce/products`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.products || []);
+      if (!Array.isArray(rows) || !rows.length) return null;
+
+      const server = rows.map(mapServerProduct);
+      const serverIds = new Set(server.map(p => String(p.id)));
+      // Conserver les produits locaux pas encore synchronises vers le serveur
+      const localOnly = getProducts().filter(p => !serverIds.has(String(p.id)));
+      const merged = [...server, ...localOnly];
+
+      try {
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(merged));
+      } catch (e) {
+        console.warn('localStorage sature, liste serveur non mise en cache:', e);
+      }
+      return merged;
+    } catch (e) {
+      console.warn('Chargement produits serveur echoue (non bloquant):', e);
+      return null;
+    }
+  };
   
   // Catégories
   const getCategories = () => JSON.parse(localStorage.getItem(CATEGORIES_KEY) || '[]');
@@ -242,6 +290,7 @@ const AdminStore = (() => {
     updateProduct,
     deleteProduct,
     getProduct,
+    refreshProductsFromServer,
     // Catégories
     getCategories,
     addCategory,

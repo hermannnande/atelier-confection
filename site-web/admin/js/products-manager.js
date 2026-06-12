@@ -513,6 +513,13 @@ if (btnNewProduct) {
 // Charger au démarrage
 loadProducts();
 loadCategories();
+
+// Recharger depuis le serveur pour voir les produits crees sur d'autres appareils
+if (typeof AdminStore.refreshProductsFromServer === 'function') {
+  AdminStore.refreshProductsFromServer().then((merged) => {
+    if (merged && merged.length) loadProducts();
+  });
+}
 if (new URLSearchParams(window.location.search).get('action') === 'new') {
   openProductModal();
 }
