@@ -280,76 +280,63 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') prevZoomImage();
 });
 
+// Galerie ADAPTATIVE : s'ajuste à n'importe quelle combinaison
+// (1 à 5 images, avec ou sans vidéo) pour rester toujours équilibrée.
 const renderGallery = (product) => {
   const gallery = document.querySelector('.product-gallery');
   if (!gallery) return;
 
   const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
+  if (!images.length && (product.image || product.thumbnail)) {
+    images.push(product.image || product.thumbnail);
+  }
   const videoUrl = product.video ? String(product.video) : '';
+  const poster = images[0] || product.thumbnail || '';
+  const name = product.name || 'Produit';
 
-  const img1 = images[0] || product.image || product.thumbnail || '';
-  const img2 = images[1] || '';
-  const img3 = images[2] || '';
-  const img4 = images[3] || '';
-  const img5 = images[4] || '';
-  const poster = images[0] || product.thumbnail || img4 || img2 || '';
-
-  const parts = [];
-
-  if (img1) {
-    parts.push(`
-      <div class="gallery-item gallery-item-1">
-        <img src="${img1}" alt="${product.name || 'Produit'} - Vue 1" loading="lazy" />
-      </div>
-    `);
-  }
-
+  // Liste ordonnée des médias : image 1, vidéo (si présente), puis le reste
+  const media = [];
+  images.forEach((src, i) => {
+    media.push({ type: 'image', src, alt: `${name} - Vue ${i + 1}` });
+  });
   if (videoUrl) {
-    parts.push(`
-      <div class="gallery-item gallery-item-video">
-        <video autoplay muted loop playsinline ${poster ? `poster="${poster}"` : ''}>
-          <source src="${videoUrl}" type="video/mp4" />
-        </video>
-      </div>
-    `);
-  } else if (img4 || img2) {
-    // Slot vidéo sans vidéo: image portrait à droite
-    const fallback = img4 || img2;
-    parts.push(`
-      <div class="gallery-item gallery-item-video">
-        <img src="${fallback}" alt="${product.name || 'Produit'} - Vue" loading="lazy" />
-      </div>
-    `);
+    const videoItem = { type: 'video', src: videoUrl, poster };
+    media.splice(Math.min(1, media.length), 0, videoItem);
   }
 
-  if (img2) {
-    parts.push(`
-      <div class="gallery-item gallery-item-2">
-        <img src="${img2}" alt="${product.name || 'Produit'} - Vue 2" loading="lazy" />
-      </div>
-    `);
+  const total = media.length;
+
+  // Nombre impair (>= 3) : un élément "vedette" occupe 2 rangées pour
+  // équilibrer la grille. La vidéo est mise en avant si elle existe.
+  let featuredIndex = -1;
+  if (total >= 3 && total % 2 === 1) {
+    featuredIndex = videoUrl ? media.findIndex((m) => m.type === 'video') : 0;
   }
-  if (img3) {
-    parts.push(`
-      <div class="gallery-item gallery-item-3">
-        <img src="${img3}" alt="${product.name || 'Produit'} - Vue 3" loading="lazy" />
+
+  const parts = media.map((m, i) => {
+    const featuredClass = i === featuredIndex ? ' gallery-featured' : '';
+    if (m.type === 'video') {
+      return `
+        <div class="gallery-item gallery-item-video${featuredClass}">
+          <video autoplay muted loop playsinline ${m.poster ? `poster="${m.poster}"` : ''}>
+            <source src="${m.src}" type="video/mp4" />
+          </video>
+        </div>
+      `;
+    }
+    return `
+      <div class="gallery-item${featuredClass}">
+        <img src="${m.src}" alt="${m.alt}" loading="lazy" />
       </div>
-    `);
-  }
-  if (img4) {
-    parts.push(`
-      <div class="gallery-item gallery-item-4">
-        <img src="${img4}" alt="${product.name || 'Produit'} - Vue 4" loading="lazy" />
-      </div>
-    `);
-  }
-  if (img5) {
-    parts.push(`
-      <div class="gallery-item gallery-item-5">
-        <img src="${img5}" alt="${product.name || 'Produit'} - Vue 5" loading="lazy" />
-      </div>
-    `);
-  }
+    `;
+  });
+
+  // Classe de comptage pour le CSS adaptatif
+  gallery.className = gallery.className
+    .split(' ')
+    .filter((c) => c && !c.startsWith('gallery-count-'))
+    .join(' ');
+  gallery.classList.add(`gallery-count-${Math.min(total, 6)}`);
 
   gallery.innerHTML = parts.join('');
 };

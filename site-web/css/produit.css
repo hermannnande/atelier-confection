@@ -47,44 +47,27 @@
   transform: scale(1.05);
 }
 
-/* Layout spécifique : Portrait avec vidéo à droite */
-.gallery-item-1 {
-  grid-column: 1;
-  grid-row: 1;
+/* ===== GALERIE ADAPTATIVE =====
+   La grille s'adapte au nombre de médias (1 à 5 images, avec ou sans vidéo).
+   Tous les éléments sont en portrait 3/4 ; pour un nombre impair de médias,
+   l'élément "vedette" (.gallery-featured) occupe 2 rangées afin que la
+   grille reste parfaitement équilibrée. */
+
+.gallery-item {
   aspect-ratio: 3/4;
 }
 
-.gallery-item-video {
-  grid-column: 2;
-  grid-row: 1;
-  aspect-ratio: 3/4;
+/* Un seul média : pleine largeur */
+.gallery-count-1 {
+  grid-template-columns: 1fr;
 }
 
-.gallery-item-2 {
-  grid-column: 1;
-  grid-row: 2;
-  aspect-ratio: 3/4;
+/* Élément vedette (3 ou 5 médias) : occupe 2 rangées */
+.gallery-featured {
+  grid-row: span 2;
+  aspect-ratio: auto;
 }
 
-.gallery-item-3 {
-  grid-column: 1;
-  grid-row: 3;
-  aspect-ratio: 3/4;
-}
-
-.gallery-item-4 {
-  grid-column: 2;
-  grid-row: 2;
-  aspect-ratio: 3/4;
-}
-
-.gallery-item-5 {
-  grid-column: 2;
-  grid-row: 3;
-  aspect-ratio: 3/4;
-}
-
-/* Ajustement pour que la vidéo soit en portrait (2 fois la hauteur) */
 .gallery-item-video video {
   object-fit: cover;
   height: 100%;
