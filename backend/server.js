@@ -31,7 +31,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes (MongoDB ou Supabase)
 if (USE_SUPABASE) {
-  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }, { default: sessionCaisseRoutes }, { default: smsRoutes }, { default: attendanceRoutes }, { default: ecommerceProductsRoutes }, { default: paysRoutes }] =
+  const [{ default: authRoutes }, { default: commandeRoutes }, { default: commandePublicRoutes }, { default: stockRoutes }, { default: livraisonRoutes }, { default: performanceRoutes }, { default: userRoutes }, { default: modeleRoutes }, { default: sessionCaisseRoutes }, { default: smsRoutes }, { default: attendanceRoutes }, { default: ecommerceProductsRoutes }, { default: ecommerceCategoriesRoutes }, { default: paysRoutes }] =
     await Promise.all([
       import('./supabase/routes/auth.js'),
       import('./supabase/routes/commandes.js'),
@@ -45,6 +45,7 @@ if (USE_SUPABASE) {
       import('./supabase/routes/sms.js'),
       import('./supabase/routes/attendance.js'),
       import('./supabase/routes/ecommerce-products.js'),
+      import('./supabase/routes/ecommerce-categories.js'),
       import('./supabase/routes/pays.js'),
     ]);
 
@@ -61,6 +62,7 @@ if (USE_SUPABASE) {
   app.use('/api/sms', smsRoutes); // Routes pour les SMS
   app.use('/api/attendance', attendanceRoutes); // Routes pour le pointage GPS
   app.use('/api/ecommerce/products', ecommerceProductsRoutes); // Catalogue e-commerce (site-web)
+  app.use('/api/ecommerce/categories', ecommerceCategoriesRoutes); // Catégories e-commerce (site-web)
 
   console.log('🟣 Mode base de données: Supabase (PostgreSQL)');
 } else {

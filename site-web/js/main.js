@@ -311,19 +311,41 @@ document.querySelectorAll('.mobile-nav-link').forEach(link => {
 });
 
 // ===== BESTSELLERS DYNAMIQUES =====
-const renderHomeBestsellers = () => {
+const renderHomeBestsellers = async () => {
   const grid = document.getElementById('homeBestsellersGrid');
   if (!grid) return;
 
   const slugify = (v = '') =>
     String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+  // SOURCE DE VÉRITÉ: le serveur. Cache local seulement si l'API échoue.
   let products = [];
   try {
-    const raw = localStorage.getItem('atelier-admin-products');
-    products = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(products)) products = [];
-  } catch (e) { products = []; }
+    const host = window.location.hostname;
+    const origin = (host === 'localhost' || host === '127.0.0.1')
+      ? 'https://atelier-confection.vercel.app'
+      : window.location.origin;
+    const res = await fetch(`${origin}/api/ecommerce/products`);
+    if (res.ok) {
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.products || []);
+      products = rows
+        .filter((p) => p.active !== false)
+        .map((p) => ({
+          ...p,
+          id: String(p.id),
+          originalPrice: Number(p.original_price ?? p.originalPrice) || 0,
+        }));
+    }
+  } catch (e) { /* API indisponible: cache local ci-dessous */ }
+
+  if (!products.length) {
+    try {
+      const raw = localStorage.getItem('atelier-admin-products');
+      products = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(products)) products = [];
+    } catch (e) { products = []; }
+  }
 
   if (!products.length) {
     try {

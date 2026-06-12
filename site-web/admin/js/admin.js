@@ -65,6 +65,8 @@ const AdminStore = (() => {
     } catch (e) {
       // ignore
     }
+    // Recharger les catégories depuis le serveur (source de vérité)
+    try { refreshCategoriesFromServer(); } catch (e) { /* ignore */ }
   };
   
   // Produits
@@ -189,8 +191,56 @@ const AdminStore = (() => {
   
   // Catégories
   const getCategories = () => JSON.parse(localStorage.getItem(CATEGORIES_KEY) || '[]');
-  const saveCategories = (categories) => localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-  
+
+  const syncCategoriesToServer = async (categories) => {
+    try {
+      const url = resolveEcommerceSyncUrl().replace('/api/ecommerce/products/sync', '/api/ecommerce/categories/sync');
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: ECOMMERCE_SYNC_TOKEN, categories }),
+      });
+    } catch (e) {
+      console.warn('Sync catégories échouée (non bloquant):', e);
+    }
+  };
+
+  const saveCategories = (categories) => {
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+    syncCategoriesToServer(categories);
+  };
+
+  // Recharger les catégories depuis le serveur
+  const refreshCategoriesFromServer = async () => {
+    try {
+      const origin = resolveEcommerceSyncUrl().replace('/api/ecommerce/products/sync', '');
+      const res = await fetch(`${origin}/api/ecommerce/categories`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.categories || []);
+      if (!Array.isArray(rows) || !rows.length) return null;
+
+      const server = rows.map((c) => ({
+        id: String(c.id),
+        name: c.name || '',
+        slug: c.slug || '',
+        description: c.description || '',
+        active: c.active !== false,
+        createdAt: c.created_at || new Date().toISOString(),
+      }));
+      const serverIds = new Set(server.map(c => String(c.id)));
+      const localOnly = getCategories().filter(c => !serverIds.has(String(c.id)));
+      const merged = [...server, ...localOnly];
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(merged));
+      // Pousser les catégories locales pas encore synchronisées
+      if (localOnly.length) syncCategoriesToServer(merged);
+      return merged;
+    } catch (e) {
+      console.warn('Chargement catégories serveur échoué (non bloquant):', e);
+      return null;
+    }
+  };
+
   const addCategory = (category) => {
     const categories = getCategories();
     const newCategory = {
@@ -216,11 +266,23 @@ const AdminStore = (() => {
     return null;
   };
   
+  const deleteCategoryFromServer = async (id) => {
+    try {
+      const origin = resolveEcommerceSyncUrl().replace('/api/ecommerce/products/sync', '');
+      await fetch(`${origin}/api/ecommerce/categories/${encodeURIComponent(id)}?token=${ECOMMERCE_SYNC_TOKEN}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Suppression catégorie serveur échouée (non bloquant):', e);
+    }
+  };
+
   const deleteCategory = (id) => {
     const categories = getCategories();
     const category = categories.find(c => c.id === id);
     const filtered = categories.filter(c => c.id !== id);
-    saveCategories(filtered);
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(filtered));
+    deleteCategoryFromServer(id);
     if (category) {
       addActivity('Catégorie supprimée', `${category.name} a été supprimée`);
     }
@@ -296,6 +358,7 @@ const AdminStore = (() => {
     addCategory,
     updateCategory,
     deleteCategory,
+    refreshCategoriesFromServer,
     // Commandes
     getOrders,
     updateOrderStatus,

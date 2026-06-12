@@ -813,7 +813,11 @@ const mapApiProduct = (row) => ({
 
 const fetchProductFromApi = async (id) => {
   try {
-    const res = await fetch(`/api/ecommerce/products/${encodeURIComponent(id)}`);
+    const host = window.location.hostname;
+    const origin = (host === 'localhost' || host === '127.0.0.1')
+      ? 'https://atelier-confection.vercel.app'
+      : window.location.origin;
+    const res = await fetch(`${origin}/api/ecommerce/products/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
     const data = await res.json();
     if (!data?.product) return null;
@@ -843,28 +847,29 @@ const boot = async () => {
   bindShareButtons();
   renderDebugPanel();
 
-  const selected = readSelectedProduct();
-  if (selected?.id) {
-    const id = getProductIdFromUrl();
-    if (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id)) {
-      applyProductToPage(selected);
-      return;
-    }
-  }
-
-  // priorité: id=...
   const id = getProductIdFromUrl();
-  const adminProduct = getAdminProductById(id);
-  if (adminProduct) {
-    applyProductToPage(adminProduct);
-    return;
-  }
 
-  // Pas trouvé en local: tenter l'API serveur (produit créé sur un autre appareil)
+  // SOURCE DE VÉRITÉ: le serveur. Cache local et produit sélectionné en secours.
   if (id) {
     const fetched = await fetchProductFromApi(id);
     if (fetched) {
       applyProductToPage(fetched);
+      return;
+    }
+
+    // API indisponible: cache local
+    const adminProduct = getAdminProductById(id);
+    if (adminProduct) {
+      applyProductToPage(adminProduct);
+      return;
+    }
+  }
+
+  // Dernier recours: produit cliqué récemment (sessionStorage)
+  const selected = readSelectedProduct();
+  if (selected?.id) {
+    if (!id || String(selected.id) === String(id) || slugify(selected.name || '') === String(id)) {
+      applyProductToPage(selected);
       return;
     }
   }

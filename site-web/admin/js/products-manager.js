@@ -520,6 +520,11 @@ if (typeof AdminStore.refreshProductsFromServer === 'function') {
     if (merged && merged.length) loadProducts();
   });
 }
+if (typeof AdminStore.refreshCategoriesFromServer === 'function') {
+  AdminStore.refreshCategoriesFromServer().then((merged) => {
+    if (merged && merged.length) loadCategories();
+  });
+}
 if (new URLSearchParams(window.location.search).get('action') === 'new') {
   openProductModal();
 }

@@ -120,31 +120,6 @@ const buildProductCard = (product, categories) => {
   `;
 };
 
-const renderAdminProducts = () => {
-  const container = document.querySelector('.products-container');
-  if (!container) return false;
-
-  const adminProducts = readAdminProducts();
-  adminProductsCache = adminProducts;
-  try {
-    localStorage.setItem('atelier-products-cache', JSON.stringify(adminProducts));
-  } catch (e) {
-    // ignore storage errors
-  }
-  if (!adminProducts.length) {
-    container.innerHTML = `
-      <div style="padding: 40px; text-align: center; color: #6b7280;">
-        Aucun produit trouvé. Ajoutez des produits dans l'admin.
-      </div>
-    `;
-    return false;
-  }
-
-  const categories = readAdminCategories().filter((cat) => cat.active !== false);
-  container.innerHTML = adminProducts.map((product) => buildProductCard(product, categories)).join('');
-  return true;
-};
-
 const bindProductClickStore = () => {
   const container = document.querySelector('.products-container');
   if (!container) return;
@@ -250,74 +225,115 @@ const hydrateCategoryFilterOptions = () => {
   select.value = current;
 };
 
-const API_URL = (() => {
+const API_ORIGIN = (() => {
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    return 'https://atelier-confection.vercel.app/api/ecommerce/products';
+    return 'https://atelier-confection.vercel.app';
   }
-  return window.location.origin + '/api/ecommerce/products';
+  return window.location.origin;
 })();
+const API_URL = API_ORIGIN + '/api/ecommerce/products';
+const CATEGORIES_API_URL = API_ORIGIN + '/api/ecommerce/categories';
 
-const fetchAndRenderProducts = async () => {
-  const hasLocal = renderAdminProducts();
-  if (hasLocal) {
-    hydrateCategoryFilterOptions();
-    bindFavorites();
-    bindProductClickStore();
-    applyCategoryFromURL();
-    updateProductCount();
-    observeAllCards();
+// Convertit un produit serveur (snake_case) vers le format du site (camelCase)
+const mapApiProduct = (row) => ({
+  id: String(row.id),
+  name: row.name || '',
+  category: row.category || '',
+  price: Number(row.price) || 0,
+  originalPrice: Number(row.original_price ?? row.originalPrice) || 0,
+  stock: Number(row.stock) || 0,
+  description: row.description || '',
+  sizes: Array.isArray(row.sizes) ? row.sizes : [],
+  colors: Array.isArray(row.colors) ? row.colors : [],
+  images: Array.isArray(row.images) ? row.images : [],
+  video: row.video || '',
+  thumbnail: row.thumbnail || '',
+  active: row.active !== false,
+});
+
+const refreshCategoriesFromServer = async () => {
+  try {
+    const res = await fetch(CATEGORIES_API_URL);
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : (data.categories || []);
+    if (!Array.isArray(rows) || !rows.length) return;
+    const categories = rows.map((c) => ({
+      id: String(c.id),
+      name: c.name || '',
+      slug: c.slug || '',
+      description: c.description || '',
+      active: c.active !== false,
+    }));
+    localStorage.setItem('atelier-admin-categories', JSON.stringify(categories));
+  } catch (e) { /* non bloquant: cache local utilisé */ }
+};
+
+const renderProductList = (products) => {
+  const container = document.querySelector('.products-container');
+  if (!container) return;
+
+  const visible = products.filter((p) => p.active !== false);
+  if (!visible.length) {
+    container.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: #6b7280;">
+        Aucun produit trouvé. Ajoutez des produits dans l'admin.
+      </div>
+    `;
     return;
   }
 
-  try {
-    const cachedRaw = localStorage.getItem('atelier-products-cache');
-    const cached = cachedRaw ? JSON.parse(cachedRaw) : [];
-    if (Array.isArray(cached) && cached.length) {
-      adminProductsCache = cached;
-      const categories = readAdminCategories().filter(c => c.active !== false);
-      const container = document.querySelector('.products-container');
-      if (container) {
-        container.innerHTML = cached
-          .filter(p => p.active !== false)
-          .map(p => buildProductCard(p, categories))
-          .join('');
-      }
-      hydrateCategoryFilterOptions();
-      bindFavorites();
-      bindProductClickStore();
-      applyCategoryFromURL();
-      updateProductCount();
-      observeAllCards();
-    }
-  } catch (_) {}
+  const categories = readAdminCategories().filter((cat) => cat.active !== false);
+  container.innerHTML = visible.map((p) => buildProductCard(p, categories)).join('');
+};
+
+const finalizeRender = () => {
+  hydrateCategoryFilterOptions();
+  bindFavorites();
+  bindProductClickStore();
+  applyCategoryFromURL();
+  updateProductCount();
+  observeAllCards();
+};
+
+// SOURCE DE VÉRITÉ: le serveur. Le localStorage ne sert que de cache hors-ligne.
+const fetchAndRenderProducts = async () => {
+  await refreshCategoriesFromServer();
 
   try {
     const res = await fetch(API_URL);
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    const products = Array.isArray(data) ? data : (data.products || []);
-    const active = products.filter(p => p.active !== false);
-    if (!active.length) return;
+    const rows = Array.isArray(data) ? data : (data.products || []);
+    const products = rows.map(mapApiProduct).filter((p) => p.active !== false);
 
-    localStorage.setItem('atelier-admin-products', JSON.stringify(active));
-    localStorage.setItem('atelier-products-cache', JSON.stringify(active));
-    adminProductsCache = active;
+    try {
+      localStorage.setItem('atelier-admin-products', JSON.stringify(products));
+      localStorage.setItem('atelier-products-cache', JSON.stringify(products));
+    } catch (e) { /* cache non bloquant */ }
 
-    const categories = readAdminCategories().filter(c => c.active !== false);
-    const container = document.querySelector('.products-container');
-    if (container) {
-      container.innerHTML = active.map(p => buildProductCard(p, categories)).join('');
-    }
-    hydrateCategoryFilterOptions();
-    bindFavorites();
-    bindProductClickStore();
-    applyCategoryFromURL();
-    updateProductCount();
-    observeAllCards();
+    adminProductsCache = products;
+    renderProductList(products);
+    finalizeRender();
+    return;
   } catch (e) {
-    console.error('Erreur chargement produits:', e);
+    console.warn('API produits indisponible, utilisation du cache local:', e);
   }
+
+  // Secours hors-ligne: cache local
+  const local = readAdminProducts();
+  const cached = (() => {
+    try {
+      const raw = localStorage.getItem('atelier-products-cache');
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  })();
+  const fallback = local.length ? local : cached;
+  adminProductsCache = fallback;
+  renderProductList(fallback);
+  finalizeRender();
 };
 
 const observeAllCards = () => {

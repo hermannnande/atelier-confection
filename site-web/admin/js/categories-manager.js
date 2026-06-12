@@ -140,6 +140,14 @@ if (btnNew) {
 }
 
 loadCategories();
+
+// Recharger depuis le serveur (source de vérité)
+if (typeof AdminStore.refreshCategoriesFromServer === 'function') {
+  AdminStore.refreshCategoriesFromServer().then((merged) => {
+    if (merged && merged.length) loadCategories();
+  });
+}
+
 if (new URLSearchParams(window.location.search).get('action') === 'new') {
   openCategoryModal();
 }
