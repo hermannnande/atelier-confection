@@ -96,13 +96,33 @@
       <section class="hero">
         <video
           class="hero-video"
+          id="heroVideo"
           autoplay
           muted
           loop
           playsinline
-        >
-          <source src="https://brand.assets.adidas.com/video/upload/f_auto:video,q_auto/if_w_gt_1920,w_1920/global_dropset_4_power_training_ss26_launch_hp_and_catlp_banner_hero_d_14fe3d88e7.mp4" type="video/mp4" />
-        </video>
+          preload="auto"
+        ></video>
+        <script>
+          (function () {
+            var v = document.getElementById('heroVideo');
+            if (!v) return;
+            var mq = window.matchMedia('(max-width: 768px)');
+            var current = '';
+            function setSrc() {
+              var src = mq.matches ? 'videos/hero-mobile.mp4' : 'videos/hero-desktop.mp4';
+              if (src === current) return;
+              current = src;
+              v.src = src;
+              v.load();
+              var p = v.play();
+              if (p && p.catch) p.catch(function () {});
+            }
+            setSrc();
+            if (mq.addEventListener) mq.addEventListener('change', setSrc);
+            else if (mq.addListener) mq.addListener(setSrc);
+          })();
+        </script>
         <div class="hero-overlay"></div>
         <div class="hero-content">
           <p class="hero-tag">Collection Atelier 2026</p>
