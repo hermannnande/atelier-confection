@@ -15,6 +15,45 @@ const readCartFromStorage = () => {
   }
 };
 
+// ---- Checkout (commande dans une modale, sans changer de page) ----
+const CHECKOUT_API_URL = 'https://atelier-confection.vercel.app/api/commandes/public';
+const CHECKOUT_API_TOKEN = 'NOUSUNIQUE123';
+
+const parsePriceSafe = (v) => {
+  const store = getStore();
+  return store?.parsePrice ? store.parsePrice(v) : (Number(v) || 0);
+};
+const formatPriceSafe = (v) => {
+  const store = getStore();
+  return store?.formatPrice ? store.formatPrice(v) : `${v} FCFA`;
+};
+
+const sendItemToApi = async (item, clientInfo) => {
+  const body = {
+    token: CHECKOUT_API_TOKEN,
+    client: clientInfo.client,
+    phone: clientInfo.phone,
+    ville: clientInfo.ville,
+    name: item.name || 'Produit',
+    taille: item.size || 'Standard',
+    couleur: item.color || 'Non specifie',
+    price: String(parsePriceSafe(item.price)),
+    image: item.image || '',
+    category: item.category || '',
+    source: 'site-web-ecommerce',
+  };
+  const res = await fetch(CHECKOUT_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Erreur ${res.status}`);
+  }
+  return res.json();
+};
+
 const CartDrawer = {
   overlay: null,
   drawer: null,
@@ -338,18 +377,8 @@ const CartDrawer = {
         store?.showToast('Votre panier est vide');
         return;
       }
-      this.close();
-      try {
-        const s = getStore();
-        const c = s?.getCart ? s.getCart() : readCartFromStorage();
-        sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(c));
-      } catch (_) {}
-      setTimeout(() => {
-        const currentPath = window.location.pathname;
-        const isInPagesFolder = currentPath.includes('/pages/');
-        const checkoutUrl = isInPagesFolder ? 'checkout' : 'pages/checkout';
-        window.location.href = checkoutUrl;
-      }, 300);
+      // Ouvre la modale de commande (reste sur la meme page)
+      this.openCheckoutModal();
     });
 
     const viewCartBtn = this.drawer?.querySelector('.drawer-view-cart-btn');
@@ -362,6 +391,184 @@ const CartDrawer = {
         window.location.href = isInPagesFolder ? 'panier' : 'pages/panier';
       }, 300);
     });
+  },
+
+  // ===== MODALE CHECKOUT =====
+  openCheckoutModal() {
+    if (!document.getElementById('checkoutModal')) {
+      this.createCheckoutModalHTML();
+    }
+    this.close(); // fermer le tiroir
+    this.renderCheckoutSummary();
+    requestAnimationFrame(() => {
+      document.getElementById('checkoutModalOverlay')?.classList.add('active');
+      document.getElementById('checkoutModal')?.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    });
+  },
+
+  closeCheckoutModal() {
+    document.getElementById('checkoutModalOverlay')?.classList.remove('active');
+    document.getElementById('checkoutModal')?.classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  createCheckoutModalHTML() {
+    const html = `
+      <div class="checkout-modal-overlay" id="checkoutModalOverlay"></div>
+      <div class="checkout-modal" id="checkoutModal" role="dialog" aria-modal="true" aria-label="Finaliser la commande">
+        <div class="checkout-modal-header">
+          <h2>Finaliser ma commande</h2>
+          <button class="checkout-modal-close" id="checkoutModalClose" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="checkout-modal-body">
+          <div class="checkout-modal-summary" id="checkoutModalSummary"></div>
+          <form class="checkout-modal-form" id="checkoutModalForm" novalidate>
+            <div class="cm-field">
+              <label for="cmFullname">Nom complet *</label>
+              <input type="text" id="cmFullname" name="fullname" autocomplete="name" placeholder="Votre nom et prénom" required />
+            </div>
+            <div class="cm-field">
+              <label for="cmPhone">Téléphone *</label>
+              <input type="tel" id="cmPhone" name="phone" autocomplete="tel" placeholder="07 00 00 00 00" required />
+            </div>
+            <div class="cm-field">
+              <label for="cmCity">Ville / Quartier *</label>
+              <input type="text" id="cmCity" name="city" placeholder="Ex : Abidjan, Cocody" required />
+            </div>
+            <div class="cm-field">
+              <label for="cmNotes">Note (facultatif)</label>
+              <textarea id="cmNotes" name="notes" rows="2" placeholder="Précisions sur la livraison..."></textarea>
+            </div>
+            <div class="cm-payment">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>Paiement à la livraison &middot; Livraison rapide &middot; Retour 7 jours</span>
+            </div>
+            <button type="submit" class="checkout-modal-submit" id="checkoutModalSubmit">
+              <span>Confirmer ma commande</span>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    while (tmp.firstChild) document.body.appendChild(tmp.firstChild);
+
+    document.getElementById('checkoutModalOverlay')?.addEventListener('click', () => this.closeCheckoutModal());
+    document.getElementById('checkoutModalClose')?.addEventListener('click', () => this.closeCheckoutModal());
+    document.getElementById('checkoutModalForm')?.addEventListener('submit', (e) => this.handleCheckoutSubmit(e));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.getElementById('checkoutModal')?.classList.contains('active')) {
+        this.closeCheckoutModal();
+      }
+    });
+  },
+
+  renderCheckoutSummary() {
+    const store = getStore();
+    const cart = store?.getCart ? store.getCart() : readCartFromStorage();
+    const el = document.getElementById('checkoutModalSummary');
+    if (!el) return;
+    let subtotal = 0;
+    const rows = cart.map((item) => {
+      const price = parsePriceSafe(item.price);
+      const qty = item.qty || 1;
+      subtotal += price * qty;
+      return `
+        <div class="cm-sum-item">
+          <img src="${item.image}" alt="${item.name}" />
+          <div class="cm-sum-info">
+            <span class="cm-sum-name">${item.name}</span>
+            <span class="cm-sum-meta">${item.size} &bull; ${item.color} &bull; Qté ${qty}</span>
+          </div>
+          <span class="cm-sum-price">${formatPriceSafe(price * qty)}</span>
+        </div>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="cm-sum-items">${rows}</div>
+      <div class="cm-sum-ship"><span>Livraison</span><span class="cm-free">Gratuite</span></div>
+      <div class="cm-sum-total"><span>Total</span><span class="cm-sum-total-value">${formatPriceSafe(subtotal)}</span></div>
+    `;
+  },
+
+  async handleCheckoutSubmit(e) {
+    e.preventDefault();
+    const store = getStore();
+    const form = e.currentTarget;
+    const btn = document.getElementById('checkoutModalSubmit');
+    const clientInfo = {
+      client: (form.fullname?.value || '').trim(),
+      phone: (form.phone?.value || '').trim(),
+      ville: (form.city?.value || '').trim(),
+      notes: (form.notes?.value || '').trim(),
+    };
+    const cart = store?.getCart ? store.getCart() : readCartFromStorage();
+
+    if (!clientInfo.client || !clientInfo.phone || !clientInfo.ville) {
+      store?.showToast ? store.showToast('Veuillez remplir tous les champs obligatoires') : alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+    if (!cart.length) {
+      store?.showToast ? store.showToast('Votre panier est vide') : alert('Votre panier est vide');
+      return;
+    }
+
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.innerHTML = '<span>Envoi en cours...</span>';
+
+    try {
+      const results = [];
+      for (const item of cart) {
+        const qty = item.qty || 1;
+        for (let i = 0; i < qty; i++) {
+          results.push(await sendItemToApi(item, clientInfo));
+        }
+      }
+
+      const subtotal = cart.reduce((s, it) => s + parsePriceSafe(it.price) * (it.qty || 1), 0);
+      const totalStr = formatPriceSafe(subtotal);
+
+      try {
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        orders.push({
+          ...clientInfo,
+          items: cart,
+          total: totalStr,
+          id: results[0]?.numeroCommande || ('CMD' + Date.now()),
+          status: 'en_attente_validation',
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem('orders', JSON.stringify(orders));
+      } catch (_) {}
+
+      try {
+        sessionStorage.setItem('lastOrder', JSON.stringify({
+          fullname: clientInfo.client,
+          phone: clientInfo.phone,
+          city: clientInfo.ville,
+          notes: clientInfo.notes,
+          total: totalStr,
+        }));
+      } catch (_) {}
+
+      if (store?.clearCart) store.clearCart();
+      else localStorage.setItem(CART_KEY, JSON.stringify([]));
+
+      const isInPages = window.location.pathname.includes('/pages/');
+      window.location.href = isInPages ? 'merci' : 'pages/merci';
+    } catch (err) {
+      console.error('Erreur envoi commande:', err);
+      alert("Erreur lors de l'envoi de la commande.\n" + err.message + "\n\nVeuillez réessayer ou nous contacter au 07 05 88 11 16.");
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.innerHTML = originalHTML;
+    }
   }
 };
 

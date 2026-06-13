@@ -493,7 +493,262 @@
 }
 
 /* ===========================
-   MODAL CHECKOUT
+   MODALE CHECKOUT (commande sans changer de page)
    =========================== */
+.checkout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+.checkout-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
 
-/* checkout-modal removed */
+.checkout-modal {
+  position: fixed;
+  z-index: 10001;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -46%);
+  width: calc(100% - 32px);
+  max-width: 540px;
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0.3s ease;
+}
+.checkout-modal.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%);
+}
+
+.checkout-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+.checkout-modal-header h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+}
+.checkout-modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f3f3;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: #333;
+  transition: background 0.2s ease;
+}
+.checkout-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+.checkout-modal-close:hover {
+  background: #e7e7e7;
+}
+
+.checkout-modal-body {
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Résumé */
+.checkout-modal-summary {
+  margin-bottom: 18px;
+}
+.cm-sum-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cm-sum-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cm-sum-item img {
+  width: 50px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #f2f2f2;
+}
+.cm-sum-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cm-sum-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-sum-meta {
+  font-size: 12px;
+  color: #888;
+}
+.cm-sum-price {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.cm-sum-ship,
+.cm-sum-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+}
+.cm-sum-ship {
+  font-size: 14px;
+  color: #555;
+  border-top: 1px solid #eee;
+}
+.cm-free {
+  color: #1a8a3a;
+  font-weight: 700;
+}
+.cm-sum-total {
+  font-weight: 800;
+  font-size: 16px;
+}
+.cm-sum-total-value {
+  color: #c2a36b;
+}
+
+/* Formulaire */
+.checkout-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cm-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+.cm-field input,
+.cm-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+.cm-field textarea {
+  resize: vertical;
+}
+.cm-field input:focus,
+.cm-field textarea:focus {
+  outline: none;
+  border-color: #c2a36b;
+}
+.cm-payment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f7f3ec;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: #6b5a36;
+}
+.cm-payment svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #c2a36b;
+}
+.checkout-modal-submit {
+  margin-top: 4px;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 10px;
+  background: #0b0b0c;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+.checkout-modal-submit:hover {
+  background: #c2a36b;
+  color: #1a1305;
+  transform: translateY(-2px);
+}
+.checkout-modal-submit.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Mobile : feuille qui glisse depuis le bas */
+@media (max-width: 600px) {
+  .checkout-modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 94vh;
+    border-radius: 18px 18px 0 0;
+    transform: translateY(100%);
+  }
+  .checkout-modal.active {
+    transform: translateY(0);
+  }
+  .checkout-modal-header {
+    padding: 16px 18px;
+  }
+  .checkout-modal-body {
+    padding: 16px 18px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-modal {
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+}
