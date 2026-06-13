@@ -1,106 +1,105 @@
-// Cloudinary Upload Integration
-const CLOUDINARY_CONFIG = window.CLOUDINARY_CONFIG || {};
-const CLOUDINARY_CLOUD_NAME = CLOUDINARY_CONFIG.cloudName || 'deyvdnm2d';
-const CLOUDINARY_UPLOAD_PRESET = CLOUDINARY_CONFIG.uploadPreset || 'atelier_unsigned';
+// ============================================================
+// Upload d'images produits vers la MEDIATHEQUE WORDPRESS
+// (remplace Cloudinary). Conserve les memes fonctions/callbacks
+// pour rester compatible avec products-manager.js.
+// ============================================================
 
-// Widget pour images galerie (portrait)
-let galleryWidget = null;
+const WP_UPLOAD_URL = 'https://nousunique.com/atelier-upload.php';
+const WP_UPLOAD_TOKEN = 'ATLRwpUP_9Kx2Qm7Zv3Fq';
 
-// Widget pour vignette (600x600)
-let thumbnailWidget = null;
-
-function initCloudinaryWidgets() {
-  // Widget pour images galerie
-  galleryWidget = cloudinary.createUploadWidget(
-    {
-      cloudName: CLOUDINARY_CLOUD_NAME,
-      uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-      sources: ['local', 'url', 'camera'],
-      multiple: true,
-      maxFiles: 5,
-      clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
-      resourceType: 'image',
-      cropping: false,
-      folder: 'atelier-products/gallery',
-      tags: ['atelier', 'product', 'gallery'],
-    },
-    (error, result) => {
-      if (!error && result && result.event === 'success') {
-        const imageUrl = result.info.secure_url;
-        console.log('✅ Image galerie uploadée:', imageUrl);
-        
-        // Ajouter l'URL à la liste des images
-        if (window.addCloudinaryImageToGallery) {
-          window.addCloudinaryImageToGallery(imageUrl);
-        }
-      }
-      if (error) {
-        console.error('❌ Erreur upload Cloudinary:', error);
-        alert('Erreur upload: ' + (error.message || 'Erreur inconnue'));
-      }
-    }
-  );
-
-  // Widget pour vignette 600x600
-  thumbnailWidget = cloudinary.createUploadWidget(
-    {
-      cloudName: CLOUDINARY_CLOUD_NAME,
-      uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-      sources: ['local', 'url', 'camera'],
-      multiple: false,
-      maxFiles: 1,
-      clientAllowedFormats: ['png', 'jpg', 'jpeg', 'webp'],
-      resourceType: 'image',
-      cropping: true,
-      croppingAspectRatio: 1,
-      croppingCoordinatesMode: 'custom',
-      folder: 'atelier-products/thumbnails',
-      tags: ['atelier', 'product', 'thumbnail'],
-      croppingShowDimensions: true,
-    },
-    (error, result) => {
-      if (!error && result && result.event === 'success') {
-        const imageUrl = result.info.secure_url;
-        console.log('✅ Vignette uploadée:', imageUrl);
-        
-        // Ajouter la vignette
-        if (window.addCloudinaryThumbnail) {
-          window.addCloudinaryThumbnail(imageUrl);
-        }
-      }
-      if (error) {
-        console.error('❌ Erreur upload Cloudinary:', error);
-        alert('Erreur upload: ' + (error.message || 'Erreur inconnue'));
-      }
-    }
-  );
-
-  console.log('✅ Cloudinary widgets initialisés');
+function atlrShowUploadStatus(text) {
+  let el = document.getElementById('atlrUploadStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'atlrUploadStatus';
+    el.style.cssText =
+      'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);';
+    el.innerHTML =
+      '<div class="atlr-up-box" style="background:#111;color:#fff;padding:18px 28px;border-radius:12px;font-weight:700;font-size:15px;">' +
+      text +
+      '</div>';
+    document.body.appendChild(el);
+  } else {
+    const box = el.querySelector('.atlr-up-box');
+    if (box) box.textContent = text;
+    el.style.display = 'flex';
+  }
 }
 
-// Ouvrir le widget galerie
+function atlrHideUploadStatus() {
+  const el = document.getElementById('atlrUploadStatus');
+  if (el) el.style.display = 'none';
+}
+
+async function atlrUploadToWp(file) {
+  const fd = new FormData();
+  fd.append('token', WP_UPLOAD_TOKEN);
+  fd.append('file', file);
+  const res = await fetch(WP_UPLOAD_URL, { method: 'POST', body: fd });
+  let data = {};
+  try {
+    data = await res.json();
+  } catch (e) {
+    /* reponse non JSON */
+  }
+  if (!res.ok || !data.success || !data.url) {
+    throw new Error(data.message || `Erreur ${res.status}`);
+  }
+  return data.url;
+}
+
+function atlrPickAndUpload({ multiple, onUrl }) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp,image/gif';
+  input.multiple = Boolean(multiple);
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  input.addEventListener('change', async () => {
+    const files = Array.from(input.files || []);
+    if (input.parentNode) input.parentNode.removeChild(input);
+    if (!files.length) return;
+
+    let done = 0;
+    atlrShowUploadStatus(`Téléversement... (0/${files.length})`);
+    for (const file of files) {
+      try {
+        const url = await atlrUploadToWp(file);
+        if (typeof onUrl === 'function') onUrl(url);
+        done += 1;
+        atlrShowUploadStatus(`Téléversement... (${done}/${files.length})`);
+      } catch (err) {
+        atlrHideUploadStatus();
+        console.error('Erreur upload WordPress:', err);
+        alert('Erreur lors du téléversement : ' + err.message);
+        return;
+      }
+    }
+    atlrHideUploadStatus();
+  });
+
+  input.click();
+}
+
+// Galerie (plusieurs images ; la limite de 5 est gérée par products-manager.js)
 function openGalleryWidget() {
-  if (!galleryWidget) {
-    alert('Widget Cloudinary non initialisé. Vérifiez votre connexion.');
-    return;
-  }
-  galleryWidget.open();
+  atlrPickAndUpload({
+    multiple: true,
+    onUrl: (url) => {
+      if (window.addCloudinaryImageToGallery) window.addCloudinaryImageToGallery(url);
+    },
+  });
 }
 
-// Ouvrir le widget vignette
+// Vignette (une seule image)
 function openThumbnailWidget() {
-  if (!thumbnailWidget) {
-    alert('Widget Cloudinary non initialisé. Vérifiez votre connexion.');
-    return;
-  }
-  thumbnailWidget.open();
+  atlrPickAndUpload({
+    multiple: false,
+    onUrl: (url) => {
+      if (window.addCloudinaryThumbnail) window.addCloudinaryThumbnail(url);
+    },
+  });
 }
 
-// Initialiser au chargement
-if (typeof cloudinary !== 'undefined') {
-  initCloudinaryWidgets();
-} else {
-  console.error('❌ Cloudinary SDK non chargé');
-}
-
-console.log('✓ Cloudinary Upload Integration chargée');
+console.log('✓ Upload WordPress (médiathèque) chargé');

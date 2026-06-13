@@ -664,6 +664,9 @@ const applyProductToPage = (product) => {
   bindShareButtons();
 
   typewriterEffect();
+
+  // Vrais produits similaires (même catégorie en priorité)
+  renderSimilarProducts(product);
 };
 
 const showNotFoundState = () => {
@@ -817,6 +820,64 @@ const fetchProductFromApi = async (id) => {
   } catch (e) {
     return null;
   }
+};
+
+// ===== PRODUITS SIMILAIRES (réels, depuis l'API) =====
+const fetchAllProductsFromApi = async () => {
+  try {
+    const res = await fetch('https://atelier-confection.vercel.app/api/ecommerce/products');
+    if (!res.ok) throw new Error('http');
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : (data.products || []);
+    return rows.map(mapApiProduct).filter((p) => p.active !== false);
+  } catch (e) {
+    const cache = readJsonArray('atelier-products-cache');
+    return Array.isArray(cache) ? cache.filter((p) => p.active !== false) : [];
+  }
+};
+
+const renderSimilarProducts = async (current) => {
+  const section = document.querySelector('.similar-products');
+  const grid = document.getElementById('similarGrid');
+  if (!grid) return;
+
+  const all = await fetchAllProductsFromApi();
+  const currentId = String(current?.id || '');
+  const pool = all.filter(
+    (p) => String(p.id) !== currentId && ((p.images && p.images[0]) || p.thumbnail)
+  );
+  const sameCat = pool.filter(
+    (p) => p.category && current?.category && p.category === current.category
+  );
+  const others = pool
+    .filter((p) => !(p.category && current?.category && p.category === current.category))
+    .sort(() => Math.random() - 0.5);
+  const list = [...sameCat, ...others].slice(0, 4);
+
+  if (!list.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  if (section) section.style.display = '';
+
+  grid.innerHTML = list
+    .map((p) => {
+      const img = p.thumbnail || (p.images && p.images[0]) || '';
+      const price = parsePrice(p.price);
+      const cat = getCategoryLabel(p.category) || p.category || '';
+      return `
+        <a href="produit?id=${encodeURIComponent(p.id)}" class="similar-card">
+          <div class="similar-image">
+            <img src="${img}" alt="${p.name}" loading="lazy" />
+          </div>
+          <div class="similar-info">
+            <h3>${p.name}</h3>
+            <span>${cat}</span>
+            <span class="similar-price">${price.toLocaleString('fr-FR')} FCFA</span>
+          </div>
+        </a>`;
+    })
+    .join('');
 };
 
 // ===== BOOT =====
