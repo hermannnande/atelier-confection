@@ -138,7 +138,8 @@ function protectAdminPage() {
   const currentPage = window.location.pathname;
   
   // Si on est sur la page de login, ne rien faire
-  if (currentPage.includes('index.html') || currentPage.endsWith('/admin/') || currentPage.endsWith('/admin')) {
+  // (detection generique: racine du dossier admin, quel que soit son nom)
+  if (currentPage.includes('index.html') || currentPage.endsWith('/')) {
     if (isAuthenticated()) {
       window.location.href = 'dashboard.html';
     }
