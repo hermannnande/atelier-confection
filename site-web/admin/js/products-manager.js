@@ -188,55 +188,156 @@ function loadCategories() {
   });
 }
 
+// ========== FILTRES & RECHERCHE ==========
+let productFilters = { search: '', category: 'all', status: 'all' };
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+// Retrouver le nom lisible d'une catégorie à partir de son slug
+function getCategoryLabel(slug) {
+  if (!slug) return '';
+  try {
+    const cat = AdminStore.getCategories().find(c => c.slug === slug || c.id === slug);
+    return cat ? cat.name : slug;
+  } catch (e) {
+    return slug;
+  }
+}
+
+// Statut de stock d'un produit
+function getStockStatus(stock) {
+  const n = Number(stock) || 0;
+  if (n <= 0) return { key: 'out', label: 'Rupture', color: '#ef4444', badge: 'badge-danger' };
+  if (n <= 5) return { key: 'low', label: 'Stock faible', color: '#f59e0b', badge: 'badge-warning' };
+  return { key: 'in-stock', label: 'En stock', color: '#10b981', badge: 'badge-success' };
+}
+
+// Remplir le filtre catégorie
+function populateCategoryFilter() {
+  const select = document.getElementById('productCategoryFilter');
+  if (!select) return;
+  const current = select.value || 'all';
+  const categories = AdminStore.getCategories();
+  select.innerHTML = '<option value="all">Toutes les catégories</option>' +
+    categories.map(c => `<option value="${escapeHtml(c.slug)}">${escapeHtml(c.name)}</option>`).join('');
+  select.value = current;
+}
+
+// Appliquer recherche + filtres
+function getFilteredProducts() {
+  let products = AdminStore.getProducts();
+  const term = productFilters.search.trim().toLowerCase();
+
+  if (term) {
+    products = products.filter(p => (p.name || '').toLowerCase().includes(term));
+  }
+  if (productFilters.category !== 'all') {
+    products = products.filter(p => p.category === productFilters.category);
+  }
+  if (productFilters.status !== 'all') {
+    products = products.filter(p => getStockStatus(p.stock).key === productFilters.status);
+  }
+  return products;
+}
+
 // Charger la liste des produits
 function loadProducts() {
-  const products = AdminStore.getProducts();
   const tbody = document.getElementById('productsTableBody');
   const count = document.getElementById('productsCount');
-  
+  if (!tbody) return;
+
+  const total = AdminStore.getProducts().length;
+  const products = getFilteredProducts();
+
   if (count) {
-    count.textContent = `${products.length} produit(s)`;
+    count.textContent = (products.length === total)
+      ? `${total} produit(s)`
+      : `${products.length} sur ${total} produit(s)`;
   }
-  
-  if (products.length === 0) {
+
+  if (total === 0) {
     tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
-          Aucun produit. Cliquez sur "Nouveau Produit" pour commencer.
-        </td>
-      </tr>
+      <tr><td colspan="6">
+        <div class="table-empty">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="currentColor">
+            <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 00-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+          </svg>
+          <h3>Aucun produit</h3>
+          <p>Cliquez sur « Nouveau Produit » pour créer votre premier article.</p>
+        </div>
+      </td></tr>
     `;
     return;
   }
-  
+
+  if (products.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="6">
+        <div class="table-empty">
+          <svg viewBox="0 0 24 24" width="56" height="56" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"/>
+          </svg>
+          <h3>Aucun résultat</h3>
+          <p>Aucun produit ne correspond à votre recherche ou à vos filtres.</p>
+        </div>
+      </td></tr>
+    `;
+    return;
+  }
+
   tbody.innerHTML = products.map(product => {
-    const image = product.thumbnail || (product.images && product.images[0] ? product.images[0] : 'https://via.placeholder.com/60x75');
-    const statusBadge = product.stock > 0 
-      ? '<span class="badge badge-success">En stock</span>'
-      : '<span class="badge badge-danger">Rupture</span>';
-    
+    const image = product.thumbnail || (product.images && product.images[0]) || 'https://via.placeholder.com/120x150?text=%20';
+    const name = escapeHtml(product.name || 'Sans nom');
+    const catLabel = getCategoryLabel(product.category);
+    const price = Number(product.price) || 0;
+    const originalPrice = Number(product.originalPrice) || 0;
+    const hasPromo = originalPrice > price && price > 0;
+    const promoPct = hasPromo ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    const status = getStockStatus(product.stock);
+    const mediaCount = (Array.isArray(product.images) ? product.images.length : 0) + (product.video ? 1 : 0);
+
     return `
       <tr>
-        <td><img src="${image}" class="product-img-preview" alt="${product.name}"></td>
-        <td><strong>${product.name}</strong></td>
-        <td>${product.category || '-'}</td>
-        <td><strong>${(product.price || 0).toLocaleString('fr-FR')} FCFA</strong></td>
-        <td>${product.stock || 0}</td>
-        <td>${statusBadge}</td>
+        <td>
+          <div class="prod-cell">
+            <img src="${image}" class="prod-thumb" alt="${name}" loading="lazy">
+            <div>
+              <div class="prod-name">${name}</div>
+              <div class="prod-meta">
+                <span>${mediaCount} média${mediaCount > 1 ? 's' : ''}</span>
+                ${product.video ? '<span class="dot-sep">•</span><span>vidéo</span>' : ''}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td>${catLabel ? `<span class="cat-pill">${escapeHtml(catLabel)}</span>` : '<span style="color:#9ca3af;">—</span>'}</td>
+        <td>
+          <div class="price-main">${price.toLocaleString('fr-FR')} FCFA</div>
+          ${hasPromo ? `<div class="price-sub"><span class="price-old">${originalPrice.toLocaleString('fr-FR')} FCFA</span><span class="price-promo">-${promoPct}%</span></div>` : ''}
+        </td>
+        <td>
+          <span class="stock-pill"><span class="stock-dot" style="background:${status.color};"></span>${Number(product.stock) || 0}</span>
+        </td>
+        <td><span class="badge ${status.badge}">${status.label}</span></td>
         <td>
           <div class="action-btns">
-            <button class="btn btn-sm" onclick="copyProductLink('${product.id}')" title="Copier le lien">
-              <svg viewBox="0 0 24 24" width="16" height="16">
+            <button class="icon-btn view" onclick="copyProductLink('${product.id}')" title="Copier le lien">
+              <svg viewBox="0 0 24 24" width="17" height="17">
                 <path fill="currentColor" d="M3.9 12a5 5 0 0 1 1.46-3.54l2.83-2.83a5 5 0 0 1 7.07 7.07l-1.06 1.06-1.41-1.41 1.06-1.06a3 3 0 1 0-4.24-4.24L6.77 9.9a3 3 0 0 0 4.24 4.24l.7-.7 1.41 1.41-.7.7A5 5 0 0 1 3.9 12Zm6.36 1.41 1.41 1.41 2.83-2.83a5 5 0 0 0-7.07-7.07L6.36 6.29l1.41 1.41 1.06-1.06a3 3 0 1 1 4.24 4.24l-2.83 2.83Z"/>
               </svg>
             </button>
-            <button class="btn btn-sm btn-primary" onclick="editProduct('${product.id}')">
-              <svg viewBox="0 0 24 24" width="16" height="16">
+            <button class="icon-btn edit" onclick="editProduct('${product.id}')" title="Modifier">
+              <svg viewBox="0 0 24 24" width="17" height="17">
                 <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
               </svg>
             </button>
-            <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
-              <svg viewBox="0 0 24 24" width="16" height="16">
+            <button class="icon-btn delete" onclick="deleteProduct('${product.id}')" title="Supprimer">
+              <svg viewBox="0 0 24 24" width="17" height="17">
                 <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
               </svg>
             </button>
@@ -245,6 +346,35 @@ function loadProducts() {
       </tr>
     `;
   }).join('');
+}
+
+// Brancher la recherche et les filtres
+function setupProductFilters() {
+  const search = document.getElementById('productSearch');
+  const catFilter = document.getElementById('productCategoryFilter');
+  const statusFilter = document.getElementById('productStatusFilter');
+
+  if (search && !search.dataset.bound) {
+    search.dataset.bound = '1';
+    search.addEventListener('input', (e) => {
+      productFilters.search = e.target.value;
+      loadProducts();
+    });
+  }
+  if (catFilter && !catFilter.dataset.bound) {
+    catFilter.dataset.bound = '1';
+    catFilter.addEventListener('change', (e) => {
+      productFilters.category = e.target.value;
+      loadProducts();
+    });
+  }
+  if (statusFilter && !statusFilter.dataset.bound) {
+    statusFilter.dataset.bound = '1';
+    statusFilter.addEventListener('change', (e) => {
+      productFilters.status = e.target.value;
+      loadProducts();
+    });
+  }
 }
 
 // Copier le lien produit
@@ -511,6 +641,8 @@ if (btnNewProduct) {
 }
 
 // Charger au démarrage
+populateCategoryFilter();
+setupProductFilters();
 loadProducts();
 loadCategories();
 
@@ -522,7 +654,11 @@ if (typeof AdminStore.refreshProductsFromServer === 'function') {
 }
 if (typeof AdminStore.refreshCategoriesFromServer === 'function') {
   AdminStore.refreshCategoriesFromServer().then((merged) => {
-    if (merged && merged.length) loadCategories();
+    if (merged && merged.length) {
+      populateCategoryFilter();
+      loadCategories();
+      loadProducts();
+    }
   });
 }
 if (new URLSearchParams(window.location.search).get('action') === 'new') {

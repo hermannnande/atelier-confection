@@ -6,23 +6,220 @@
   <title>Produits - Admin Atelier Confection</title>
   <link rel="stylesheet" href="css/admin.css">
   <style>
+    /* ===== EN-TÊTE DE PAGE ===== */
     .products-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
     }
-    .product-img-preview {
-      width: 60px;
-      height: 75px;
+    .products-header h2 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+    .products-header .subtitle {
+      color: var(--text-light);
+      font-size: 13.5px;
+    }
+
+    /* ===== BARRE D'OUTILS (recherche + filtres) ===== */
+    .products-toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+    }
+    .search-box svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      pointer-events: none;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 11px 14px 11px 42px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .search-box input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    }
+    .toolbar-select {
+      padding: 11px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      min-width: 168px;
+      transition: all 0.2s ease;
+    }
+    .toolbar-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    /* ===== TABLEAU MODERNE ===== */
+    .products-table-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+    }
+    .table-scroll {
+      overflow-x: auto;
+    }
+    .products-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .products-table thead th {
+      background: #f9fafb;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #9ca3af;
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .products-table thead th.col-actions { text-align: right; }
+    .products-table tbody td {
+      padding: 12px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+    .products-table tbody tr {
+      transition: background 0.15s ease;
+    }
+    .products-table tbody tr:hover {
+      background: #fafbff;
+    }
+    .products-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .prod-cell {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .prod-thumb {
+      width: 52px;
+      height: 66px;
+      border-radius: 10px;
       object-fit: cover;
+      background: #f3f4f6;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+      flex-shrink: 0;
+    }
+    .prod-name {
+      font-weight: 700;
+      color: #1f2937;
+      font-size: 14px;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-width: 280px;
+    }
+    .prod-meta {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .prod-meta .dot-sep { opacity: 0.5; }
+
+    .cat-pill {
+      display: inline-block;
+      padding: 5px 12px;
+      background: #eef2ff;
+      color: #4338ca;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .price-main { font-weight: 700; color: #1f2937; white-space: nowrap; }
+    .price-sub { margin-top: 2px; white-space: nowrap; }
+    .price-old { font-size: 12px; color: #9ca3af; text-decoration: line-through; }
+    .price-promo {
+      display: inline-block;
+      margin-left: 6px;
+      background: #fee2e2;
+      color: #dc2626;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
       border-radius: 6px;
     }
+
+    .stock-pill { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: #374151; }
+    .stock-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ===== BOUTONS D'ACTION RONDS ===== */
+    .action-btns { display: flex; gap: 6px; justify-content: flex-end; }
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #6b7280;
+      transition: all 0.18s ease;
+    }
+    .icon-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
+    .icon-btn.view:hover { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+    .icon-btn.edit:hover { background: #000; color: #fff; border-color: #000; }
+    .icon-btn.delete:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+
+    /* ===== ÉTAT VIDE ===== */
+    .table-empty {
+      text-align: center;
+      padding: 56px 20px;
+      color: var(--text-light);
+    }
+    .table-empty svg { color: #d1d5db; margin-bottom: 12px; }
+    .table-empty h3 { font-size: 16px; font-weight: 700; color: #374151; margin-bottom: 6px; }
+    .table-empty p { font-size: 13.5px; }
+
+    /* ===== MODAL ===== */
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
       z-index: 9999;
       align-items: center;
       justify-content: center;
@@ -30,84 +227,112 @@
     }
     .modal.active {
       display: flex;
+      animation: modalFade 0.2s ease;
     }
+    @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
     .modal-content {
       background: white;
-      border-radius: 12px;
-      max-width: 700px;
+      border-radius: 18px;
+      max-width: 780px;
       width: 100%;
-      max-height: 90vh;
+      max-height: 92vh;
       overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+      animation: modalUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalUp {
+      from { opacity: 0; transform: translateY(22px) scale(0.98); }
+      to { opacity: 1; transform: none; }
     }
     .modal-header {
-      padding: 24px;
-      border-bottom: 1px solid #e5e7eb;
+      padding: 22px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 5;
     }
-    .modal-header h2 {
-      font-size: 20px;
-      font-weight: 700;
-    }
+    .modal-header h2 { font-size: 19px; font-weight: 800; color: #fff; }
+    .modal-subtitle { font-size: 12.5px; opacity: 0.85; margin-top: 3px; font-weight: 400; }
     .modal-close {
-      background: none;
+      background: rgba(255, 255, 255, 0.16);
       border: none;
-      font-size: 24px;
+      font-size: 22px;
       cursor: pointer;
-      color: #6b7280;
-      width: 32px;
-      height: 32px;
+      color: #fff;
+      width: 34px;
+      height: 34px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 6px;
+      border-radius: 9px;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
-    .modal-close:hover {
-      background: #f3f4f6;
-      color: #000;
-    }
-    .modal-body {
-      padding: 24px;
-    }
+    .modal-close:hover { background: rgba(255, 255, 255, 0.32); }
+    .modal-body { padding: 24px; }
     .modal-footer {
       padding: 16px 24px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--border);
       display: flex;
       gap: 12px;
       justify-content: flex-end;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.05);
     }
+
+    /* ===== SECTIONS DE FORMULAIRE ===== */
+    .form-section {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      background: #fff;
+    }
+    .form-section-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .fs-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .fs-title { font-size: 14.5px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+    .fs-sub { font-size: 12px; color: #9ca3af; font-weight: 400; margin-top: 2px; }
+
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
-      margin-bottom: 16px;
     }
-    .form-grid-full {
-      grid-column: 1 / -1;
-    }
+    .form-grid-full { grid-column: 1 / -1; }
+    .form-group { margin-bottom: 0; }
+
+    /* ===== UPLOAD ===== */
     .image-upload-area {
       border: 2px dashed #d1d5db;
-      border-radius: 8px;
-      padding: 32px;
+      border-radius: 12px;
+      padding: 28px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .image-upload-area.disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      background: #f9fafb;
-      border-color: #cbd5f5;
-    }
     .image-upload-area:hover {
       border-color: #667eea;
-      background: #f9fafb;
-    }
-    .image-upload-area input {
-      display: none;
+      background: #f5f7ff;
     }
     .preview-images {
       display: flex;
@@ -119,22 +344,18 @@
       position: relative;
       width: 100px;
       height: 125px;
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       border: 2px solid #e5e7eb;
     }
-    .preview-image-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .preview-image-item img { width: 100%; height: 100%; object-fit: cover; }
     .remove-image {
       position: absolute;
-      top: 4px;
-      right: 4px;
+      top: 5px;
+      right: 5px;
       width: 24px;
       height: 24px;
-      background: rgba(239, 68, 68, 0.9);
+      background: rgba(239, 68, 68, 0.92);
       color: white;
       border: none;
       border-radius: 50%;
@@ -143,32 +364,20 @@
       align-items: center;
       justify-content: center;
       font-size: 16px;
+      line-height: 1;
     }
-    .color-picker-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-      gap: 8px;
+    .hint {
+      font-size: 12.5px;
+      color: var(--text-light);
+      margin-bottom: 12px;
     }
-    .color-option {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 3px solid transparent;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .color-option.selected {
-      border-color: #000;
-      box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000;
-    }
-    .action-btns {
-      display: flex;
-      gap: 8px;
-    }
+
+    .color-option { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: all 0.2s ease; }
+    .color-option.selected { border-color: #000; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+
     @media (max-width: 768px) {
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
+      .form-grid { grid-template-columns: 1fr; }
+      .toolbar-select { flex: 1; min-width: 0; }
     }
   </style>
 </head>
@@ -241,8 +450,8 @@
     <div class="admin-content">
       <div class="products-header">
         <div>
-          <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 4px;">Tous les produits</h2>
-          <p style="color: #6b7280; font-size: 14px;" id="productsCount">0 produit(s)</p>
+          <h2>Tous les produits</h2>
+          <p class="subtitle" id="productsCount">0 produit(s)</p>
         </div>
         <button class="btn btn-primary" id="btnNewProduct">
           <svg viewBox="0 0 24 24" width="20" height="20">
@@ -252,24 +461,42 @@
         </button>
       </div>
 
-      <div class="section-card">
-        <div class="table-responsive">
-          <table class="data-table" id="productsTable">
+      <!-- Barre d'outils : recherche + filtres -->
+      <div class="products-toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"/>
+          </svg>
+          <input type="text" id="productSearch" placeholder="Rechercher un produit par nom...">
+        </div>
+        <select class="toolbar-select" id="productCategoryFilter">
+          <option value="all">Toutes les catégories</option>
+        </select>
+        <select class="toolbar-select" id="productStatusFilter">
+          <option value="all">Tous les statuts</option>
+          <option value="in-stock">En stock</option>
+          <option value="low">Stock faible</option>
+          <option value="out">Rupture</option>
+        </select>
+      </div>
+
+      <div class="products-table-card">
+        <div class="table-scroll">
+          <table class="products-table" id="productsTable">
             <thead>
               <tr>
-                <th>Image</th>
-                <th>Nom</th>
+                <th>Produit</th>
                 <th>Catégorie</th>
                 <th>Prix</th>
                 <th>Stock</th>
                 <th>Statut</th>
-                <th>Actions</th>
+                <th class="col-actions">Actions</th>
               </tr>
             </thead>
             <tbody id="productsTableBody">
               <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
-                  Aucun produit. Cliquez sur "Nouveau Produit" pour commencer.
+                <td colspan="6">
+                  <div class="table-empty">Chargement...</div>
                 </td>
               </tr>
             </tbody>
@@ -283,39 +510,47 @@
   <div class="modal" id="productModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 id="modalTitle">Nouveau Produit</h2>
+        <div>
+          <h2 id="modalTitle">Nouveau Produit</h2>
+          <div class="modal-subtitle">Renseignez les informations puis enregistrez</div>
+        </div>
         <button class="modal-close" onclick="closeProductModal()">&times;</button>
       </div>
       <form id="productForm">
         <div class="modal-body">
           <input type="hidden" id="productId">
-          
+
           <!-- SECTION 1: INFORMATIONS DE BASE -->
-          <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #374151; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-              </svg>
-              Informations de base
-            </h3>
+          <div class="form-section">
+            <div class="form-section-head">
+              <div class="fs-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="fs-title">Informations de base</div>
+                <div class="fs-sub">Nom, catégorie, stock et description</div>
+              </div>
+            </div>
             <div class="form-grid">
               <div class="form-group form-grid-full">
                 <label for="productName">Nom du produit *</label>
                 <input type="text" id="productName" required placeholder="Ex: Robe Élégante Satin">
               </div>
-              
+
               <div class="form-group">
                 <label for="productCategory">Catégorie *</label>
                 <select id="productCategory" required>
                   <option value="">Sélectionner...</option>
                 </select>
               </div>
-              
+
               <div class="form-group">
                 <label for="productStock">Stock disponible *</label>
                 <input type="number" id="productStock" required placeholder="10" min="0" value="10">
               </div>
-              
+
               <div class="form-group form-grid-full">
                 <label for="productDescription">Description *</label>
                 <textarea id="productDescription" required rows="4" placeholder="Décrivez le produit en détail..."></textarea>
@@ -324,44 +559,54 @@
           </div>
 
           <!-- SECTION 2: PRIX ET PROMOTION -->
-          <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #92400e; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
-              </svg>
-              Prix et promotion
-            </h3>
+          <div class="form-section">
+            <div class="form-section-head">
+              <div class="fs-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="fs-title">Prix et promotion</div>
+                <div class="fs-sub">Prix de vente et prix barré optionnel</div>
+              </div>
+            </div>
             <div class="form-grid">
               <div class="form-group">
                 <label for="productPrice">Prix de vente (FCFA) *</label>
                 <input type="number" id="productPrice" required placeholder="45000" min="0" style="font-weight: 600;">
               </div>
-              
+
               <div class="form-group">
                 <label for="productOriginalPrice">Prix avant promo (optionnel)</label>
                 <input type="number" id="productOriginalPrice" placeholder="60000" min="0">
-                <p style="font-size: 11px; color: #92400e; margin-top: 4px;">Si renseigné, affichera un badge -X%</p>
+                <p class="hint" style="margin-top: 6px; margin-bottom: 0;">Si renseigné, affichera un badge -X%</p>
               </div>
             </div>
           </div>
 
-          <!-- SECTION 3: TAILLES ET COULEURS -->
-          <div style="background: #ede9fe; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #5b21b6; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-              </svg>
-              Options produit
-            </h3>
-            
+          <!-- SECTION 3: OPTIONS PRODUIT -->
+          <div class="form-section">
+            <div class="form-section-head">
+              <div class="fs-icon" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="fs-title">Options produit</div>
+                <div class="fs-sub">Tailles et couleurs disponibles</div>
+              </div>
+            </div>
+
             <div class="form-group form-grid-full">
               <label>Tailles disponibles *</label>
-              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; margin-top: 8px;" id="sizesCheckboxContainer">
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 8px;" id="sizesCheckboxContainer">
                 <!-- Checkboxes générées par JS -->
               </div>
               <div style="display: flex; gap: 8px; margin-top: 12px;">
                 <input type="text" id="customSizeInput" placeholder="Taille personnalisée (ex: 3XL)" style="flex: 1;">
-                <button type="button" class="btn btn-sm" onclick="addCustomSize()">Ajouter</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addCustomSize()">Ajouter</button>
               </div>
             </div>
 
@@ -380,79 +625,75 @@
           </div>
 
           <!-- SECTION 4: MÉDIAS -->
-          <div style="background: #dbeafe; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; color: #1e40af; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-              </svg>
-              Images et vidéo
-            </h3>
-            
+          <div class="form-section">
+            <div class="form-section-head">
+              <div class="fs-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                </svg>
+              </div>
+              <div>
+                <div class="fs-title">Images et vidéo</div>
+                <div class="fs-sub">Galerie produit, vidéo et vignette boutique</div>
+              </div>
+            </div>
+
             <div class="form-group form-grid-full">
-              <label>📸 Images Galerie Produit (Format Portrait) *</label>
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
-                De 1 à 5 images - La page produit s'adapte automatiquement au nombre d'images (avec ou sans vidéo)
-              </p>
-              
-              <!-- Bouton Upload Cloudinary -->
+              <label>Images galerie produit (format portrait) *</label>
+              <p class="hint">De 1 à 5 images — la page produit s'adapte automatiquement au nombre d'images (avec ou sans vidéo).</p>
+
               <button type="button" class="btn btn-primary" onclick="openGalleryWidget()" style="width: 100%; margin-bottom: 12px;">
                 <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
                   <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                 </svg>
-                Uploader Images (Cloudinary)
+                Uploader des images (Cloudinary)
               </button>
-              
+
               <div class="image-upload-area" id="productImagesUpload" onclick="openGalleryWidget()">
-                <svg viewBox="0 0 24 24" width="48" height="48" style="color: #9ca3af; margin-bottom: 12px;">
+                <svg viewBox="0 0 24 24" width="44" height="44" style="color: #9ca3af; margin-bottom: 10px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>
-                <p style="color: #6b7280; margin-bottom: 8px;">Cliquez pour ajouter images PORTRAIT</p>
-                <p style="font-size: 12px; color: #9ca3af;">Format recommandé : 600×800, 800×1000, etc.</p>
+                <p style="color: #6b7280; margin-bottom: 6px; font-weight: 600;">Cliquez pour ajouter des images portrait</p>
+                <p style="font-size: 12px; color: #9ca3af;">Format recommandé : 600×800, 800×1000…</p>
               </div>
               <div class="preview-images" id="previewImages"></div>
             </div>
 
-            <div class="form-group form-grid-full">
-              <label>🎥 Vidéo Produit (Optionnel)</label>
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
-                1 vidéo (facultative) - Mise en avant dans la galerie si présente, la page s'adapte sans vidéo
-              </p>
-              <div class="form-group">
-                <input type="url" id="productVideoUrl" placeholder="URL de la vidéo (https://...)">
-                <button type="button" class="btn btn-sm" onclick="setVideoUrl()" style="margin-top: 8px;">Ajouter Vidéo</button>
+            <div class="form-group form-grid-full" style="margin-top: 20px;">
+              <label>Vidéo produit (optionnel)</label>
+              <p class="hint">1 vidéo facultative — mise en avant dans la galerie si présente, la page s'adapte sans vidéo.</p>
+              <div style="display: flex; gap: 8px;">
+                <input type="url" id="productVideoUrl" placeholder="URL de la vidéo (https://...)" style="flex: 1;">
+                <button type="button" class="btn btn-sm btn-primary" onclick="setVideoUrl()">Ajouter</button>
               </div>
               <div class="preview-images" id="previewVideo"></div>
             </div>
 
-            <div class="form-group form-grid-full" style="border-top: 2px dashed #e5e7eb; padding-top: 20px;">
-              <label>🔲 Vignette Boutique 600×600 (CARRÉ) *</label>
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
-                <strong>IMPORTANT :</strong> Image carrée 600×600 px - Apparaîtra sur la page boutique
-              </p>
-              
-              <!-- Bouton Upload Cloudinary avec Crop -->
+            <div class="form-group form-grid-full" style="border-top: 2px dashed #e5e7eb; padding-top: 20px; margin-top: 20px;">
+              <label>Vignette boutique 600×600 (carré) *</label>
+              <p class="hint"><strong>Important :</strong> image carrée 600×600 px — elle apparaît sur la page boutique.</p>
+
               <button type="button" class="btn btn-primary" onclick="openThumbnailWidget()" style="width: 100%; margin-bottom: 12px; background: #667eea;">
                 <svg viewBox="0 0 24 24" width="20" height="20" style="margin-right: 8px;">
                   <path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                 </svg>
-                Uploader Vignette 600×600 (Cloudinary)
+                Uploader la vignette 600×600 (Cloudinary)
               </button>
-              
-              <div class="image-upload-area" id="productThumbnailUpload" onclick="openThumbnailWidget()" style="border-color: #667eea;">
-                <svg viewBox="0 0 24 24" width="48" height="48" style="color: #667eea; margin-bottom: 12px;">
+
+              <div class="image-upload-area" id="productThumbnailUpload" onclick="openThumbnailWidget()" style="border-color: #c7d2fe;">
+                <svg viewBox="0 0 24 24" width="44" height="44" style="color: #667eea; margin-bottom: 10px;">
                   <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>
-                <p style="color: #667eea; margin-bottom: 8px; font-weight: 600;">Cliquez pour ajouter vignette CARRÉE 600×600</p>
+                <p style="color: #667eea; margin-bottom: 6px; font-weight: 600;">Cliquez pour ajouter la vignette carrée 600×600</p>
                 <p style="font-size: 12px; color: #9ca3af;">Format obligatoire : 600 × 600 px</p>
               </div>
               <div class="preview-images" id="previewThumbnail"></div>
             </div>
           </div>
-          </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn" onclick="closeProductModal()">Annuler</button>
-          <button type="submit" class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn" onclick="closeProductModal()" style="background:#f3f4f6;color:#374151;">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer le produit</button>
         </div>
       </form>
     </div>
@@ -460,9 +701,12 @@
 
   <!-- Modal Sélection Couleurs -->
   <div class="modal" id="colorPickerModal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
-        <h2>Sélectionner les couleurs</h2>
+        <div>
+          <h2>Sélectionner les couleurs</h2>
+          <div class="modal-subtitle">Choisissez parmi les couleurs ou ajoutez la vôtre</div>
+        </div>
         <button class="modal-close" onclick="closeColorPicker()">&times;</button>
       </div>
       <div class="modal-body">
@@ -472,18 +716,18 @@
             <!-- Couleurs générées par JS -->
           </div>
         </div>
-        
+
         <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
           <label style="font-weight: 600; margin-bottom: 8px; display: block;">Ajouter une couleur personnalisée</label>
           <div style="display: flex; gap: 8px; margin-bottom: 8px;">
             <input type="text" id="customColorName" placeholder="Nom (ex: Bordeaux)" style="flex: 1;">
-            <input type="color" id="customColorHex" value="#000000" style="width: 60px; height: 40px; border: 1px solid #d1d5db; border-radius: 6px;">
+            <input type="color" id="customColorHex" value="#000000" style="width: 60px; height: 44px; border: 1px solid #d1d5db; border-radius: 8px; cursor: pointer;">
             <button type="button" class="btn btn-sm btn-primary" onclick="addCustomColorToSelection()">Ajouter</button>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn" onclick="closeColorPicker()">Fermer</button>
+        <button type="button" class="btn btn-primary" onclick="closeColorPicker()">Terminé</button>
       </div>
     </div>
   </div>
@@ -497,10 +741,10 @@
       uploadPreset: 'atelier_unsigned'
     };
   </script>
-  
+
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
-  <script src="js/products-manager.js?v=20260612-1"></script>
-  <script src="js/cloudinary-upload.js?v=20260612-1"></script>
+  <script src="js/products-manager.js?v=20260613-1"></script>
+  <script src="js/cloudinary-upload.js?v=20260613-1"></script>
 </body>
 </html>
