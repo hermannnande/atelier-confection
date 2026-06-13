@@ -1,0 +1,1381 @@
+﻿{
+    "success":  true,
+    "products":  [
+                     {
+                         "id":  "1770547354805",
+                         "name":  "Signature Royale – l’élégance qui se remarque",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  47900,
+                         "stock":  10,
+                         "description":  "Une robe pensée pour les femmes qui aiment la classe. Coupe fluide, tombé impeccable et finition soignée : Signature Royale donne une allure distinguée dès que tu la portes. Parfaite pour sortie, cérémonie, dîner et événements.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Rose",
+                                        "Orange",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/oqwaz4xfycljqphvlvnq.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/kawghr1a2myaoe0pam1d.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zc7mydall55dzvv9ircs.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/sjbgyqas4asyhgstnqoo.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/v9wukaha7svbnsvneafx.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-11_PGTbNVDj.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/u6g2prslztxduiiaxbd9.png",
+                         "active":  true,
+                         "created_at":  "2026-02-08T10:42:34.805+00:00",
+                         "updated_at":  "2026-06-13T17:57:31.640346+00:00"
+                     },
+                     {
+                         "id":  "1770989143129",
+                         "name":  "Robe chic “Signature”",
+                         "category":  "eclipse",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Une pièce qui fait distinguée dès le premier regard. Sa coupe moderne et sa ligne verticale allongent la silhouette et donnent une prestance naturelle.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/vfjscokzriqhgbu0gaqp.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/lecfdpxxotipkogznjie.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hlbe2zr9aoqat2lk9wrj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/whldepm4zeccnopprgrk.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ec5ozopwznfr2rncupi5.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-23_g1Fij4WQ.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/yqhggjrlqywqsjw9csa5.png",
+                         "active":  true,
+                         "created_at":  "2026-02-13T13:25:43.129+00:00",
+                         "updated_at":  "2026-06-13T17:57:31.640346+00:00"
+                     },
+                     {
+                         "id":  "1781284618789",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité blanc kaki",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  49700,
+                         "stock":  10,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Blanc"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/l8zwe1zusanoicvsidcr.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ohibciu2kozysnnruagz.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/rhamb0uy54egryygiqgv.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/o6yrutwrq2ly4eqvll9x.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/wpstwsudvoqlravtvkz9.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Woman_showing_elegant_dress_202606121713.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/ldkunwbldynrangvb6xz.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T17:16:58.789+00:00",
+                         "updated_at":  "2026-06-13T17:57:31.640346+00:00"
+                     },
+                     {
+                         "id":  "1770549069385",
+                         "name":  "SIGNATURE ROYALE La robe “classe naturelle”",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  56700,
+                         "stock":  10,
+                         "description":  "Tu veux une robe qui fait “wow” sans être trop chargée ? Signature Royale mise sur la simplicité premium : une ligne élégante, une coupe féminine, un rendu haut de gamme. À porter avec talons ou sandales.",
+                         "sizes":  [
+                                       "S",
+                                       "M",
+                                       "XS",
+                                       "L",
+                                       "XL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hxk6goimiw3mdhsowu9s.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/lrhnvzjjx59jwbvh8ggu.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/xi5ewo3xd3qdu6nyenqj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/g6tyulqaisymbo5rpuqz.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/yxpjsgay9ft5lsj2mhaf.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-13_8O7x7jFJ.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/glz7a0lkbr2ehc6idj2o.png",
+                         "active":  true,
+                         "created_at":  "2026-02-08T11:11:09.385+00:00",
+                         "updated_at":  "2026-06-13T17:57:31.640346+00:00"
+                     },
+                     {
+                         "id":  "1781286925066",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité",
+                         "category":  "robe-amina",
+                         "price":  27900,
+                         "original_price":  13000,
+                         "stock":  77,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Bordeaux"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/mcgaqav8ot25kuqedjdi.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/poxcpn3a2nvzzv58ekq7.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showcasing_elegant_dress_202606121754.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/cxtnrgjtwxposfvhoyee.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T17:55:25.066+00:00",
+                         "updated_at":  "2026-06-13T17:57:18.484864+00:00"
+                     },
+                     {
+                         "id":  "1781294489108",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité ROBE BLEU ROI",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  27800,
+                         "stock":  109,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Bleu Bic"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/edi86ltrzgnhr6hv8ejt.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/eq01pxykij8dro6iojkf.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_in_white_dress_202606121959.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/zmwcyja8gt7bf2xwqs6n.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T20:01:29.108+00:00",
+                         "updated_at":  "2026-06-13T17:57:18.484864+00:00"
+                     },
+                     {
+                         "id":  "1770254139874",
+                         "name":  "fzsedcx",
+                         "category":  "rr",
+                         "price":  9000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "F3EC FESCX EFXEWC",
+                         "sizes":  [
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL",
+                                       "XS"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Rouge",
+                                        "Beige",
+                                        "Marron",
+                                        "Terracotta",
+                                        "Bordeaux",
+                                        "Rose",
+                                        "Saumon",
+                                        "Orange",
+                                        "Jaune",
+                                        "Jaune Moutarde",
+                                        "Vert",
+                                        "Vert Treillis",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bleu Bic",
+                                        "Violet",
+                                        "Violet Clair"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/xtqjujr60f1mmi2gjq27.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/xdmtoldmckvzfu4an4kf.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/spcgbkliyk1va8dfpvlo.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zprwehvgygkk2svp5ptj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/swdzrag4l4qkjhv2x39u.png"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/01/Pinterest_2_7.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/j3iczjzcox3hf5ye01gb.png",
+                         "active":  true,
+                         "created_at":  "2026-03-02T21:02:13.758+00:00",
+                         "updated_at":  "2026-06-13T17:57:18.484864+00:00"
+                     },
+                     {
+                         "id":  "1781279765973",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité terracotta blanc",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  47900,
+                         "stock":  219,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Terracotta"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hbsfwxm4tngqizp9nl0m.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/sc0f7kpvbfljqwrkirtz.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bxotkknsvytjde495ozl.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/rnjm8fpzsrqhamfbr54u.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/iqtfm8wk5rfdngq8w3vr.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showing_off_dress_202606121443.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/maafv4xawnwnbn6sedzq.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:56:05.973+00:00",
+                         "updated_at":  "2026-06-13T17:57:18.484864+00:00"
+                     },
+                     {
+                         "id":  "1781285411432",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité bleu ciel noir",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  39000,
+                         "stock":  101,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Bleu Ciel"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/skntm4yvpcnsd7rmp1zn.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/g5ugwfnbhqghr12ca5xe.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showcasing_elegant_dress_202606121728.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/j7tean77yccp0lngld6p.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T17:30:11.432+00:00",
+                         "updated_at":  "2026-06-13T17:57:08.356134+00:00"
+                     },
+                     {
+                         "id":  "1770254664509",
+                         "name":  "robe teste 1",
+                         "category":  "rr",
+                         "price":  9000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "ioçè_tecguqsb hgiqctsugywin",
+                         "sizes":  [
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL"
+                                   ],
+                         "colors":  [
+                                        "NOIR",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Marron",
+                                        "Terracotta",
+                                        "Rouge",
+                                        "Bordeaux",
+                                        "Rose",
+                                        "Saumon",
+                                        "Orange",
+                                        "Jaune",
+                                        "Jaune Moutarde",
+                                        "Vert",
+                                        "Vert Treillis",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bleu Bic",
+                                        "Violet",
+                                        "Violet Clair"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/u3ihke8jc9xxyl5qogfl.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/onwte7qi9xlibkjcfjuy.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/rxyqsmtrbmdwgmaiwsh6.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/xggipzxp18pnei2zgrjy.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ylogtxk7hssjkjpblqc9.png"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/01/Pinterest_2_7.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/gqrbg0unxsymmw5kw47c.png",
+                         "active":  true,
+                         "created_at":  "2026-03-02T21:02:21.158+00:00",
+                         "updated_at":  "2026-06-13T17:57:08.356134+00:00"
+                     },
+                     {
+                         "id":  "1770470249422",
+                         "name":  "Femme Ultime Élégant pour bureau \u0026 événements gris",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La pièce parfaite pour une garde-robe chic : couleur sobre, finitions soignées, tombé élégant. À porter avec talons pour un look “soirée” ou avec sandales pour un style chic-décontracté.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ktnbaqhqtiqpi6pc1a12.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/v8ny9o71kkxubcpegw1d.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hxdjo9jr9ew77cgqdfsj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/fe9jvmtmcsgtyqavnz8e.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/a4oxiyhbytgura5nap8m.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/ea1e94e2-ddd9-4645-8d5b-d6f0abfef7ca.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/db9slc8bjq75k3m3tcxt.png",
+                         "active":  true,
+                         "created_at":  "2026-02-07T13:17:29.422+00:00",
+                         "updated_at":  "2026-06-13T17:57:08.356134+00:00"
+                     },
+                     {
+                         "id":  "1770990065588",
+                         "name":  "Luxe discret, silhouette sublime",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La matière brillante et le tombé fluide épousent la silhouette avec élégance. Une robe pensée pour faire raffinée sans en faire trop.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Marron",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet",
+                                        "Terracotta",
+                                        "Bleu Bic",
+                                        "Vert Treillis",
+                                        "Jaune Moutarde"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/cxrpkgp3gfj9menpitim.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zx6lkm0advtemgugqioc.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/gvmdjrsirfn7zqath2ty.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hn1dd9dutlpqsgnfzwmo.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/rrrjprki111vkbkfmgdo.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-24_1tqaTeQv.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/ffgqw0g1agmrsoo5jyfh.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:57:08.356134+00:00"
+                     },
+                     {
+                         "id":  "1770987240370",
+                         "name":  "La robe longue qui attire les compliments eclipse",
+                         "category":  "eclipse",
+                         "price":  11000,
+                         "original_price":  18500,
+                         "stock":  10,
+                         "description":  "Simple, raffinée, et ultra élégante : une robe pensée pour celles qui aiment se démarquer avec classe. Un incontournable de ta garde-robe chic.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/kkmcbumgk7ckusq6ruob.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hsydy6g4wqdjwgbw7qpt.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qmqa9jhyg32i5a2w42v9.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/axwgymijz5ihnza49zj4.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/t8lo3nw7pjbeenqhxlvb.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-21_ySGwNbXD.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/c8paigypscmpwqqlo2dz.png",
+                         "active":  true,
+                         "created_at":  "2026-02-13T12:54:00.37+00:00",
+                         "updated_at":  "2026-06-13T17:56:56.734407+00:00"
+                     },
+                     {
+                         "id":  "1770642204651",
+                         "name":  "Minimaliste mais premium Éclipse",
+                         "category":  "eclipse",
+                         "price":  9000,
+                         "original_price":  17500,
+                         "stock":  10,
+                         "description":  "Style épuré, finitions propres, col élégant : cette robe mise sur le luxe discret. À accessoiriser avec un sac et des bijoux pour un look complet.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Bleu Ciel",
+                                        "Bleu",
+                                        "Rose",
+                                        "Rouge",
+                                        "Vert",
+                                        "Jaune",
+                                        "Marron",
+                                        "Violet",
+                                        "Bordeaux"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/mk53mblfy2u8iw7knsrj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/e3tgrrubgw1yedwr3vlc.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ddlkpgknpl8fycyarxmb.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/fareiahmbxl57wxxw4zb.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/wi2igwgkhozne3ipqxcq.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-19_83hvTCTB.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/q3juvcs8qmcq0nnotnuu.png",
+                         "active":  true,
+                         "created_at":  "2026-02-09T13:03:24.651+00:00",
+                         "updated_at":  "2026-06-13T17:56:56.734407+00:00"
+                     },
+                     {
+                         "id":  "1770641439724",
+                         "name":  "Confort royal au quotidien Éclipse",
+                         "category":  "eclipse",
+                         "price":  9000,
+                         "original_price":  17500,
+                         "stock":  10,
+                         "description":  "Une tenue qui respire la classe sans sacrifier le confort : coupe loose, manches larges et tissu fluide. Idéale pour rester stylée toute la journée.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Marron",
+                                        "Rouge",
+                                        "Rose",
+                                        "Bleu Ciel",
+                                        "Orange",
+                                        "Bleu",
+                                        "Vert",
+                                        "Jaune",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/kdqwwxhcmr7iy5hs0xcl.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/yy4yhbeiivwepuk41ml1.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zng6v44piyubdcoduxoi.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/huvajhxuogthwmlwgmqj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/a8q2fkcqrgzaicrzvdaz.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-18.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/xhbyshxrtmsafqp4ylgc.png",
+                         "active":  true,
+                         "created_at":  "2026-02-09T12:50:39.724+00:00",
+                         "updated_at":  "2026-06-13T17:56:56.734407+00:00"
+                     },
+                     {
+                         "id":  "1770471350906",
+                         "name":  "Femme Ultime Élégant pour bureau \u0026 événements jaune mourtade",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La pièce parfaite pour une garde-robe chic : couleur sobre, finitions soignées, tombé élégant. À porter avec talons pour un look “soirée” ou avec sandales pour un style chic-décontracté.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/wzlhnejcutzrm3yed49j.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ktmcfcdtalvit7hfaxhk.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qsxvmgxvzn010cg0is5p.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/lngvt1vc4y75bihripm3.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/oesbphuh1qbnkr4vo1f3.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-10_yGCR5l9v.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/zj1rkprj8uukbitgfoqu.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:56.734407+00:00"
+                     },
+                     {
+                         "id":  "1770548034977",
+                         "name":  "SIGNATURE ROYALE Prestance, confort, luxe discret",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La Robe Signature Royale allie élégance et aisance : elle sublime la silhouette sans trop en faire. Son style raffiné s’adapte à toutes les occasions, du bureau chic au week-end élégant.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/m34eh6p0vwcqddqqoqnc.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zwebyktmllpka8l4v7ud.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/n7tpnvfzd47nmjx44hsc.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/orvrzffxqbfxwflg0boi.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ygamiy8ckdt7krekawv9.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-12_q9NoERAf.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/owpbgw4edzd4y65vjmcl.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:44.164186+00:00"
+                     },
+                     {
+                         "id":  "1781284127537",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité Rose noir",
+                         "category":  "robe-amina",
+                         "price":  1300,
+                         "original_price":  47900,
+                         "stock":  190,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "ROSE CLAIRE"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/gkqvg9angktihqqc5fa0.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hhr1jdqhqyaqq26w63n3.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showing_off_dress_202606121707.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/engsh4elqr7fb5eq2ua0.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T17:08:47.537+00:00",
+                         "updated_at":  "2026-06-13T17:56:44.164186+00:00"
+                     },
+                     {
+                         "id":  "1770550731472",
+                         "name":  "SIGNATURE ROYALE Signature Royale  l’élégance qui se remarque",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Une robe pensée pour les femmes qui aiment la classe. Coupe fluide, tombé impeccable et finition soignée : Signature Royale donne une allure distinguée dès que tu la portes. Parfaite pour sortie, cérémonie, dîner et événements.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Blanc",
+                                        "Gris",
+                                        "Noir",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/tddnzxgfog4llbv9bn7w.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ygzkmvekxs4doefojrjg.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/l0lq3pdss1afu4y3hnjx.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/gubduhe3sh0dx6yhp5hb.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qvgxkspbldfjbqrclguh.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-16.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/etksoxorpfypuieckuu4.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:44.164186+00:00"
+                     },
+                     {
+                         "id":  "1781286335535",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité orange noir",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  29700,
+                         "stock":  290,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Orange"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/sdojvy839ctxtvsijnar.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qrsay2l6dsgf8empoqy8.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showing_off_dress_202606121739.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/cd29rtnk0bjkhzbkw6di.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T17:45:35.535+00:00",
+                         "updated_at":  "2026-06-13T17:56:44.164186+00:00"
+                     },
+                     {
+                         "id":  "1781294867315",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité BLANC NOIR",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  38900,
+                         "stock":  10,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Blanc"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/kf4mqriq5gvbk95yadzb.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zlc2qbl1jz35hysl6zcu.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showcasing_elegant_dress_202606122005.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/xwr5wbm4nwplq18fgchu.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T20:07:47.315+00:00",
+                         "updated_at":  "2026-06-13T17:56:34.13494+00:00"
+                     },
+                     {
+                         "id":  "1770640889256",
+                         "name":  "Élégance fluide, effet “wow” Éclipse",
+                         "category":  "eclipse",
+                         "price":  9000,
+                         "original_price":  17900,
+                         "stock":  10,
+                         "description":  "Cette robe longue au tombé léger offre une allure chic et sophistiquée. Sa coupe ample et sa fente frontale donnent une démarche élégante, parfaite pour les sorties et événements.",
+                         "sizes":  [
+                                       "S",
+                                       "XS",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ex6gyl9adfhhh0zydltl.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zxc0netwjda2l6d0oio7.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/veqs8ejyxeadprwkaoso.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qlgowrgmde1lti1s3fd5.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/i5k9ownzs3pylzwcxxvl.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe-5_nJIAISUF.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/jzveljskkowdwckvtfc9.png",
+                         "active":  true,
+                         "created_at":  "2026-02-09T12:41:29.256+00:00",
+                         "updated_at":  "2026-06-13T17:56:34.13494+00:00"
+                     },
+                     {
+                         "id":  "1781293079075",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité vert noir",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  45900,
+                         "stock":  201,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Vert Treillis"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bitmylflaneglakcphff.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/m7041rwfp6hlkt2kvcwq.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showcasing_elegant_dress_202606121934.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/dkb8vww0zxemyfq1rpqj.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T19:37:59.075+00:00",
+                         "updated_at":  "2026-06-13T17:56:34.13494+00:00"
+                     },
+                     {
+                         "id":  "1781283209570",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité jaune , terracotta",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  47900,
+                         "stock":  590,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Beige"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/kynjahv796y0dydbrsvo.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/yfrznplk30wopd1rlpkn.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showing_off_dress_202606121650.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/zsopzfkk1bozahykasoh.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T16:53:29.57+00:00",
+                         "updated_at":  "2026-06-13T17:56:34.13494+00:00"
+                     },
+                     {
+                         "id":  "1770461524075",
+                         "name":  "Femme Ultime Élégant vert trellis",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Élégance instantanée\nSublime ta silhouette avec cette robe chic couleur kaki. Son col bardot met les épaules en valeur, tandis que la jupe plissée apporte une allure raffinée. Parfaite pour bureau, sortie, cérémonie.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bcorpmgwnrabrfnezr9f.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qezppuobwyne39ryhe1v.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/cdc92t6eorsn4jfcarbw.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/pjwnluw11f0mxt6sjfwe.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/itsxermthxpgpfvcjxm5.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe-1_ZLkw06pB.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/oz13dxvnupauembnw7kl.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:25.046449+00:00"
+                     },
+                     {
+                         "id":  "1781273459171",
+                         "name":  "Robe Amina TERRACOTA-KAKI",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  25000,
+                         "stock":  200,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.",
+                         "sizes":  [
+                                       "STANDARD",
+                                       "XS",
+                                       "S",
+                                       "L",
+                                       "M",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Terracotta"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/mlftmwej0uerfz0hbudl.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/mxx5ekp7hifyolypvmae.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/fsrjobbnumm963d1fuxs.jpg"
+                                    ],
+                         "video":  null,
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/hx82raiuskvw5nqva4b3.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T14:10:59.171+00:00",
+                         "updated_at":  "2026-06-13T17:56:25.046449+00:00"
+                     },
+                     {
+                         "id":  "1770464752056",
+                         "name":  "Femme Ultime Élégant pour bureau \u0026 événements marron",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Une robe pensée pour faire la différence : coupe structurée, taille joliment marquée et manches avec liens ajustables pour une touche glamour. Look classe en 10 secondes, sans effort.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/rtkkzh2mzcb6osoqozp1.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/dltcwz66hcrimby8loxr.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/totsslxtxq0yt9pjkae6.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/pfdpedsyixtzpxeebbc7.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/fnsoqohzxho5usovqlp3.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe-2_hhoBA1Qw.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/vasgfdxh5vrufadxeyoe.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:25.046449+00:00"
+                     },
+                     {
+                         "id":  "1770468080820",
+                         "name":  "Femme Ultime Élégant pour bureau terracotta",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Confortable mais ultra stylée\nBelle et agréable à porter : tissu doux, coupe flatteuse,avec détail noué. Une robe qui te donne une présence élégante tout en restant confortable toute la journée.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Bleu Ciel",
+                                        "Bleu",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/jktucc0kaaz6upblzauz.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/cqlsqeyojerrbmvj9m7b.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/gsbnrkw1pigvis15nege.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/n84ckeg4fcttpiyiqqlt.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/k3p5neqlf0w608vangls.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-9_RCjrMmNH.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/mcbfuuobkgjltcurjx1f.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:25.046449+00:00"
+                     },
+                     {
+                         "id":  "1770988329080",
+                         "name":  "Elle couvre, elle sublime, elle reste moderne. Un style “pudique chic” très demandé, facile à po",
+                         "category":  "eclipse",
+                         "price":  11000,
+                         "original_price":  22700,
+                         "stock":  10,
+                         "description":  "Look pudique \u0026 tendancerter avec sandales ou talons.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Beige",
+                                        "Gris",
+                                        "Rose",
+                                        "Orange",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/cu6pr8ntjvrxovqeqo1g.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/sxpalmuas7t57fi9cmut.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/u1t5tf53wjyrrxwi6g8y.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/eunobnrgouejjasexzcx.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/c2piwciwpbspsbrwru6i.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-22_OCxeHC7W.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/axwesir3qsg8rmjauhsf.png",
+                         "active":  true,
+                         "created_at":  "2026-02-13T13:12:09.08+00:00",
+                         "updated_at":  "2026-06-13T17:56:12.28817+00:00"
+                     },
+                     {
+                         "id":  "1770549664033",
+                         "name":  "SIGNATURE ROYALE Pour les grandes occasions… et les jours importants",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Mariage civil, anniversaire, rendez-vous, événement familial : la Signature Royale est la robe qui te donne une présence. Elle met en valeur ton style avec un look royal, moderne et très chic.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Blanc",
+                                        "Noir",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/iib8wyinrbpjpjhhpfpe.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hcfexwfd5zs8evtpivf7.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/vlqzfhaugnlghxa2cqbn.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/xyvxs0barkxes5xh7cg9.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/y3rdj6j5z07w2kiiyv7t.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-14_oqABA5s3.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/yyf6ud7ke8p34tnemui2.png",
+                         "active":  true,
+                         "created_at":  "2026-02-08T11:21:04.033+00:00",
+                         "updated_at":  "2026-06-13T17:56:12.28817+00:00"
+                     },
+                     {
+                         "id":  "1770550288385",
+                         "name":  "SIGNATURE ROYALE Intemporelle \u0026 incontournable",
+                         "category":  "signature-royale",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "Une pièce signature à garder longtemps : élégante, tendance et facile à accessoiriser. La Robe Signature Royale transforme ton look en une tenue de “grande dame” en quelques secondes.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qrkhfzn5v5i7ubieju94.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bxzsh2jq22m1zewikcut.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/gdiop8vswq7chkr5wwve.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/a3xhpfyqrao1xaxjcdbc.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/dgjc9hmsfaesfjuh7iwn.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-15_LSFtQXvP.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/itn29ydbx4ameuzqmit5.png",
+                         "active":  true,
+                         "created_at":  "2026-02-08T11:31:28.385+00:00",
+                         "updated_at":  "2026-06-13T17:56:12.28817+00:00"
+                     },
+                     {
+                         "id":  "1770465968572",
+                         "name":  "robe “waouh” pour tes événements  violet",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La \nTu veux un style élégant et sophistiqué ? Cette robe kaki avec décolleté épaules et plis fluides donne un rendu premium. Idéale pour anniversaire, dîner, mariage civil, rendez-vous important.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Noir",
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Orange",
+                                        "Rose",
+                                        "Rouge",
+                                        "Marron",
+                                        "Jaune",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Bordeaux",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/uplsc6n9p5os7njznckr.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/j1cyyodnumdmxydyteiy.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/prym4vtjnqxkn7isxdcr.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/irynzpyqjwwqiggvjblt.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bomlwsstjhkhc847hrqg.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe-3_Cd6UKsfn.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/gz1gfkbvo0hdxjuadj9o.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:56:12.28817+00:00"
+                     },
+                     {
+                         "id":  "1781293706470",
+                         "name":  "Robe AMINA – Élégance, fluidité et féminité ROBE NOIR blanche",
+                         "category":  "robe-amina",
+                         "price":  13000,
+                         "original_price":  27500,
+                         "stock":  260,
+                         "description":  "La Robe AMINA est une tenue confectionnée pour la femme élégante qui aime se démarquer avec simplicité et raffinement. Sa coupe longue et fluide apporte une allure chic, légère et féminine, idéale pour les sorties, cérémonies, dîners, événements ou occasions spéciales.\n\nConfectionnée dans un tissu de qualité Grain de Diamant, la robe offre un beau tombé, un rendu lumineux et une sensation agréable au porter. Son haut croisé met délicatement les épaules en valeur, tandis que son dos noué apporte une touche raffinée et moderne.\n\nLa Robe AMINA est pensée pour sublimer la silhouette tout en offrant confort et liberté de mouvement.\n\nDétails du produit :\nTissu : Grain de Diamant\nCoupe : longue, fluide et élégante\nStyle : dos nu avec nœud au dos\nDisponible en : taille standard\nTenue : confectionnée pour femme\n\nRobe AMINA, la pièce parfaite pour révéler votre élégance avec classe.",
+                         "sizes":  [
+                                       "Taille standard"
+                                   ],
+                         "colors":  [
+                                        "Noir"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/zmo3zvtwctoqt8ddgso5.jpg",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/hofzeg3brwxwnljpbhbg.jpg"
+                                    ],
+                         "video":  "https://obrille.com/wp-content/uploads/2026/06/Dame_showcasing_elegant_dress_202606121945.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/aekyusx4o1xg2exzump9.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T19:48:26.47+00:00",
+                         "updated_at":  "2026-06-13T17:48:19.404716+00:00"
+                     },
+                     {
+                         "id":  "1770455758201",
+                         "name":  "Femme Ultime Élégant pour bureau \u0026 événements Noir",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La robe Femme Ultime, c’est l’élégance simple qui fait tout le travail. Son col asymétrique (épaule dénudée) apporte une touche chic et moderne, tandis que sa coupe taille marquée met la silhouette en valeur sans en faire trop. La jupe évasée donne un tombé fluide et classe, parfait pour rester élégante toute la journée. ✨ Pourquoi tu vas l’adorer : Look “pro” immédiat pour le bureau (propre, net, raffiné) Idéale pour événements : mariage civil, soirée, cérémonie, dîner, anniversaire Manches 3/4 avec petits nœuds : détail féminin et premium Coupe confortable : tu es libre de bouger, tout en restant stylée Facile à accessoiriser : talons + sac chic = tenue parfaite 💎 Style conseillé : bijoux dorés, sandales ou escarpins, petite pochette… et tu es prête. 📌 Femme Ultime : une robe qui te donne une présence élégante, que ce soit au travail ou en événement.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Bordeaux",
+                                        "Vert",
+                                        "Bleu",
+                                        "Bleu Ciel",
+                                        "Orange",
+                                        "Beige",
+                                        "Gris",
+                                        "Rose",
+                                        "Rouge",
+                                        "Blanc",
+                                        "Noir",
+                                        "Marron",
+                                        "Jaune",
+                                        "Violet"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/cqbq4cn7butr2enjjjb8.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/frsuxc9rbyqrgk22pbph.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ah49dcmilwem2umzoscy.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/v0tihk0pf7dpvx4y3pzb.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ymg0rqt120wke4qfwh7x.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/video-5_BgPJ9OSU.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/ldruvrvar5lfe1dgnsps.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:48:19.404716+00:00"
+                     },
+                     {
+                         "id":  "1770309176563",
+                         "name":  "Femme Ultime Élégant pour bureau \u0026 événements blanc",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  49,
+                         "description":  "La robe Femme Ultime, c’est l’élégance simple qui fait tout le travail. Son col asymétrique (épaule dénudée) apporte une touche chic et moderne, tandis que sa coupe taille marquée met la silhouette en valeur sans en faire trop. La jupe évasée donne un tombé fluide et classe, parfait pour rester élégante toute la journée.\n✨ Pourquoi tu vas l’adorer :\n\n\nLook “pro” immédiat pour le bureau (propre, net, raffiné)\n\n\nIdéale pour événements : mariage civil, soirée, cérémonie, dîner, anniversaire\n\n\nManches 3/4 avec petits nœuds : détail féminin et premium\n\n\nCoupe confortable : tu es libre de bouger, tout en restant stylée\n\n\nFacile à accessoiriser : talons + sac chic = tenue parfaite\n\n\n💎 Style conseillé : bijoux dorés, sandales ou escarpins, petite pochette… et tu es prête.\n📌 Femme Ultime : une robe qui te donne une présence élégante, que ce soit au travail ou en événement.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Blanc",
+                                        "Bleu Ciel",
+                                        "Orange",
+                                        "Bleu",
+                                        "Vert",
+                                        "Jaune",
+                                        "Marron",
+                                        "Bordeaux",
+                                        "Violet",
+                                        "Rouge",
+                                        "Beige"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/g8wyke6gz71pvipysvsv.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/jn6fsgbuslvjzxbzplox.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/a9hpdu4jjlcl4ec7aljt.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/qlg1mlwtz27iaaxw7dmr.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/fjgiro78yxvxgoq9jvj9.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/anfubywnltys7zbcocua.jpg",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:43:55.745892+00:00"
+                     },
+                     {
+                         "id":  "1770459406216",
+                         "name":  "Femme Ultime Élégant  BLANCHE",
+                         "category":  "robes-elegantes",
+                         "price":  11000,
+                         "original_price":  0,
+                         "stock":  10,
+                         "description":  "La robe Femme Ultime, c’est l’élégance simple qui fait tout le travail. Son col asymétrique (épaule dénudée) apporte une touche chic et moderne, tandis que sa coupe taille marquée met la silhouette en valeur sans en faire trop. La jupe évasée donne un tombé fluide et classe, parfait pour rester élégante toute la journée. ✨ Pourquoi tu vas l’adorer : Look “pro” immédiat pour le bureau (propre, net, raffiné) Idéale pour événements : mariage civil, soirée, cérémonie, dîner, anniversaire Manches 3/4 avec petits nœuds : détail féminin et premium Coupe confortable : tu es libre de bouger, tout en restant stylée Facile à accessoiriser : talons + sac chic = tenue parfaite 💎 Style conseillé : bijoux dorés, sandales ou escarpins, petite pochette… et tu es prête. 📌 Femme Ultime : une robe qui te donne une présence élégante, que ce soit au travail ou en événement.",
+                         "sizes":  [
+                                       "XS",
+                                       "S",
+                                       "M",
+                                       "L",
+                                       "XL",
+                                       "XXL",
+                                       "3XL"
+                                   ],
+                         "colors":  [
+                                        "Blanc",
+                                        "Gris",
+                                        "Beige",
+                                        "Noir",
+                                        "Marron",
+                                        "Rouge",
+                                        "Rose",
+                                        "Orange",
+                                        "Bleu Ciel",
+                                        "Bleu",
+                                        "Vert",
+                                        "Jaune",
+                                        "Violet",
+                                        "Bordeaux"
+                                    ],
+                         "images":  [
+                                        "https://nousunique.com/wp-content/uploads/2026/06/s1qeamzpknmrrwm6cvhp.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/tb6htpdytgaw8x4laqzv.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/bcfnzdyt8k9iaxwjznrd.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/c6e0cerfjobuwyjurkrj.png",
+                                        "https://nousunique.com/wp-content/uploads/2026/06/ithghp1ewbfv2va5cfhu.png"
+                                    ],
+                         "video":  "https://nousunique.com/wp-content/uploads/2026/02/robe_txVc1yAo.mp4",
+                         "thumbnail":  "https://nousunique.com/wp-content/uploads/2026/06/plmijnbkwg5zbjrhyfkf.png",
+                         "active":  true,
+                         "created_at":  "2026-06-12T15:01:32.383+00:00",
+                         "updated_at":  "2026-06-13T17:43:55.745892+00:00"
+                     }
+                 ]
+}

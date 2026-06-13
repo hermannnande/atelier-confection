@@ -1,0 +1,25 @@
+#!/bin/bash
+# Deploiement de la boutique Nous Unique sur nousunique.com
+set -e
+SRC_URL="https://github.com/hermannnande/atelier-confection/archive/refs/heads/main.tar.gz"
+TMP="$HOME/deploy-tmp"
+WEB="$HOME/web"
+echo "1/4 Telechargement..."
+rm -rf "$TMP"; mkdir -p "$TMP"
+curl -sL "$SRC_URL" -o "$TMP/src.tar.gz"
+echo "2/4 Extraction..."
+tar xzf "$TMP/src.tar.gz" -C "$TMP"
+SW="$TMP/atelier-confection-main/site-web"
+echo "3/4 Mise a jour des fichiers..."
+cp -f "$SW/index.html" "$WEB/index.html"
+[ -f "$SW/favicon.ico" ] && cp -f "$SW/favicon.ico" "$WEB/favicon.ico"
+rsync -a --delete "$SW/css/"   "$WEB/css/"
+rsync -a --delete "$SW/js/"    "$WEB/js/"
+rsync -a --delete "$SW/pages/" "$WEB/pages/"
+mkdir -p "$WEB/images";  rsync -a "$SW/images/"  "$WEB/images/"
+mkdir -p "$WEB/videos";  rsync -a "$SW/videos/"  "$WEB/videos/"
+# admin -> gestion : on garde le .htaccess (auth) et on exclut les .md
+rsync -a --delete --exclude=".htaccess" --exclude="*.md" "$SW/admin/" "$WEB/gestion/"
+echo "4/4 Nettoyage..."
+rm -rf "$TMP"
+echo "OK - Boutique deployee sur nousunique.com"

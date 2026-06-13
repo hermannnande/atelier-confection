@@ -1,0 +1,50 @@
+﻿{
+    "success":  true,
+    "categories":  [
+                       {
+                           "id":  "1781286160164",
+                           "name":  "Robe Amina",
+                           "slug":  "robe-amina",
+                           "description":  null,
+                           "active":  true,
+                           "created_at":  "2026-06-12T17:42:40.164+00:00",
+                           "updated_at":  "2026-06-13T12:55:33.492+00:00"
+                       },
+                       {
+                           "id":  "1",
+                           "name":  "Élégant",
+                           "slug":  "elegant",
+                           "description":  "Collection élégante et raffinée",
+                           "active":  true,
+                           "created_at":  "2026-06-13T12:53:52.487+00:00",
+                           "updated_at":  "2026-06-13T12:55:33.552118+00:00"
+                       },
+                       {
+                           "id":  "2",
+                           "name":  "Perle Rare",
+                           "slug":  "perle-rare",
+                           "description":  "Pièces uniques et précieuses",
+                           "active":  true,
+                           "created_at":  "2026-06-13T12:53:52.487+00:00",
+                           "updated_at":  "2026-06-13T12:55:33.552118+00:00"
+                       },
+                       {
+                           "id":  "3",
+                           "name":  "Perle Unique",
+                           "slug":  "perle-unique",
+                           "description":  "Créations exclusives",
+                           "active":  true,
+                           "created_at":  "2026-06-13T12:53:52.487+00:00",
+                           "updated_at":  "2026-06-13T12:55:33.552118+00:00"
+                       },
+                       {
+                           "id":  "4",
+                           "name":  "Style Event",
+                           "slug":  "style-event",
+                           "description":  "Tenues pour événements",
+                           "active":  true,
+                           "created_at":  "2026-06-13T12:53:52.487+00:00",
+                           "updated_at":  "2026-06-13T12:55:33.552118+00:00"
+                       }
+                   ]
+}

@@ -1,0 +1,5 @@
+AuthType Basic
+AuthName "Espace admin Atelier Confection"
+AuthUserFile /var/www/clients/client0/web1/private/.htpasswd-admin
+Require valid-user
+ErrorDocument 401 "Authentification requise - Espace admin Atelier Confection"
