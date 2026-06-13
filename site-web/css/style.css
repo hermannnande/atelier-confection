@@ -2111,61 +2111,62 @@ a {
 }
 
 /* ============================================================
-   LOGO NOUS UNIQUE — remplace l'ancien logo "Atelier Confection"
-   (badge emblème doré + nom de marque) sur toutes les pages.
+   MARQUE NOUS UNIQUE — texte seul (pas de badge) avec dégradé
+   animé noir / doré / blanc, sur toutes les pages.
    ============================================================ */
 
-/* --- Badge emblème dans le header --- */
-.brand-mark {
-  width: 44px;
-  height: 44px;
-  border: none !important;
-  border-radius: 10px;
-  background: #0b0b0c url("../images/embleme-nous-unique-160.png") center / cover no-repeat !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  animation: none !important;
-}
-.brand-mark svg { display: none !important; }
+/* On retire complètement le badge/emblème : uniquement le texte */
+.brand-mark { display: none !important; }
 
-/* --- Nom de marque (remplace "Atelier Confection") --- */
+/* Nom de marque en dégradé animé (noir -> doré -> blanc) */
 .brand-text {
   animation: none !important;
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
   font-weight: 700;
   font-size: 0 !important; /* masque le texte HTML d'origine */
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   line-height: 1;
 }
 .brand-text::after {
   content: "Nous Unique";
-  font-size: 19px;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
-  transition: color 0.3s ease, text-shadow 0.3s ease;
-}
-/* Header devenu blanc au scroll -> texte sombre */
-.site-header.is-solid .brand-text::after {
-  color: #111;
-  text-shadow: none;
+  font-size: 22px;
+  background: linear-gradient(100deg, #111 0%, #c2a36b 32%, #ffffff 50%, #c2a36b 68%, #111 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.22));
+  animation: hp-brand-shine 6s linear infinite;
 }
 
-/* --- Logo dans le footer (fond sombre) --- */
-.footer-logo .brand-mark {
-  border: none !important;
-  background: #0b0b0c url("../images/embleme-nous-unique-160.png") center / cover no-repeat !important;
-  width: 44px;
-  height: 44px;
+@keyframes hp-brand-shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
-.footer-logo .brand-mark svg { display: none !important; }
+
+/* --- Footer (fond sombre) : dégradé doré -> blanc -> doré --- */
 .footer-logo .brand-text {
   font-size: 0 !important;
   font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
 .footer-logo .brand-text::after {
   content: "Nous Unique";
-  font-size: 20px;
-  color: #fff;
-  letter-spacing: 1px;
-  text-shadow: none;
+  font-size: 24px;
+  background: linear-gradient(100deg, #c2a36b 0%, #ffffff 50%, #c2a36b 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: none;
+  animation: hp-brand-shine 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-text::after,
+  .footer-logo .brand-text::after { animation: none !important; }
 }
