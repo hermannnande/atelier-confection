@@ -13,9 +13,7 @@ const AdminStore = (() => {
   const resolveEcommerceSyncUrl = () => {
     try {
       const forcedOrigin = localStorage.getItem('atelier-ecom-sync-origin');
-      const isLocalhost =
-        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const origin = forcedOrigin || (isLocalhost ? DEFAULT_ECOMMERCE_SYNC_ORIGIN : window.location.origin);
+      const origin = forcedOrigin || DEFAULT_ECOMMERCE_SYNC_ORIGIN;
       return origin.replace(/\/$/, '') + '/api/ecommerce/products/sync';
     } catch (e) {
       return '/api/ecommerce/products/sync';

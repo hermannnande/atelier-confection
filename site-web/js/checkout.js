@@ -98,13 +98,9 @@ function loadCartSummary() {
   document.getElementById('summaryTotal').textContent = formatted;
 }
 
-// URL de l'API (prod Vercel ou localhost)
+// URL de l'API (backend hébergé sur Vercel, appelé depuis n'importe quel domaine)
 const resolveApiUrl = () => {
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') {
-    return 'https://atelier-confection.vercel.app/api/commandes/public';
-  }
-  return window.location.origin + '/api/commandes/public';
+  return 'https://atelier-confection.vercel.app/api/commandes/public';
 };
 
 const API_URL = resolveApiUrl();

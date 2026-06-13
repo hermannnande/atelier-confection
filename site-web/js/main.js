@@ -321,10 +321,7 @@ const renderHomeBestsellers = async () => {
   // SOURCE DE VÉRITÉ: le serveur. Cache local seulement si l'API échoue.
   let products = [];
   try {
-    const host = window.location.hostname;
-    const origin = (host === 'localhost' || host === '127.0.0.1')
-      ? 'https://atelier-confection.vercel.app'
-      : window.location.origin;
+    const origin = 'https://atelier-confection.vercel.app';
     const res = await fetch(`${origin}/api/ecommerce/products`);
     if (res.ok) {
       const data = await res.json();

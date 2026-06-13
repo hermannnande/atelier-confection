@@ -800,10 +800,7 @@ const mapApiProduct = (row) => ({
 
 const fetchProductFromApi = async (id) => {
   try {
-    const host = window.location.hostname;
-    const origin = (host === 'localhost' || host === '127.0.0.1')
-      ? 'https://atelier-confection.vercel.app'
-      : window.location.origin;
+    const origin = 'https://atelier-confection.vercel.app';
     const res = await fetch(`${origin}/api/ecommerce/products/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
     const data = await res.json();
