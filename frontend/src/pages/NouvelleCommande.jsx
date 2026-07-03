@@ -230,6 +230,7 @@ const NouvelleCommande = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [stockItems, setStockItems] = useState([]);
+  const [libraryModels, setLibraryModels] = useState([]);
   const [loadingStock, setLoadingStock] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
@@ -258,11 +259,15 @@ const NouvelleCommande = () => {
 
   const fetchStock = async () => {
     try {
-      const response = await api.get('/stock');
-      setStockItems(response.data.stock || []);
+      const [stockRes, modelesRes] = await Promise.all([
+        api.get('/stock'),
+        api.get('/modeles', { params: { actif: 'true' } }).catch(() => ({ data: { modeles: [] } })),
+      ]);
+      setStockItems(stockRes.data.stock || []);
+      setLibraryModels(modelesRes.data.modeles || []);
     } catch (error) {
       console.error(error);
-      toast.error('Erreur lors du chargement du stock');
+      toast.error('Erreur lors du chargement des modèles');
     } finally {
       setLoadingStock(false);
     }
@@ -294,10 +299,30 @@ const NouvelleCommande = () => {
   }, [stockItems]);
 
   const models = useMemo(() => {
-    return Object.values(groupedStock)
+    // On part du stock groupé, puis on ajoute les modèles de la bibliothèque
+    // qui n'ont aucune ligne de stock (commande sur mesure possible).
+    const merged = { ...groupedStock };
+    libraryModels.forEach((lm) => {
+      const nom = lm.nom;
+      if (!nom) return;
+      if (!merged[nom]) {
+        const prixBase = Number(lm.prix_base ?? lm.prixBase ?? 0) || 0;
+        merged[nom] = {
+          nom,
+          image: lm.image || '',
+          variations: [],
+          tailles: new Set(),
+          couleurs: new Set(),
+          quantiteTotal: 0,
+          prixMin: prixBase,
+          prixMax: prixBase,
+        };
+      }
+    });
+    return Object.values(merged)
       .filter((m) => searchTerm === '' || m.nom.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => b.quantiteTotal - a.quantiteTotal);
-  }, [groupedStock, searchTerm]);
+  }, [groupedStock, libraryModels, searchTerm]);
 
   const couleursDispo = useMemo(() => {
     const set = new Set(COULEURS_DE_BASE);
