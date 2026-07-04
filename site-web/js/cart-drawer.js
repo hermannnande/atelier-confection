@@ -224,10 +224,6 @@ const CartDrawer = {
             store?.formatPrice ? store.formatPrice(subtotal) : `${subtotal} FCFA`
           }</span>
         </div>
-        <div class="drawer-summary-line">
-          <span>Livraison</span>
-          <span class="drawer-summary-value drawer-free">Gratuite</span>
-        </div>
         <div class="drawer-summary-line drawer-promo-line">
           <input type="text" class="drawer-promo-input" placeholder="Code promo" />
           <button class="drawer-promo-btn">Appliquer</button>
@@ -490,7 +486,6 @@ const CartDrawer = {
     }).join('');
     el.innerHTML = `
       <div class="cm-sum-items">${rows}</div>
-      <div class="cm-sum-ship"><span>Livraison</span><span class="cm-free">Gratuite</span></div>
       <div class="cm-sum-total"><span>Total</span><span class="cm-sum-total-value">${formatPriceSafe(subtotal)}</span></div>
     `;
   },

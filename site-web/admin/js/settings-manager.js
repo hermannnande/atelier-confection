@@ -13,7 +13,6 @@ function loadSettings() {
   document.getElementById('socialWhatsApp').value = settings.socialWhatsApp || '';
 
   document.getElementById('deliveryFee').value = settings.deliveryFee || '';
-  document.getElementById('freeDelivery').value = settings.freeDelivery || '';
   document.getElementById('deliveryZones').value = settings.deliveryZones || '';
 }
 
@@ -32,7 +31,6 @@ if (form) {
     AdminStore.saveSetting('socialWhatsApp', document.getElementById('socialWhatsApp').value.trim());
 
     AdminStore.saveSetting('deliveryFee', document.getElementById('deliveryFee').value.trim());
-    AdminStore.saveSetting('freeDelivery', document.getElementById('freeDelivery').value.trim());
     AdminStore.saveSetting('deliveryZones', document.getElementById('deliveryZones').value.trim());
 
     alert('Paramètres enregistrés.');
