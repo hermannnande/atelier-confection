@@ -22,7 +22,6 @@ import Performances from './pages/Performances';
 import Statistiques from './pages/Statistiques';
 import Utilisateurs from './pages/Utilisateurs';
 import GestionCommandes from './pages/GestionCommandes';
-import NotificationsSMS from './pages/NotificationsSMS';
 import Presence from './pages/Presence';
 import HistoriquePresences from './pages/HistoriquePresences';
 import ModelesEnAttente from './pages/ModelesEnAttente';
@@ -196,13 +195,6 @@ function App() {
           <Route path="gestion-commandes" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <GestionCommandes />
-            </ProtectedRoute>
-          } />
-          
-          {/* Notifications SMS - Admin et Gestionnaire */}
-          <Route path="notifications-sms" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
-              <NotificationsSMS />
             </ProtectedRoute>
           } />
           
