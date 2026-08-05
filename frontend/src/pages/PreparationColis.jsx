@@ -17,6 +17,7 @@ import {
   Trash2,
   Loader2,
   Phone,
+  Search,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -54,12 +55,43 @@ function getClientContact(commande) {
   return '';
 }
 
+function getClientName(commande) {
+  if (commande?.nomClient) return commande.nomClient;
+  if (commande?.clientNom) return commande.clientNom;
+  if (commande?.client && typeof commande.client === 'object') {
+    return commande.client.nom || '';
+  }
+  return typeof commande?.client === 'string' ? commande.client : '';
+}
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function matchesCommandeSearch(commande, searchTerm) {
+  const query = normalizeSearchText(searchTerm);
+  if (!query) return true;
+
+  const clientName = normalizeSearchText(getClientName(commande));
+  const contact = String(getClientContact(commande) || '');
+  const queryDigits = query.replace(/\D/g, '');
+  const contactDigits = contact.replace(/\D/g, '');
+
+  return clientName.includes(query)
+    || (queryDigits.length > 0 && contactDigits.includes(queryDigits));
+}
+
 const PreparationColis = () => {
   const { user } = useAuthStore();
   const canTagEmballe = user?.role === 'administrateur' || user?.role === 'gestionnaire';
   const [commandes, setCommandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatut, setFilterStatut] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [livreurs, setLivreurs] = useState([]);
   const [emballeBusyId, setEmballeBusyId] = useState(null);
 
@@ -251,9 +283,10 @@ const PreparationColis = () => {
     return infos[statut] || infos.en_decoupe;
   };
 
-  const filteredCommandes = filterStatut
-    ? commandes.filter((c) => c.statut === filterStatut)
-    : commandes;
+  const filteredCommandes = useMemo(() => commandes.filter((commande) => {
+    if (filterStatut && commande.statut !== filterStatut) return false;
+    return matchesCommandeSearch(commande, searchTerm);
+  }), [commandes, filterStatut, searchTerm]);
 
   const commandesTriees = useMemo(() => {
     return [...filteredCommandes].sort((a, b) => {
@@ -469,6 +502,39 @@ const PreparationColis = () => {
         </div>
       </div>
 
+      {/* Recherche client */}
+      <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm sm:p-4">
+        <div className="relative">
+          <Search
+            size={20}
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-purple-500"
+          />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Rechercher une commande par nom ou contact…"
+            aria-label="Rechercher une commande par nom ou contact"
+            className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 py-3 pl-12 pr-12 text-sm font-semibold text-gray-900 outline-none transition placeholder:font-medium placeholder:text-gray-400 focus:border-purple-500 focus:bg-white focus:ring-4 focus:ring-purple-100 sm:text-base"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Effacer la recherche"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="mt-2 px-1 text-xs font-semibold text-purple-700">
+            {commandesTriees.length} commande{commandesTriees.length !== 1 ? 's' : ''} trouvée{commandesTriees.length !== 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+
       {/* Barre filtres + toggle vue */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -593,8 +659,14 @@ const PreparationColis = () => {
       {commandesTriees.length === 0 ? (
         <div className="card text-center py-12">
           <Package className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune commande en préparation</h3>
-          <p className="text-gray-600">Les commandes en cours de confection apparaîtront ici</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {searchTerm ? 'Aucune commande trouvée' : 'Aucune commande en préparation'}
+          </h3>
+          <p className="text-gray-600">
+            {searchTerm
+              ? 'Essayez un autre nom ou numéro de contact.'
+              : 'Les commandes en cours de confection apparaîtront ici'}
+          </p>
         </div>
       ) : viewMode === 'grid' ? (
         <CardsView
