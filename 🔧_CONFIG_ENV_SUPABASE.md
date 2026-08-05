@@ -26,6 +26,15 @@ SMS8_API_KEY=VOTRE_SMS8_API_KEY_ICI
 SMS8_DEVICE_ID=VOTRE_SMS8_DEVICE_ID_ICI
 SMS8_SENDER_PHONE=+225XXXXXXXXXX
 SMS_ENABLED=false
+
+# 💬 WhatsApp via la session WaSenderAPI "NousUnique"
+WHATSAPP_ENABLED=false
+WASENDER_API_KEY=VOTRE_CLE_PRIVEE_WASENDER
+WASENDER_API_URL=https://www.wasenderapi.com/api
+WASENDER_TIMEOUT_MS=15000
+WHATSAPP_COUNTRY_CODE=CI
+WHATSAPP_TIME_ZONE=Africa/Abidjan
+WHATSAPP_DELAY_BATCH_LIMIT=100
 ```
 
 ---
@@ -45,6 +54,13 @@ SMS_ENABLED=false
 Si vous n'avez pas encore configuré SMS8.io :
 - Laissez les valeurs par défaut
 - `SMS_ENABLED=false` désactive l'envoi
+
+### **3. WaSenderAPI / WhatsApp**
+
+- La clé privée provient de la session **NousUnique** dans WaSenderAPI.
+- `WHATSAPP_ENABLED=true` active les messages WhatsApp transactionnels.
+- Le cron Vercel appelle `/api/whatsapp/cron/retards-commandes` chaque jour à **17h30**.
+- Les excuses sont envoyées une seule fois à J, J+1 et J+2, puis s'arrêtent.
 
 ---
 

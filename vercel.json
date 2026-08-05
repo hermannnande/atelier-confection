@@ -54,5 +54,11 @@
       "src": "/(.*)",
       "dest": "/frontend/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/whatsapp/cron/retards-commandes",
+      "schedule": "30 17 * * *"
+    }
   ]
 }

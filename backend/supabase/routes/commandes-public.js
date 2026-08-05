@@ -2,6 +2,7 @@ import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { resolveCountryPublic } from '../middleware/country.js';
 import smsService from '../../services/sms.service.js';
+import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
 
 const router = express.Router();
 
@@ -127,6 +128,16 @@ router.post('/public', resolveCountryPublic, async (req, res) => {
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+    }
+
+    try {
+      await whatsappService.sendCommandeNotification(
+        WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+        data,
+        { userId: null }
+      );
+    } catch (whatsappError) {
+      console.error('⚠️ Erreur WhatsApp commande reçue (non bloquant):', whatsappError.message);
     }
     
     res.status(201).json({

@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
+import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
 
 const router = express.Router();
 
@@ -203,6 +204,28 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
       // Ne pas bloquer la création si SMS échoue
     }
 
+    try {
+      await whatsappService.sendCommandeNotification(
+        WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+        data,
+        { userId: req.userId }
+      );
+    } catch (whatsappError) {
+      console.error('⚠️ Erreur WhatsApp commande reçue (non bloquant):', whatsappError.message);
+    }
+
+    if (data.statut === 'validee') {
+      try {
+        await whatsappService.sendCommandeNotification(
+          WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+          data,
+          { userId: req.userId }
+        );
+      } catch (whatsappError) {
+        console.error('⚠️ Erreur WhatsApp commande validée à la création (non bloquant):', whatsappError.message);
+      }
+    }
+
     return res.status(201).json({ message: 'Commande créée avec succès', commande });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
@@ -291,6 +314,18 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
       console.error('⚠️ Erreur envoi SMS (PUT statut) non bloquant:', smsError.message);
     }
 
+    try {
+      if (data?.statut === 'validee' && existing.statut !== 'validee') {
+        await whatsappService.sendCommandeNotification(
+          WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+          data,
+          { userId: req.userId }
+        );
+      }
+    } catch (whatsappError) {
+      console.error('⚠️ Erreur WhatsApp validation via PUT (non bloquant):', whatsappError.message);
+    }
+
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
     const commande = mapCommande(attachUsers(data, usersById));
     return res.json({ message: 'Commande modifiée avec succès', commande });
@@ -335,6 +370,16 @@ router.post('/:id/valider', authenticate, resolveCountry, authorize('appelant', 
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS attente_depot après validation (non bloquant):', smsError.message);
+    }
+
+    try {
+      await whatsappService.sendCommandeNotification(
+        WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+        data,
+        { userId: req.userId }
+      );
+    } catch (whatsappError) {
+      console.error('⚠️ Erreur WhatsApp commande validée (non bloquant):', whatsappError.message);
     }
 
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });
