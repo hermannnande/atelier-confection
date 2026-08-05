@@ -1,6 +1,8 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import whatsappService from '../../services/whatsapp.service.js';
+import { saveStoredWhatsAppConfig } from '../../services/whatsapp-config.service.js';
 import { processDelayedOrders } from '../../services/order-delay.service.js';
 
 const router = express.Router();
@@ -15,8 +17,38 @@ function isCronAuthorized(req) {
   return String(provided || '') === String(secret);
 }
 
-router.get('/status', (req, res) => {
-  res.json({ success: true, data: whatsappService.getSystemStatus() });
+router.get('/status', async (req, res) => {
+  const data = await whatsappService.getSystemStatus(process.env, getSupabaseAdmin());
+  res.json({ success: true, data });
+});
+
+// Permet à un administrateur de configurer WaSender sans exposer la clé
+// dans GitHub ou dans une variable publique. La clé est chiffrée avant stockage.
+router.post('/config', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const apiKey = String(req.body?.apiKey || '').trim();
+    if (apiKey.length < 20 || apiKey.length > 500 || /\s/.test(apiKey)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Clé WaSenderAPI invalide',
+      });
+    }
+
+    const db = getSupabaseAdmin();
+    await saveStoredWhatsAppConfig({
+      apiKey,
+      enabled: req.body?.enabled !== false,
+    }, db);
+
+    const data = await whatsappService.getSystemStatus(process.env, db);
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('❌ Configuration WhatsApp:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Impossible d’enregistrer la configuration WhatsApp',
+    });
+  }
 });
 
 // Exécuté tous les jours à 17h30 (Africa/Abidjan = UTC).
@@ -28,7 +60,8 @@ router.get('/cron/retards-commandes', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized cron' });
     }
 
-    const configuration = whatsappService.getConfiguration();
+    const db = getSupabaseAdmin();
+    const configuration = await whatsappService.resolveConfiguration(process.env, db);
     if (!configuration.enabled) {
       return res.json({ success: true, skipped: true, reason: 'WHATSAPP_DISABLED' });
     }
@@ -37,7 +70,7 @@ router.get('/cron/retards-commandes', async (req, res) => {
     }
 
     const result = await processDelayedOrders({
-      db: getSupabaseAdmin(),
+      db,
       whatsapp: whatsappService,
     });
     return res.json({ success: true, ...result });

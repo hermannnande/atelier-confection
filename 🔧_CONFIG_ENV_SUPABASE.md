@@ -59,6 +59,8 @@ Si vous n'avez pas encore configuré SMS8.io :
 
 - La clé privée provient de la session **NousUnique** dans WaSenderAPI.
 - `WHATSAPP_ENABLED=true` active les messages WhatsApp transactionnels.
+- Si l’accès aux variables Vercel n’est pas disponible, un administrateur peut enregistrer la clé via `POST /api/whatsapp/config` : elle est chiffrée avec la clé serveur Supabase avant d’être stockée et n’est jamais renvoyée par l’API.
+- Les variables Vercel restent prioritaires lorsqu’elles sont définies.
 - Le cron Vercel appelle `/api/whatsapp/cron/retards-commandes` chaque jour à **17h30**.
 - Les excuses sont envoyées une seule fois à J, J+1 et J+2, puis s'arrêtent.
 

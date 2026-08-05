@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../supabase/client.js';
+import { readStoredWhatsAppConfig } from './whatsapp-config.service.js';
 
 const DEFAULT_API_URL = 'https://www.wasenderapi.com/api';
 const PROVIDER_NAME = 'WaSenderAPI';
@@ -95,8 +96,30 @@ class WhatsAppService {
     };
   }
 
-  getSystemStatus(env = process.env) {
+  async resolveConfiguration(env = process.env, db = null) {
     const config = this.getConfiguration(env);
+    const enabledExplicitlyConfigured = env.WHATSAPP_ENABLED !== undefined;
+
+    if (config.configured && enabledExplicitlyConfigured) return config;
+
+    try {
+      const stored = await readStoredWhatsAppConfig(db || getSupabaseAdmin(), env);
+      return {
+        ...config,
+        enabled: config.configured && enabledExplicitlyConfigured
+          ? config.enabled
+          : stored.enabled,
+        configured: config.configured || Boolean(stored.apiKey),
+        apiKey: config.apiKey || stored.apiKey,
+      };
+    } catch (error) {
+      console.error('⚠️ Configuration WhatsApp enregistrée indisponible:', error.message);
+      return config;
+    }
+  }
+
+  async getSystemStatus(env = process.env, db = null) {
+    const config = await this.resolveConfiguration(env, db);
     return {
       enabled: config.enabled,
       configured: config.configured,
@@ -161,7 +184,7 @@ class WhatsAppService {
   async sendMessage(phone, message, options = {}) {
     const env = options.env || process.env;
     const fetchImpl = options.fetchImpl || globalThis.fetch;
-    const config = this.getConfiguration(env);
+    const config = options.config || await this.resolveConfiguration(env, options.db);
 
     if (!config.enabled) return { success: true, skipped: true, reason: 'WHATSAPP_DISABLED' };
     if (!config.configured) throw new Error('Configuration WaSenderAPI manquante');
@@ -215,7 +238,7 @@ class WhatsAppService {
   async sendCommandeNotification(eventCode, commande, options = {}) {
     const env = options.env || process.env;
     const db = options.db || getSupabaseAdmin();
-    const config = this.getConfiguration(env);
+    const config = await this.resolveConfiguration(env, db);
     if (!config.enabled) return { success: true, skipped: true, reason: 'WHATSAPP_DISABLED' };
 
     const commandeId = commande?.id || null;
@@ -230,6 +253,8 @@ class WhatsAppService {
     try {
       const result = await this.sendMessage(phone, message, {
         env,
+        db,
+        config,
         fetchImpl: options.fetchImpl,
       });
 
