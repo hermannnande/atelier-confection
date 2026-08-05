@@ -38,6 +38,71 @@ test('inclut le nom et le numéro du livreur', () => {
   assert.match(message, /en route vers vous/);
 });
 
+test('remplace les variables dans un message personnalisé', () => {
+  const message = buildWhatsAppMessage(
+    WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE,
+    { numero_commande: 'CMD-789', client: { nom: 'Mariame' } },
+    { livreur: { nom: 'Koffi', telephone: '0506070809' } },
+    'Bonjour {client}, commande {numero_commande}, livreur {livreur_nom} : {livreur_telephone}.',
+  );
+
+  assert.equal(
+    message,
+    'Bonjour Mariame, commande CMD-789, livreur Koffi : 0506070809.',
+  );
+});
+
+test('charge un message personnalisé enregistré', async () => {
+  const db = {
+    from() {
+      return {
+        select() { return this; },
+        eq() { return this; },
+        async maybeSingle() {
+          return { data: { valeur: 'Message personnalisé {client}' }, error: null };
+        },
+      };
+    },
+  };
+
+  const template = await new WhatsAppService().getMessageTemplate(
+    WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+    db,
+  );
+  assert.equal(template, 'Message personnalisé {client}');
+});
+
+test('retourne tous les modèles avec les valeurs par défaut manquantes', async () => {
+  const db = {
+    from() {
+      return {
+        select() { return this; },
+        async in() {
+          return {
+            data: [{
+              cle: 'whatsapp_template_commande_recue',
+              valeur: 'Bienvenue {client}',
+            }],
+            error: null,
+          };
+        },
+      };
+    },
+  };
+
+  const templates = await new WhatsAppService().getTemplates(db);
+  assert.equal(templates.length, 6);
+  assert.equal(templates.find((item) => item.code === 'commande_recue').message, 'Bienvenue {client}');
+  assert.match(templates.find((item) => item.code === 'commande_validee').message, /confirmée/);
+});
+
+test('refuse un modèle WhatsApp inconnu', async () => {
+  await assert.rejects(
+    () => new WhatsAppService().saveTemplates({ evenement_inconnu: 'Un message valide' }, {}),
+    /Événement WhatsApp inconnu/,
+  );
+});
+
 test('reconnaît une réponse WaSenderAPI acceptée', () => {
   assert.deepEqual(parseWaSenderResponse({
     success: true,
