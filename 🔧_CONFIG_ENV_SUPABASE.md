@@ -62,7 +62,7 @@ Si vous n'avez pas encore configuré SMS8.io :
 - Si l’accès aux variables Vercel n’est pas disponible, un administrateur peut enregistrer la clé via `POST /api/whatsapp/config` : elle est chiffrée avec la clé serveur Supabase avant d’être stockée et n’est jamais renvoyée par l’API.
 - Les variables Vercel restent prioritaires lorsqu’elles sont définies.
 - La page `/whatsapp-nousunique` permet aux administrateurs de personnaliser séparément les six messages automatiques et de consulter l’historique des envois, échecs et erreurs.
-- Variables utilisables dans les messages : `{client}`, `{numero_commande}`, `{livreur_nom}` et `{livreur_telephone}` selon le scénario.
+- Variables utilisables dans les messages : `{client}`, `{numero_commande}`, `{modele}`, `{couleur}`, `{livreur_nom}` et `{livreur_telephone}` selon le scénario.
 - Le cron Vercel appelle `/api/whatsapp/cron/retards-commandes` chaque jour à **17h30**.
 - Les excuses sont envoyées une seule fois à J, J+1 et J+2, puis s'arrêtent.
 

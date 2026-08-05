@@ -21,37 +21,37 @@ export const WHATSAPP_TEMPLATE_DEFINITIONS = Object.freeze({
     label: 'Commande reçue',
     description: 'Envoyé dès l’enregistrement de la commande.',
     message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} a bien été reçue. Notre équipe la vérifie et vous contactera rapidement pour sa validation.\nMerci pour votre confiance ✨',
-    variables: ['client', 'numero_commande'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur'],
   },
   [WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE]: {
     label: 'Commande validée',
     description: 'Envoyé lorsque la commande est confirmée par l’équipe.',
     message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} est confirmée et validée. Nous lançons maintenant son traitement.\nMerci pour votre confiance ✨',
-    variables: ['client', 'numero_commande'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur'],
   },
   [WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE]: {
     label: 'Livreur assigné',
     description: 'Envoyé lorsque la commande est confiée à un livreur.',
     message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} a été confiée à {livreur_nom}, qui est en route vers vous.\nContact du livreur : {livreur_telephone}\nMerci de rester joignable.',
-    variables: ['client', 'numero_commande', 'livreur_nom', 'livreur_telephone'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur', 'livreur_nom', 'livreur_telephone'],
   },
   [WHATSAPP_EVENT_CODES.RETARD_J0]: {
     label: 'Report du jour J',
     description: 'Envoyé à 17h30 le jour de validation si la commande est toujours en attente.',
     message: "NousUnique 🤍\nBonjour {client},\nNous sommes désolés : votre commande #{numero_commande}, prévue aujourd'hui, n'a pas pu être finalisée avant la fin de la journée. Elle est reportée à demain et reste suivie en priorité.\nMerci pour votre patience.",
-    variables: ['client', 'numero_commande'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur'],
   },
   [WHATSAPP_EVENT_CODES.RETARD_J1]: {
     label: 'Report J+1',
     description: 'Envoyé à 17h30 le lendemain si la commande est toujours en attente.',
     message: 'NousUnique 🤍\nBonjour {client},\nVeuillez accepter nos excuses pour ce délai supplémentaire concernant votre commande #{numero_commande}. Elle est toujours en traitement et sa finalisation est reportée à demain.\nMerci pour votre compréhension.',
-    variables: ['client', 'numero_commande'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur'],
   },
   [WHATSAPP_EVENT_CODES.RETARD_J2]: {
     label: 'Report J+2',
     description: 'Dernier message automatique de retard, envoyé à 17h30.',
     message: 'NousUnique 🤍\nBonjour {client},\nNous vous présentons à nouveau nos excuses pour le retard de votre commande #{numero_commande}. Notre équipe la traite en priorité et la reporte au lendemain.\nMerci sincèrement pour votre patience.',
-    variables: ['client', 'numero_commande'],
+    variables: ['client', 'numero_commande', 'modele', 'couleur'],
   },
 });
 
@@ -84,11 +84,25 @@ export function buildWhatsAppMessage(eventCode, commande = {}, extra = {}, templ
 
   const client = cleanText(commande.client?.nom || commande.clientNom, 'cher client');
   const numeroCommande = cleanText(commande.numero_commande || commande.numeroCommande, 'non renseigné');
+  const modele = cleanText(
+    commande.modele?.nom
+      || commande.modeleNom
+      || commande.nom_modele
+      || commande.produit?.nom
+      || commande.name,
+    'non renseigné',
+  );
+  const couleur = cleanText(
+    commande.couleur || commande.color || commande.produit?.couleur,
+    'non renseignée',
+  );
   const livreurNom = cleanText(extra.livreur?.nom || extra.livreurNom, 'votre livreur');
   const livreurTelephone = cleanText(extra.livreur?.telephone || extra.livreurTelephone, 'non disponible');
   const values = {
     client,
     numero_commande: numeroCommande,
+    modele,
+    couleur,
     livreur_nom: livreurNom,
     livreur_telephone: livreurTelephone,
   };

@@ -41,15 +41,31 @@ test('inclut le nom et le numéro du livreur', () => {
 test('remplace les variables dans un message personnalisé', () => {
   const message = buildWhatsAppMessage(
     WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE,
-    { numero_commande: 'CMD-789', client: { nom: 'Mariame' } },
+    {
+      numero_commande: 'CMD-789',
+      client: { nom: 'Mariame' },
+      modele: { nom: 'Robe Kayla' },
+      couleur: 'Bleu roi',
+    },
     { livreur: { nom: 'Koffi', telephone: '0506070809' } },
-    'Bonjour {client}, commande {numero_commande}, livreur {livreur_nom} : {livreur_telephone}.',
+    'Bonjour {client}, votre {modele} {couleur}, commande {numero_commande}, livreur {livreur_nom} : {livreur_telephone}.',
   );
 
   assert.equal(
     message,
-    'Bonjour Mariame, commande CMD-789, livreur Koffi : 0506070809.',
+    'Bonjour Mariame, votre Robe Kayla Bleu roi, commande CMD-789, livreur Koffi : 0506070809.',
   );
+});
+
+test('prend aussi en charge les anciens champs plats pour le modèle et la couleur', () => {
+  const message = buildWhatsAppMessage(
+    WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+    { modeleNom: 'Ensemble Grâce', color: 'Vert', clientNom: 'Aïcha' },
+    {},
+    '{client} - {modele} - {couleur}',
+  );
+
+  assert.equal(message, 'Aïcha - Ensemble Grâce - Vert');
 });
 
 test('charge un message personnalisé enregistré', async () => {
@@ -93,6 +109,10 @@ test('retourne tous les modèles avec les valeurs par défaut manquantes', async
   const templates = await new WhatsAppService().getTemplates(db);
   assert.equal(templates.length, 6);
   assert.equal(templates.find((item) => item.code === 'commande_recue').message, 'Bienvenue {client}');
+  assert.deepEqual(
+    templates.find((item) => item.code === 'commande_recue').variables,
+    ['client', 'numero_commande', 'modele', 'couleur'],
+  );
   assert.match(templates.find((item) => item.code === 'commande_validee').message, /confirmée/);
 });
 
