@@ -510,7 +510,7 @@ const PreparationColis = () => {
             className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-purple-500"
           />
           <input
-            type="search"
+            type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Rechercher une commande par nom ou contact…"
