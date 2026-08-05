@@ -21,7 +21,6 @@ import {
   History,
   Wallet,
   Shield,
-  MessageSquare,
   Calendar
 } from 'lucide-react';
 import { useState } from 'react';
@@ -47,7 +46,6 @@ const Layout = () => {
     { name: 'Livreurs', href: '/caisse-livreurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Comptabilité', href: '/comptabilite', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Gestion Avancée', href: '/gestion-commandes', icon: Shield, roles: ['administrateur', 'gestionnaire'], gradient: 'from-red-500 to-pink-600' },
-    { name: 'Notifications SMS', href: '/notifications-sms', icon: MessageSquare, roles: ['administrateur', 'gestionnaire'], gradient: 'from-green-500 to-emerald-500' },
     { name: 'Statistiques', href: '/statistiques', icon: BarChart3, roles: ['administrateur', 'gestionnaire'], gradient: 'from-pink-500 to-rose-500' },
     { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur'], gradient: 'from-violet-500 to-purple-500' },
     { name: 'Utilisateurs', href: '/utilisateurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-cyan-500 to-blue-500' },
