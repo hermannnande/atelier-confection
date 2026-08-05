@@ -25,6 +25,7 @@ import GestionCommandes from './pages/GestionCommandes';
 import Presence from './pages/Presence';
 import HistoriquePresences from './pages/HistoriquePresences';
 import ModelesEnAttente from './pages/ModelesEnAttente';
+import WhatsAppConfig from './pages/WhatsAppConfig';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -188,6 +189,13 @@ function App() {
           <Route path="utilisateurs" element={
             <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <Utilisateurs />
+            </ProtectedRoute>
+          } />
+
+          {/* Configuration WhatsApp NousUnique - Administrateurs */}
+          <Route path="whatsapp-nousunique" element={
+            <ProtectedRoute allowedRoles={['administrateur']}>
+              <WhatsAppConfig />
             </ProtectedRoute>
           } />
           
