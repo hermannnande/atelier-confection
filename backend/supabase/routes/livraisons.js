@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
+import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
 
 const router = express.Router();
 
@@ -93,6 +94,18 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
 
     const commandeCountry = commande.pays_code || 'CI';
 
+    const { data: livreur, error: livreurError } = await supabase
+      .from('users')
+      .select('id, nom, telephone, role, actif, pays_code')
+      .eq('id', livreurId)
+      .maybeSingle();
+    if (livreurError || !livreur || livreur.role !== 'livreur') {
+      return res.status(404).json({ message: 'Livreur non trouvé' });
+    }
+    if (livreur.pays_code && livreur.pays_code !== commandeCountry) {
+      return res.status(400).json({ message: 'Le livreur et la commande doivent appartenir au même pays' });
+    }
+
     // Vérifier le stock dans le pays de la commande (optionnel, ne bloque pas)
     const { data: stockItem, error: e2 } = await supabase
       .from('stock')
@@ -179,6 +192,16 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       }
     } catch (smsError) {
       console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
+    }
+
+    try {
+      await whatsappService.sendCommandeNotification(
+        WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE,
+        { ...commande, statut: 'en_livraison', livreur_id: livreurId },
+        { livreur, userId: req.userId }
+      );
+    } catch (whatsappError) {
+      console.error('⚠️ Erreur WhatsApp livreur assigné (non bloquant):', whatsappError.message);
     }
 
     return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(livraison) });
