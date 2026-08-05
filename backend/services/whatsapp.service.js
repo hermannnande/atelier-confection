@@ -14,6 +14,47 @@ export const WHATSAPP_EVENT_CODES = Object.freeze({
   RETARD_J2: 'retard_j2',
 });
 
+const TEMPLATE_CONFIG_PREFIX = 'whatsapp_template_';
+
+export const WHATSAPP_TEMPLATE_DEFINITIONS = Object.freeze({
+  [WHATSAPP_EVENT_CODES.COMMANDE_RECUE]: {
+    label: 'Commande reçue',
+    description: 'Envoyé dès l’enregistrement de la commande.',
+    message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} a bien été reçue. Notre équipe la vérifie et vous contactera rapidement pour sa validation.\nMerci pour votre confiance ✨',
+    variables: ['client', 'numero_commande'],
+  },
+  [WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE]: {
+    label: 'Commande validée',
+    description: 'Envoyé lorsque la commande est confirmée par l’équipe.',
+    message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} est confirmée et validée. Nous lançons maintenant son traitement.\nMerci pour votre confiance ✨',
+    variables: ['client', 'numero_commande'],
+  },
+  [WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE]: {
+    label: 'Livreur assigné',
+    description: 'Envoyé lorsque la commande est confiée à un livreur.',
+    message: 'NousUnique 🤍\nBonjour {client},\nVotre commande #{numero_commande} a été confiée à {livreur_nom}, qui est en route vers vous.\nContact du livreur : {livreur_telephone}\nMerci de rester joignable.',
+    variables: ['client', 'numero_commande', 'livreur_nom', 'livreur_telephone'],
+  },
+  [WHATSAPP_EVENT_CODES.RETARD_J0]: {
+    label: 'Report du jour J',
+    description: 'Envoyé à 17h30 le jour de validation si la commande est toujours en attente.',
+    message: "NousUnique 🤍\nBonjour {client},\nNous sommes désolés : votre commande #{numero_commande}, prévue aujourd'hui, n'a pas pu être finalisée avant la fin de la journée. Elle est reportée à demain et reste suivie en priorité.\nMerci pour votre patience.",
+    variables: ['client', 'numero_commande'],
+  },
+  [WHATSAPP_EVENT_CODES.RETARD_J1]: {
+    label: 'Report J+1',
+    description: 'Envoyé à 17h30 le lendemain si la commande est toujours en attente.',
+    message: 'NousUnique 🤍\nBonjour {client},\nVeuillez accepter nos excuses pour ce délai supplémentaire concernant votre commande #{numero_commande}. Elle est toujours en traitement et sa finalisation est reportée à demain.\nMerci pour votre compréhension.',
+    variables: ['client', 'numero_commande'],
+  },
+  [WHATSAPP_EVENT_CODES.RETARD_J2]: {
+    label: 'Report J+2',
+    description: 'Dernier message automatique de retard, envoyé à 17h30.',
+    message: 'NousUnique 🤍\nBonjour {client},\nNous vous présentons à nouveau nos excuses pour le retard de votre commande #{numero_commande}. Notre équipe la traite en priorité et la reporte au lendemain.\nMerci sincèrement pour votre patience.',
+    variables: ['client', 'numero_commande'],
+  },
+});
+
 export function formatWhatsAppPhone(phone) {
   if (!phone) return null;
 
@@ -37,31 +78,25 @@ function cleanText(value, fallback = '') {
   return text || fallback;
 }
 
-export function buildWhatsAppMessage(eventCode, commande = {}, extra = {}) {
+export function buildWhatsAppMessage(eventCode, commande = {}, extra = {}, templateOverride = null) {
+  const definition = WHATSAPP_TEMPLATE_DEFINITIONS[eventCode];
+  if (!definition) throw new Error(`Événement WhatsApp inconnu : ${eventCode}`);
+
   const client = cleanText(commande.client?.nom || commande.clientNom, 'cher client');
-  const numero = cleanText(commande.numero_commande || commande.numeroCommande);
-  const orderLabel = numero ? ` #${numero}` : '';
+  const numeroCommande = cleanText(commande.numero_commande || commande.numeroCommande, 'non renseigné');
   const livreurNom = cleanText(extra.livreur?.nom || extra.livreurNom, 'votre livreur');
   const livreurTelephone = cleanText(extra.livreur?.telephone || extra.livreurTelephone, 'non disponible');
-
-  const messages = {
-    [WHATSAPP_EVENT_CODES.COMMANDE_RECUE]:
-      `NousUnique 🤍\nBonjour ${client},\nVotre commande${orderLabel} a bien été reçue. Notre équipe la vérifie et vous contactera rapidement pour sa validation.\nMerci pour votre confiance ✨`,
-    [WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE]:
-      `NousUnique 🤍\nBonjour ${client},\nVotre commande${orderLabel} est confirmée et validée. Nous lançons maintenant son traitement.\nMerci pour votre confiance ✨`,
-    [WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE]:
-      `NousUnique 🤍\nBonjour ${client},\nVotre commande${orderLabel} a été confiée à ${livreurNom}, qui est en route vers vous.\nContact du livreur : ${livreurTelephone}\nMerci de rester joignable.`,
-    [WHATSAPP_EVENT_CODES.RETARD_J0]:
-      `NousUnique 🤍\nBonjour ${client},\nNous sommes désolés : votre commande${orderLabel}, prévue aujourd'hui, n'a pas pu être finalisée avant la fin de la journée. Elle est reportée à demain et reste suivie en priorité.\nMerci pour votre patience.`,
-    [WHATSAPP_EVENT_CODES.RETARD_J1]:
-      `NousUnique 🤍\nBonjour ${client},\nVeuillez accepter nos excuses pour ce délai supplémentaire concernant votre commande${orderLabel}. Elle est toujours en traitement et sa finalisation est reportée à demain.\nMerci pour votre compréhension.`,
-    [WHATSAPP_EVENT_CODES.RETARD_J2]:
-      `NousUnique 🤍\nBonjour ${client},\nNous vous présentons à nouveau nos excuses pour le retard de votre commande${orderLabel}. Notre équipe la traite en priorité et la reporte au lendemain.\nMerci sincèrement pour votre patience.`,
+  const values = {
+    client,
+    numero_commande: numeroCommande,
+    livreur_nom: livreurNom,
+    livreur_telephone: livreurTelephone,
   };
+  const template = cleanText(templateOverride, definition.message);
 
-  const message = messages[eventCode];
-  if (!message) throw new Error(`Événement WhatsApp inconnu : ${eventCode}`);
-  return message;
+  return template.replace(/\{([a-z_]+)\}/g, (match, variable) => (
+    Object.prototype.hasOwnProperty.call(values, variable) ? values[variable] : match
+  )).trim();
 }
 
 export function parseWaSenderResponse(payload = {}) {
@@ -131,6 +166,82 @@ class WhatsAppService {
 
   getLogCode(eventCode) {
     return `whatsapp_${eventCode}`;
+  }
+
+  getTemplateConfigKey(eventCode) {
+    if (!WHATSAPP_TEMPLATE_DEFINITIONS[eventCode]) {
+      throw new Error(`Événement WhatsApp inconnu : ${eventCode}`);
+    }
+    return `${TEMPLATE_CONFIG_PREFIX}${eventCode}`;
+  }
+
+  async getMessageTemplate(eventCode, db = getSupabaseAdmin()) {
+    const definition = WHATSAPP_TEMPLATE_DEFINITIONS[eventCode];
+    if (!definition) throw new Error(`Événement WhatsApp inconnu : ${eventCode}`);
+
+    try {
+      const { data, error } = await db
+        .from('sms_config')
+        .select('valeur')
+        .eq('cle', this.getTemplateConfigKey(eventCode))
+        .maybeSingle();
+
+      if (error) throw error;
+      return cleanText(data?.valeur, definition.message);
+    } catch (error) {
+      console.error(`⚠️ Modèle WhatsApp ${eventCode} indisponible:`, error.message);
+      return definition.message;
+    }
+  }
+
+  async getTemplates(db = getSupabaseAdmin()) {
+    const eventCodes = Object.keys(WHATSAPP_TEMPLATE_DEFINITIONS);
+    const configKeys = eventCodes.map((code) => this.getTemplateConfigKey(code));
+    const { data, error } = await db
+      .from('sms_config')
+      .select('cle, valeur')
+      .in('cle', configKeys);
+
+    if (error) throw new Error(`Lecture des modèles WhatsApp impossible : ${error.message}`);
+    const stored = Object.fromEntries((data || []).map((row) => [row.cle, row.valeur]));
+
+    return eventCodes.map((code) => {
+      const definition = WHATSAPP_TEMPLATE_DEFINITIONS[code];
+      return {
+        code,
+        label: definition.label,
+        description: definition.description,
+        variables: definition.variables,
+        defaultMessage: definition.message,
+        message: cleanText(stored[this.getTemplateConfigKey(code)], definition.message),
+        customized: Boolean(cleanText(stored[this.getTemplateConfigKey(code)])),
+      };
+    });
+  }
+
+  async saveTemplates(templates, db = getSupabaseAdmin()) {
+    const entries = Object.entries(templates || {});
+    if (entries.length === 0) throw new Error('Aucun modèle WhatsApp fourni');
+
+    const rows = entries.map(([eventCode, rawMessage]) => {
+      const definition = WHATSAPP_TEMPLATE_DEFINITIONS[eventCode];
+      if (!definition) throw new Error(`Événement WhatsApp inconnu : ${eventCode}`);
+
+      const message = String(rawMessage || '').trim();
+      if (message.length < 5 || message.length > 2000) {
+        throw new Error(`Le modèle « ${definition.label} » doit contenir entre 5 et 2000 caractères`);
+      }
+
+      return {
+        cle: this.getTemplateConfigKey(eventCode),
+        valeur: message,
+        description: `Message WhatsApp personnalisable : ${definition.label}`,
+      };
+    });
+
+    const { error } = await db.from('sms_config').upsert(rows, { onConflict: 'cle' });
+    if (error) throw new Error(`Enregistrement des modèles WhatsApp impossible : ${error.message}`);
+    return this.getTemplates(db);
   }
 
   async hasAlreadySent(commandeId, eventCode, db = getSupabaseAdmin()) {
@@ -248,7 +359,8 @@ class WhatsAppService {
 
     const phone = commande?.client?.contact || commande?.clientPhone;
     const formattedPhone = formatWhatsAppPhone(phone);
-    const message = buildWhatsAppMessage(eventCode, commande, options);
+    const template = await this.getMessageTemplate(eventCode, db);
+    const message = buildWhatsAppMessage(eventCode, commande, options, template);
 
     try {
       const result = await this.sendMessage(phone, message, {
