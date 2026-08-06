@@ -165,3 +165,98 @@ test('prépare la requête WaSenderAPI sans effectuer de réseau réel', async (
   assert.equal(captured.options.headers.Authorization, 'Bearer cle-test');
   assert.deepEqual(JSON.parse(captured.options.body), { to: '+2250701020304', text: 'Bonjour' });
 });
+
+test('espace de 5,5 secondes deux messages WhatsApp rapprochés', async () => {
+  let currentTime = 0;
+  const waits = [];
+  const sendTimes = [];
+  const service = new WhatsAppService({
+    now: () => currentTime,
+    sleep: async (delayMs) => {
+      waits.push(delayMs);
+      currentTime += delayMs;
+    },
+  });
+  const config = {
+    enabled: true,
+    configured: true,
+    apiKey: 'cle-espacement',
+    apiUrl: 'https://www.wasenderapi.com/api',
+    timeoutMs: 15000,
+    minSendIntervalMs: 5500,
+    rateLimitRetries: 2,
+  };
+  let messageId = 0;
+  const fetchImpl = async () => {
+    sendTimes.push(currentTime);
+    messageId += 1;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        success: true,
+        data: { msgId: `wa-${messageId}`, status: 'sent' },
+      }),
+    };
+  };
+
+  await Promise.all([
+    service.sendMessage('0701020304', 'Premier message', { config, fetchImpl }),
+    service.sendMessage('0701020305', 'Deuxième message', { config, fetchImpl }),
+  ]);
+
+  assert.deepEqual(sendTimes, [0, 5500]);
+  assert.deepEqual(waits, [5500]);
+});
+
+test('retente automatiquement après une limitation WaSenderAPI', async () => {
+  let currentTime = 0;
+  const waits = [];
+  const service = new WhatsAppService({
+    now: () => currentTime,
+    sleep: async (delayMs) => {
+      waits.push(delayMs);
+      currentTime += delayMs;
+    },
+  });
+  const config = {
+    enabled: true,
+    configured: true,
+    apiKey: 'cle-retry',
+    apiUrl: 'https://www.wasenderapi.com/api',
+    timeoutMs: 15000,
+    minSendIntervalMs: 5500,
+    rateLimitRetries: 2,
+  };
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return {
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        text: async () => JSON.stringify({
+          success: false,
+          message: 'You have account protection enabled',
+          retry_after: 5,
+        }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        success: true,
+        data: { msgId: 'wa-retry', status: 'sent' },
+      }),
+    };
+  };
+
+  const result = await service.sendMessage('0701020304', 'Bonjour', { config, fetchImpl });
+
+  assert.equal(result.success, true);
+  assert.equal(result.messageId, 'wa-retry');
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [5500]);
+});

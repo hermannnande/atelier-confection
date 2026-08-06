@@ -2,6 +2,8 @@ import { getSupabaseAdmin } from '../supabase/client.js';
 import { readStoredWhatsAppConfig } from './whatsapp-config.service.js';
 
 const DEFAULT_API_URL = 'https://www.wasenderapi.com/api';
+const DEFAULT_MIN_SEND_INTERVAL_MS = 5500;
+const DEFAULT_RATE_LIMIT_RETRIES = 2;
 const PROVIDER_NAME = 'WaSenderAPI';
 const SESSION_NAME = 'NousUnique';
 
@@ -131,7 +133,47 @@ export function parseWaSenderResponse(payload = {}) {
   };
 }
 
+function parseNonNegativeInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function isWaSenderRateLimit(response, payload, parsed) {
+  if (response.status === 429) return true;
+
+  const errorText = [
+    parsed?.error,
+    payload?.message,
+    payload?.error?.message,
+    payload?.error,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return errorText.includes('rate limit')
+    || errorText.includes('too many requests')
+    || errorText.includes('account protection')
+    || errorText.includes('every 5 seconds');
+}
+
+function getWaSenderRetryAfterMs(response, payload, fallbackMs) {
+  const headerValue = response.headers?.get?.('retry-after');
+  const rawValue = headerValue
+    ?? payload?.retry_after
+    ?? payload?.error?.retry_after
+    ?? payload?.data?.retry_after;
+  const seconds = Number.parseFloat(rawValue);
+  return Number.isFinite(seconds) && seconds > 0
+    ? Math.ceil(seconds * 1000)
+    : fallbackMs;
+}
+
 class WhatsAppService {
+  constructor(options = {}) {
+    this.sleep = options.sleep || ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
+    this.now = options.now || (() => Date.now());
+    this.sendQueue = Promise.resolve();
+    this.nextSendAllowedAt = 0;
+  }
+
   getConfiguration(env = process.env) {
     return {
       enabled: env.WHATSAPP_ENABLED === 'true',
@@ -139,6 +181,14 @@ class WhatsAppService {
       apiKey: env.WASENDER_API_KEY?.trim() || '',
       apiUrl: (env.WASENDER_API_URL || DEFAULT_API_URL).trim().replace(/\/+$/, ''),
       timeoutMs: Number.parseInt(env.WASENDER_TIMEOUT_MS || '15000', 10) || 15000,
+      minSendIntervalMs: parseNonNegativeInteger(
+        env.WASENDER_MIN_SEND_INTERVAL_MS,
+        DEFAULT_MIN_SEND_INTERVAL_MS,
+      ),
+      rateLimitRetries: parseNonNegativeInteger(
+        env.WASENDER_RATE_LIMIT_RETRIES,
+        DEFAULT_RATE_LIMIT_RETRIES,
+      ),
       countryCode: (env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase(),
       provider: PROVIDER_NAME,
       session: SESSION_NAME,
@@ -306,21 +356,19 @@ class WhatsAppService {
     }
   }
 
-  async sendMessage(phone, message, options = {}) {
-    const env = options.env || process.env;
-    const fetchImpl = options.fetchImpl || globalThis.fetch;
-    const config = options.config || await this.resolveConfiguration(env, options.db);
+  enqueueSend(task) {
+    const queued = this.sendQueue.then(task, task);
+    this.sendQueue = queued.catch(() => undefined);
+    return queued;
+  }
 
-    if (!config.enabled) return { success: true, skipped: true, reason: 'WHATSAPP_DISABLED' };
-    if (!config.configured) throw new Error('Configuration WaSenderAPI manquante');
-    if (typeof fetchImpl !== 'function') throw new Error('Client HTTP indisponible');
+  async waitForSendSlot(minIntervalMs) {
+    const waitMs = Math.max(0, this.nextSendAllowedAt - this.now());
+    if (waitMs > 0) await this.sleep(waitMs);
+    this.nextSendAllowedAt = this.now() + minIntervalMs;
+  }
 
-    const formattedPhone = formatWhatsAppPhone(phone);
-    if (!formattedPhone || !/^\+[1-9]\d{9,14}$/.test(formattedPhone)) {
-      throw new Error(`Numéro WhatsApp invalide : ${phone || 'vide'}`);
-    }
-    if (!String(message || '').trim()) throw new Error('Message WhatsApp vide');
-
+  async performSendAttempt(formattedPhone, message, config, fetchImpl) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
@@ -343,21 +391,77 @@ class WhatsAppService {
         payload = { success: false, error: `Réponse non-JSON (${response.status})` };
       }
 
-      const parsed = parseWaSenderResponse(payload);
-      if (!response.ok || !parsed.success) {
-        throw new Error(parsed.error || `Erreur WaSenderAPI ${response.status}`);
-      }
-
-      return {
-        success: true,
-        phone: formattedPhone,
-        messageId: parsed.messageId,
-        providerStatus: parsed.status,
-        response: payload,
-      };
+      return { response, payload, parsed: parseWaSenderResponse(payload) };
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async sendMessage(phone, message, options = {}) {
+    const env = options.env || process.env;
+    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    const config = options.config || await this.resolveConfiguration(env, options.db);
+
+    if (!config.enabled) return { success: true, skipped: true, reason: 'WHATSAPP_DISABLED' };
+    if (!config.configured) throw new Error('Configuration WaSenderAPI manquante');
+    if (typeof fetchImpl !== 'function') throw new Error('Client HTTP indisponible');
+
+    const formattedPhone = formatWhatsAppPhone(phone);
+    if (!formattedPhone || !/^\+[1-9]\d{9,14}$/.test(formattedPhone)) {
+      throw new Error(`Numéro WhatsApp invalide : ${phone || 'vide'}`);
+    }
+    if (!String(message || '').trim()) throw new Error('Message WhatsApp vide');
+    const minSendIntervalMs = parseNonNegativeInteger(
+      config.minSendIntervalMs,
+      DEFAULT_MIN_SEND_INTERVAL_MS,
+    );
+    const rateLimitRetries = parseNonNegativeInteger(
+      config.rateLimitRetries,
+      DEFAULT_RATE_LIMIT_RETRIES,
+    );
+
+    return this.enqueueSend(async () => {
+      for (let attempt = 0; attempt <= rateLimitRetries; attempt += 1) {
+        await this.waitForSendSlot(minSendIntervalMs);
+        const { response, payload, parsed } = await this.performSendAttempt(
+          formattedPhone,
+          message,
+          config,
+          fetchImpl,
+        );
+
+        if (response.ok && parsed.success) {
+          return {
+            success: true,
+            phone: formattedPhone,
+            messageId: parsed.messageId,
+            providerStatus: parsed.status,
+            response: payload,
+          };
+        }
+
+        const rateLimited = isWaSenderRateLimit(response, payload, parsed);
+        if (rateLimited && attempt < rateLimitRetries) {
+          const retryAfterMs = getWaSenderRetryAfterMs(
+            response,
+            payload,
+            minSendIntervalMs,
+          );
+          this.nextSendAllowedAt = Math.max(
+            this.nextSendAllowedAt,
+            this.now() + retryAfterMs,
+          );
+          console.warn(
+            `WaSenderAPI limite les envois, nouvelle tentative dans ${Math.ceil(retryAfterMs / 1000)} s`,
+          );
+          continue;
+        }
+
+        throw new Error(parsed.error || `Erreur WaSenderAPI ${response.status}`);
+      }
+
+      throw new Error('WaSenderAPI a refusé le message après plusieurs tentatives');
+    });
   }
 
   async sendCommandeNotification(eventCode, commande, options = {}) {
