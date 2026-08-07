@@ -59,7 +59,7 @@ test('enregistre puis relit une configuration WhatsApp chiffrée', async () => {
   });
 });
 
-test('utilise la configuration chiffrée lorsque Vercel ne fournit pas les variables WhatsApp', async () => {
+test('ignore une ancienne configuration chiffrée car WhatsApp est retiré', async () => {
   const encrypted = encryptWhatsAppSecret('wasender-test-key-1234567890', env);
   const db = {
     from() {
@@ -86,8 +86,9 @@ test('utilise la configuration chiffrée lorsque Vercel ne fournit pas les varia
     WHATSAPP_ENABLED: 'false',
   }, db);
   assert.deepEqual(status, {
-    enabled: true,
-    configured: true,
+    enabled: false,
+    configured: false,
+    retired: true,
     provider: 'WaSenderAPI',
     session: 'NousUnique',
     countryCode: 'CI',

@@ -57,7 +57,7 @@
   ],
   "crons": [
     {
-      "path": "/api/whatsapp/cron/retards-commandes",
+      "path": "/api/customer-sms/cron/retards-commandes",
       "schedule": "30 17 * * *"
     }
   ]

@@ -62,7 +62,7 @@ test('traite J, J+1 et J+2 puis ignore J+3', async () => {
   ];
   const { db, calls } = createDatabase(commandes);
   const sent = [];
-  const whatsapp = {
+  const sender = {
     async sendCommandeNotification(eventCode, order) {
       sent.push([eventCode, order.id]);
       return { success: true };
@@ -71,9 +71,9 @@ test('traite J, J+1 et J+2 puis ignore J+3', async () => {
 
   const result = await processDelayedOrders({
     db,
-    whatsapp,
+    sender,
     now: new Date('2026-08-07T17:30:00.000Z'),
-    env: { WHATSAPP_COUNTRY_CODE: 'CI', WHATSAPP_TIME_ZONE: 'Africa/Abidjan' },
+    env: { CUSTOMER_SMS_COUNTRY_CODE: 'CI', CUSTOMER_SMS_TIME_ZONE: 'Africa/Abidjan' },
   });
 
   assert.deepEqual(sent, [

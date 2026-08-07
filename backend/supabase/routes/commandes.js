@@ -4,7 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
-import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
+import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 
 const router = express.Router();
 
@@ -185,44 +185,25 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
     const commande = mapCommande(attachUsers(data, usersById));
 
-    // 📱 Envoyer SMS automatique "Commande reçue"
     try {
-      console.log('🔍 Vérification envoi SMS automatique pour commande_recue...');
-      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_recue');
-      console.log('📊 Auto-send activé:', autoSendEnabled);
-      
-      if (autoSendEnabled) {
-        console.log('📱 Tentative d\'envoi SMS "Commande reçue"...');
-        await smsService.sendCommandeNotification('commande_recue', data, req.userId);
-        console.log('✅ SMS "Commande reçue" envoyé avec succès');
-      } else {
-        console.log('⏸️  Envoi automatique SMS désactivé pour commande_recue');
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-      console.error('Stack:', smsError.stack);
-      // Ne pas bloquer la création si SMS échoue
-    }
-
-    try {
-      await whatsappService.sendCommandeNotification(
-        WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+      await customerSmsService.sendCommandeNotification(
+        CUSTOMER_SMS_EVENT_CODES.COMMANDE_RECUE,
         data,
         { userId: req.userId }
       );
-    } catch (whatsappError) {
-      console.error('⚠️ Erreur WhatsApp commande reçue (non bloquant):', whatsappError.message);
+    } catch (smsError) {
+      console.error('Erreur SMS client commande reçue (non bloquant):', smsError.message);
     }
 
     if (data.statut === 'validee') {
       try {
-        await whatsappService.sendCommandeNotification(
-          WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+        await customerSmsService.sendCommandeNotification(
+          CUSTOMER_SMS_EVENT_CODES.COMMANDE_VALIDEE,
           data,
           { userId: req.userId }
         );
-      } catch (whatsappError) {
-        console.error('⚠️ Erreur WhatsApp commande validée à la création (non bloquant):', whatsappError.message);
+      } catch (smsError) {
+        console.error('Erreur SMS client commande validée à la création (non bloquant):', smsError.message);
       }
     }
 
@@ -291,12 +272,8 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
 
       if (statutApres && statutApres !== statutAvant) {
         const statutToTemplate = {
-          // ⚠️ Étape 2 ("attente_depot") doit partir UNIQUEMENT à la confirmation (validee),
-          // pas quand l'appelant met "En attente" (en_attente_paiement).
-          validee: 'attente_depot',
           en_couture: 'en_couture',
           en_stock: 'confectionnee', // couture terminée => mise en stock
-          en_livraison: 'en_livraison',
         };
 
         const templateCode = statutToTemplate[statutApres];
@@ -316,14 +293,14 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
 
     try {
       if (data?.statut === 'validee' && existing.statut !== 'validee') {
-        await whatsappService.sendCommandeNotification(
-          WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+        await customerSmsService.sendCommandeNotification(
+          CUSTOMER_SMS_EVENT_CODES.COMMANDE_VALIDEE,
           data,
           { userId: req.userId }
         );
       }
-    } catch (whatsappError) {
-      console.error('⚠️ Erreur WhatsApp validation via PUT (non bloquant):', whatsappError.message);
+    } catch (smsError) {
+      console.error('Erreur SMS client validation via PUT (non bloquant):', smsError.message);
     }
 
     const usersById = await hydrateUsersForCommandes(supabase, [data]);
@@ -358,28 +335,14 @@ router.post('/:id/valider', authenticate, resolveCountry, authorize('appelant', 
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
 
-    // ✅ SMS étape 2: envoyé uniquement lors de la confirmation
-    // (et non quand l'appelant clique "En attente").
     try {
-      const autoSendEnabled = await smsService.isAutoSendEnabled('attente_depot');
-      if (autoSendEnabled) {
-        const alreadySent = await smsService.hasAlreadySent(data.id, 'attente_depot');
-        if (!alreadySent) {
-          await smsService.sendCommandeNotification('attente_depot', data, req.userId);
-        }
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS attente_depot après validation (non bloquant):', smsError.message);
-    }
-
-    try {
-      await whatsappService.sendCommandeNotification(
-        WHATSAPP_EVENT_CODES.COMMANDE_VALIDEE,
+      await customerSmsService.sendCommandeNotification(
+        CUSTOMER_SMS_EVENT_CODES.COMMANDE_VALIDEE,
         data,
         { userId: req.userId }
       );
-    } catch (whatsappError) {
-      console.error('⚠️ Erreur WhatsApp commande validée (non bloquant):', whatsappError.message);
+    } catch (smsError) {
+      console.error('Erreur SMS client commande validée (non bloquant):', smsError.message);
     }
 
     return res.json({ message: 'Commande validée avec succès', commande: mapCommande(data) });

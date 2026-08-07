@@ -1,8 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { resolveCountryPublic } from '../middleware/country.js';
-import smsService from '../../services/sms.service.js';
-import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
+import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 
 const router = express.Router();
 
@@ -121,23 +120,16 @@ router.post('/public', resolveCountryPublic, async (req, res) => {
     console.log('✅ Commande web créée:', data.numero_commande);
 
     try {
-      const autoSendEnabled = await smsService.isAutoSendEnabled('commande_recue');
-      if (autoSendEnabled) {
-        await smsService.sendCommandeNotification('commande_recue', data, null);
-        console.log('✅ SMS "Commande reçue" envoyé au client');
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-    }
-
-    try {
-      await whatsappService.sendCommandeNotification(
-        WHATSAPP_EVENT_CODES.COMMANDE_RECUE,
+      const notification = await customerSmsService.sendCommandeNotification(
+        CUSTOMER_SMS_EVENT_CODES.COMMANDE_RECUE,
         data,
         { userId: null }
       );
-    } catch (whatsappError) {
-      console.error('⚠️ Erreur WhatsApp commande reçue (non bloquant):', whatsappError.message);
+      if (notification?.skipped) {
+        console.log(`SMS client commande reçue en attente de configuration (${notification.reason})`);
+      }
+    } catch (smsError) {
+      console.error('Erreur SMS client commande reçue (non bloquant):', smsError.message);
     }
     
     res.status(201).json({

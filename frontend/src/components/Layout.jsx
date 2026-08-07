@@ -21,7 +21,7 @@ import {
   History,
   Wallet,
   Shield,
-  MessageCircle,
+  MessageSquareText,
   Calendar
 } from 'lucide-react';
 import { useState } from 'react';
@@ -50,7 +50,7 @@ const Layout = () => {
     { name: 'Statistiques', href: '/statistiques', icon: BarChart3, roles: ['administrateur', 'gestionnaire'], gradient: 'from-pink-500 to-rose-500' },
     { name: 'Performances', href: '/performances', icon: BarChart3, roles: ['administrateur'], gradient: 'from-violet-500 to-purple-500' },
     { name: 'Utilisateurs', href: '/utilisateurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-cyan-500 to-blue-500' },
-    { name: 'WhatsApp NousUnique', href: '/whatsapp-nousunique', icon: MessageCircle, roles: ['administrateur'], gradient: 'from-emerald-500 to-teal-600' },
+    { name: 'SMS NousUnique', href: '/sms-nousunique', icon: MessageSquareText, roles: ['administrateur'], gradient: 'from-sky-500 to-blue-600' },
   ];
 
   const filteredNavigation = navigation.filter(item => 
