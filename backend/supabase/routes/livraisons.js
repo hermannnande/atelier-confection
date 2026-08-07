@@ -3,8 +3,7 @@ import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
-import smsService from '../../services/sms.service.js';
-import whatsappService, { WHATSAPP_EVENT_CODES } from '../../services/whatsapp.service.js';
+import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 
 const router = express.Router();
 
@@ -174,34 +173,14 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
       if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
     }
 
-    // 📱 Envoyer SMS automatique "Livraison dans 24h"
     try {
-      const autoSendEnabled = await smsService.isAutoSendEnabled('en_livraison');
-      if (autoSendEnabled) {
-        // Récupérer la commande mise à jour
-        const { data: updatedCommande } = await supabase
-          .from('commandes')
-          .select('*')
-          .eq('id', commandeId)
-          .single();
-        
-        if (updatedCommande) {
-          await smsService.sendCommandeNotification('en_livraison', updatedCommande, req.userId);
-          console.log('✅ SMS "Livraison dans 24h" envoyé');
-        }
-      }
-    } catch (smsError) {
-      console.error('⚠️ Erreur envoi SMS (non bloquant):', smsError.message);
-    }
-
-    try {
-      await whatsappService.sendCommandeNotification(
-        WHATSAPP_EVENT_CODES.LIVREUR_ASSIGNE,
+      await customerSmsService.sendCommandeNotification(
+        CUSTOMER_SMS_EVENT_CODES.LIVREUR_ASSIGNE,
         { ...commande, statut: 'en_livraison', livreur_id: livreurId },
         { livreur, userId: req.userId }
       );
-    } catch (whatsappError) {
-      console.error('⚠️ Erreur WhatsApp livreur assigné (non bloquant):', whatsappError.message);
+    } catch (smsError) {
+      console.error('Erreur SMS client livreur assigné (non bloquant):', smsError.message);
     }
 
     return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(livraison) });

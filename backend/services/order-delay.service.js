@@ -1,4 +1,4 @@
-import whatsappService, { WHATSAPP_EVENT_CODES } from './whatsapp.service.js';
+import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from './customer-sms.service.js';
 
 export const DELAY_ELIGIBLE_STATUSES = Object.freeze([
   'validee',
@@ -45,9 +45,9 @@ export function getCalendarDayDifference(start, end = new Date(), timeZone = 'Af
 
 export function getDelayEventCode(dayDifference) {
   const codes = {
-    0: WHATSAPP_EVENT_CODES.RETARD_J0,
-    1: WHATSAPP_EVENT_CODES.RETARD_J1,
-    2: WHATSAPP_EVENT_CODES.RETARD_J2,
+    0: CUSTOMER_SMS_EVENT_CODES.RETARD_J0,
+    1: CUSTOMER_SMS_EVENT_CODES.RETARD_J1,
+    2: CUSTOMER_SMS_EVENT_CODES.RETARD_J2,
   };
   return codes[dayDifference] || null;
 }
@@ -58,11 +58,14 @@ export async function processDelayedOrders(options = {}) {
 
   const env = options.env || process.env;
   const now = options.now || new Date();
-  const timeZone = env.WHATSAPP_TIME_ZONE || 'Africa/Abidjan';
-  const countryCode = (env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase();
-  const requestedLimit = Number.parseInt(env.WHATSAPP_DELAY_BATCH_LIMIT || '100', 10);
+  const timeZone = env.CUSTOMER_SMS_TIME_ZONE || env.WHATSAPP_TIME_ZONE || 'Africa/Abidjan';
+  const countryCode = (env.CUSTOMER_SMS_COUNTRY_CODE || env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase();
+  const requestedLimit = Number.parseInt(
+    env.CUSTOMER_SMS_DELAY_BATCH_LIMIT || env.WHATSAPP_DELAY_BATCH_LIMIT || '100',
+    10,
+  );
   const batchLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : 100;
-  const sender = options.whatsapp || whatsappService;
+  const sender = options.sender || options.whatsapp || customerSmsService;
 
   const { data: commandes, error } = await db
     .from('commandes')

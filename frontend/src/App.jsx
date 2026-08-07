@@ -25,7 +25,7 @@ import GestionCommandes from './pages/GestionCommandes';
 import Presence from './pages/Presence';
 import HistoriquePresences from './pages/HistoriquePresences';
 import ModelesEnAttente from './pages/ModelesEnAttente';
-import WhatsAppConfig from './pages/WhatsAppConfig';
+import CustomerSmsConfig from './pages/WhatsAppConfig';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -192,12 +192,13 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Configuration WhatsApp NousUnique - Administrateurs */}
-          <Route path="whatsapp-nousunique" element={
+          {/* Préparation des messages SMS NousUnique - Administrateurs */}
+          <Route path="sms-nousunique" element={
             <ProtectedRoute allowedRoles={['administrateur']}>
-              <WhatsAppConfig />
+              <CustomerSmsConfig />
             </ProtectedRoute>
           } />
+          <Route path="whatsapp-nousunique" element={<Navigate to="/sms-nousunique" replace />} />
           
           {/* Gestion Avancée Commandes - Admin et Gestionnaire */}
           <Route path="gestion-commandes" element={

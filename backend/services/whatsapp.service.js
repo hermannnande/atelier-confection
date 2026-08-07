@@ -6,6 +6,7 @@ const DEFAULT_MIN_SEND_INTERVAL_MS = 5500;
 const DEFAULT_RATE_LIMIT_RETRIES = 2;
 const PROVIDER_NAME = 'WaSenderAPI';
 const SESSION_NAME = 'NousUnique';
+export const WHATSAPP_RETIRED = true;
 
 export const WHATSAPP_EVENT_CODES = Object.freeze({
   COMMANDE_RECUE: 'commande_recue',
@@ -218,13 +219,13 @@ class WhatsAppService {
   }
 
   async getSystemStatus(env = process.env, db = null) {
-    const config = await this.resolveConfiguration(env, db);
     return {
-      enabled: config.enabled,
-      configured: config.configured,
-      provider: config.provider,
-      session: config.session,
-      countryCode: config.countryCode,
+      enabled: false,
+      configured: false,
+      retired: true,
+      provider: PROVIDER_NAME,
+      session: SESSION_NAME,
+      countryCode: (env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase(),
     };
   }
 
@@ -398,6 +399,12 @@ class WhatsAppService {
   }
 
   async sendMessage(phone, message, options = {}) {
+    // WaSenderAPI est retiré pour NousUnique. Ce verrou central empêche tout
+    // envoi, même si un ancien appel subsiste ou si les variables sont encore présentes.
+    if (WHATSAPP_RETIRED) {
+      return { success: true, skipped: true, reason: 'WHATSAPP_RETIRED' };
+    }
+
     const env = options.env || process.env;
     const fetchImpl = options.fetchImpl || globalThis.fetch;
     const config = options.config || await this.resolveConfiguration(env, options.db);
@@ -465,6 +472,10 @@ class WhatsAppService {
   }
 
   async sendCommandeNotification(eventCode, commande, options = {}) {
+    if (WHATSAPP_RETIRED) {
+      return { success: true, skipped: true, reason: 'WHATSAPP_RETIRED' };
+    }
+
     const env = options.env || process.env;
     const db = options.db || getSupabaseAdmin();
     const config = await this.resolveConfiguration(env, db);
