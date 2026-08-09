@@ -84,6 +84,10 @@ export function buildCustomerSmsMessage(eventCode, commande = {}, extra = {}, te
   const definition = CUSTOMER_SMS_TEMPLATE_DEFINITIONS[eventCode];
   if (!definition) throw new Error(`Événement SMS client inconnu : ${eventCode}`);
 
+  const livreurTelephone = formatCustomerSmsPhone(
+    extra.livreur?.telephone || extra.livreurTelephone,
+  );
+
   const values = {
     client: cleanText(commande.client?.nom || commande.clientNom, 'cher client'),
     numero_commande: cleanText(commande.numero_commande || commande.numeroCommande, 'non renseigné'),
@@ -93,7 +97,7 @@ export function buildCustomerSmsMessage(eventCode, commande = {}, extra = {}, te
     ),
     couleur: cleanText(commande.couleur || commande.color || commande.produit?.couleur, 'non renseignée'),
     livreur_nom: cleanText(extra.livreur?.nom || extra.livreurNom, 'votre livreur'),
-    livreur_telephone: cleanText(extra.livreur?.telephone || extra.livreurTelephone, 'non disponible'),
+    livreur_telephone: cleanText(livreurTelephone, 'non disponible'),
   };
   const template = cleanText(templateOverride, definition.message);
   return template.replace(/\{([a-z_]+)\}/g, (match, variable) => (

@@ -25,7 +25,17 @@ test('prépare les six messages SMS et remplace modèle, couleur et livreur', ()
     { livreur: { nom: 'Koffi', telephone: '0506070809' } },
     '{client}: {modele} {couleur}, commande {numero_commande}, livreur {livreur_nom}: {livreur_telephone}.',
   );
-  assert.equal(message, 'Mariame: Robe Kayla Bleu roi, commande CMD-789, livreur Koffi: 0506070809.');
+  assert.equal(message, 'Mariame: Robe Kayla Bleu roi, commande CMD-789, livreur Koffi: +2250506070809.');
+});
+
+test('conserve un contact livreur déjà au format international', () => {
+  const message = buildCustomerSmsMessage(
+    CUSTOMER_SMS_EVENT_CODES.LIVREUR_ASSIGNE,
+    { numero_commande: 'CMD-790', client: { nom: 'Awa' } },
+    { livreur: { nom: 'Koffi', telephone: '+2250701020304' } },
+    'Livreur {livreur_nom}: {livreur_telephone}.',
+  );
+  assert.equal(message, 'Livreur Koffi: +2250701020304.');
 });
 
 test('n’envoie rien tant que la plateforme SMS n’est pas choisie', async () => {
