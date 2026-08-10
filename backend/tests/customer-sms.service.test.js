@@ -32,7 +32,7 @@ test('prépare les six messages SMS et remplace modèle, couleur et livreur', ()
     { livreur: { nom: 'Koffi', telephone: '0506070809' } },
     '{client}: {modele} {couleur}, commande {numero_commande}, livreur {livreur_nom}: {livreur_telephone}.',
   );
-  assert.equal(message, 'Mariame: Robe Kayla Bleu roi, commande, livreur Koffi: 05 06 07 08 09.');
+  assert.equal(message, 'Mariame Robe Kayla Bleu roi, commande, livreur Koffi 05 06 07 08 09.');
 });
 
 test('conserve un contact livreur déjà au format international', () => {
@@ -42,13 +42,13 @@ test('conserve un contact livreur déjà au format international', () => {
     { livreur: { nom: 'Koffi', telephone: '+2250701020304' } },
     'Livreur {livreur_nom}: {livreur_telephone}.',
   );
-  assert.equal(message, 'Livreur Koffi: 07 01 02 03 04.');
+  assert.equal(message, 'Livreur Koffi 07 01 02 03 04.');
 });
 
 test('retire les codes de commande des anciens modèles personnalisés', () => {
   assert.equal(
     makeCustomerSmsCarrierSafe('NousUnique : votre commande #CMD-009887 est prête.', 'CMD-009887'),
-    'NousUnique : votre commande est prête.',
+    'NousUnique votre commande est prête.',
   );
   assert.equal(
     makeCustomerSmsCarrierSafe('Votre commande ORD-123456 est confirmée.'),

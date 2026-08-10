@@ -25,37 +25,37 @@ export const CUSTOMER_SMS_TEMPLATE_DEFINITIONS = Object.freeze({
   [CUSTOMER_SMS_EVENT_CODES.COMMANDE_RECUE]: {
     label: 'Commande reçue',
     description: 'Prévu dès l’enregistrement de la commande.',
-    message: 'NousUnique : Bonjour {client}, votre commande ({modele}, {couleur}) a bien été reçue. Nous vous contacterons pour la confirmer.',
+    message: 'NousUnique — Bonjour {client}, votre commande ({modele}, {couleur}) a bien été reçue. Nous vous contacterons pour la confirmer.',
     variables: ['client', 'modele', 'couleur'],
   },
   [CUSTOMER_SMS_EVENT_CODES.COMMANDE_VALIDEE]: {
     label: 'Commande validée',
     description: 'Prévu lorsque la commande est confirmée par l’équipe.',
-    message: 'NousUnique : Bonjour {client}, votre commande ({modele}, {couleur}) est confirmée et passe en préparation.',
+    message: 'NousUnique — Bonjour {client}, votre commande ({modele}, {couleur}) est confirmée et passe en préparation.',
     variables: ['client', 'modele', 'couleur'],
   },
   [CUSTOMER_SMS_EVENT_CODES.LIVREUR_ASSIGNE]: {
     label: 'Livreur assigné',
     description: 'Prévu lorsque la commande est confiée à un livreur.',
-    message: 'NousUnique : votre commande est confiée à {livreur_nom}. Contact du livreur : {livreur_telephone}. Merci de rester joignable.',
+    message: 'NousUnique — votre commande est confiée à {livreur_nom}. Contact du livreur {livreur_telephone}. Merci de rester joignable.',
     variables: ['client', 'modele', 'couleur', 'livreur_nom', 'livreur_telephone'],
   },
   [CUSTOMER_SMS_EVENT_CODES.RETARD_J0]: {
     label: 'Report du jour J',
     description: 'Prévu à 17h30 le jour de validation si la commande attend toujours.',
-    message: 'NousUnique : Bonjour {client}, désolés, votre commande ne sera pas finalisée aujourd’hui. Elle est prioritaire et reportée à demain.',
+    message: 'NousUnique — Bonjour {client}, désolés, votre commande ne sera pas finalisée aujourd’hui. Elle est prioritaire et reportée à demain.',
     variables: ['client', 'modele', 'couleur'],
   },
   [CUSTOMER_SMS_EVENT_CODES.RETARD_J1]: {
     label: 'Report J+1',
     description: 'Prévu à 17h30 le lendemain si la commande attend toujours.',
-    message: 'NousUnique : Bonjour {client}, veuillez accepter nos excuses pour le retard de votre commande. Sa finalisation est reportée à demain.',
+    message: 'NousUnique — Bonjour {client}, veuillez accepter nos excuses pour le retard de votre commande. Sa finalisation est reportée à demain.',
     variables: ['client', 'modele', 'couleur'],
   },
   [CUSTOMER_SMS_EVENT_CODES.RETARD_J2]: {
     label: 'Report J+2',
     description: 'Dernier SMS automatique de retard, prévu à 17h30.',
-    message: 'NousUnique : Bonjour {client}, nous sommes désolés du retard de votre commande. Notre équipe la traite en priorité. Merci pour votre patience.',
+    message: 'NousUnique — Bonjour {client}, nous sommes désolés du retard de votre commande. Notre équipe la traite en priorité. Merci pour votre patience.',
     variables: ['client', 'modele', 'couleur'],
   },
 });
@@ -112,6 +112,7 @@ export function makeCustomerSmsCarrierSafe(message, orderNumber = '') {
   safeMessage = safeMessage
     .replace(/\s*#?(?:CMD|ORD)[-_ ]?\d+\b/gi, '')
     .replace(/#(?=\s|[.,;:!?]|$)/g, '')
+    .replace(/\s*:\s*/g, ' ')
     .replace(/\s+([,.;!?])/g, '$1')
     .replace(/([,;:])\s*([,.;:!?])/g, '$2')
     .replace(/\s{2,}/g, ' ')
