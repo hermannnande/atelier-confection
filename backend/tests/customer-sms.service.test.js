@@ -4,13 +4,20 @@ import {
   CUSTOMER_SMS_EVENT_CODES,
   CustomerSmsService,
   buildCustomerSmsMessage,
+  formatCustomerSmsDisplayPhone,
   formatCustomerSmsPhone,
+  makeCustomerSmsCarrierSafe,
 } from '../services/customer-sms.service.js';
 import { SmsGatewayService } from '../services/sms-gateway.service.js';
 
 test('normalise les numéros ivoiriens pour le futur fournisseur SMS', () => {
   assert.equal(formatCustomerSmsPhone('07 59 40 68 42'), '+2250759406842');
   assert.equal(formatCustomerSmsPhone('2250759406842'), '+2250759406842');
+});
+
+test('espace le contact affiché dans le corps du SMS', () => {
+  assert.equal(formatCustomerSmsDisplayPhone('+2250759406842'), '07 59 40 68 42');
+  assert.equal(formatCustomerSmsDisplayPhone('0506070809'), '05 06 07 08 09');
 });
 
 test('prépare les six messages SMS et remplace modèle, couleur et livreur', () => {
@@ -25,7 +32,7 @@ test('prépare les six messages SMS et remplace modèle, couleur et livreur', ()
     { livreur: { nom: 'Koffi', telephone: '0506070809' } },
     '{client}: {modele} {couleur}, commande {numero_commande}, livreur {livreur_nom}: {livreur_telephone}.',
   );
-  assert.equal(message, 'Mariame: Robe Kayla Bleu roi, commande CMD-789, livreur Koffi: +2250506070809.');
+  assert.equal(message, 'Mariame Robe Kayla Bleu roi, commande, livreur Koffi 05 06 07 08 09.');
 });
 
 test('conserve un contact livreur déjà au format international', () => {
@@ -35,7 +42,18 @@ test('conserve un contact livreur déjà au format international', () => {
     { livreur: { nom: 'Koffi', telephone: '+2250701020304' } },
     'Livreur {livreur_nom}: {livreur_telephone}.',
   );
-  assert.equal(message, 'Livreur Koffi: +2250701020304.');
+  assert.equal(message, 'Livreur Koffi 07 01 02 03 04.');
+});
+
+test('retire les codes de commande des anciens modèles personnalisés', () => {
+  assert.equal(
+    makeCustomerSmsCarrierSafe('NousUnique : votre commande #CMD-009887 est prête.', 'CMD-009887'),
+    'NousUnique votre commande est prête.',
+  );
+  assert.equal(
+    makeCustomerSmsCarrierSafe('Votre commande ORD-123456 est confirmée.'),
+    'Votre commande est confirmée.',
+  );
 });
 
 test('n’envoie rien tant que la plateforme SMS n’est pas choisie', async () => {
