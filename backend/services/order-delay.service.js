@@ -7,6 +7,10 @@ export const DELAY_ELIGIBLE_STATUSES = Object.freeze([
   'en_stock',
 ]);
 
+const DAY_IN_MS = 86400000;
+const DEFAULT_PAGE_SIZE = 250;
+const MAX_PAGE_SIZE = 1000;
+
 export function getValidatedAt(commande) {
   const historique = Array.isArray(commande?.historique) ? commande.historique : [];
   for (let index = historique.length - 1; index >= 0; index -= 1) {
@@ -52,6 +56,52 @@ export function getDelayEventCode(dayDifference) {
   return codes[dayDifference] || null;
 }
 
+export function getDelayWindowStart(now = new Date(), timeZone = 'Africa/Abidjan') {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) return null;
+  return new Date(getCalendarDateNumber(now, timeZone) - (2 * DAY_IN_MS));
+}
+
+function getDelayPageSize(env) {
+  const requestedPageSize = Number.parseInt(
+    env.CUSTOMER_SMS_DELAY_PAGE_SIZE
+      || env.CUSTOMER_SMS_DELAY_BATCH_LIMIT
+      || env.WHATSAPP_DELAY_BATCH_LIMIT
+      || String(DEFAULT_PAGE_SIZE),
+    10,
+  );
+  if (!Number.isFinite(requestedPageSize) || requestedPageSize <= 0) return DEFAULT_PAGE_SIZE;
+  return Math.min(requestedPageSize, MAX_PAGE_SIZE);
+}
+
+async function getEligibleDelayedOrders({ db, countryCode, now, timeZone, pageSize }) {
+  const windowStart = getDelayWindowStart(now, timeZone);
+  if (!windowStart) throw new Error('Date de traitement des reports invalide');
+
+  const commandes = [];
+  let pages = 0;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await db
+      .from('commandes')
+      .select('*')
+      .eq('pays_code', countryCode)
+      .in('statut', DELAY_ELIGIBLE_STATUSES)
+      .gte('updated_at', windowStart.toISOString())
+      .lte('updated_at', now.toISOString())
+      .order('updated_at', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw new Error(`Récupération des commandes impossible : ${error.message}`);
+
+    const page = Array.isArray(data) ? data : [];
+    pages += 1;
+    commandes.push(...page);
+    if (page.length < pageSize) break;
+  }
+
+  return { commandes, pages, windowStart };
+}
+
 export async function processDelayedOrders(options = {}) {
   const db = options.db;
   if (!db) throw new Error('Client Supabase requis');
@@ -60,22 +110,14 @@ export async function processDelayedOrders(options = {}) {
   const now = options.now || new Date();
   const timeZone = env.CUSTOMER_SMS_TIME_ZONE || env.WHATSAPP_TIME_ZONE || 'Africa/Abidjan';
   const countryCode = (env.CUSTOMER_SMS_COUNTRY_CODE || env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase();
-  const requestedLimit = Number.parseInt(
-    env.CUSTOMER_SMS_DELAY_BATCH_LIMIT || env.WHATSAPP_DELAY_BATCH_LIMIT || '100',
-    10,
-  );
-  const batchLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : 100;
+  const pageSize = getDelayPageSize(env);
   const sender = options.sender || options.whatsapp || customerSmsService;
 
-  const { data: commandes, error } = await db
-    .from('commandes')
-    .select('*')
-    .eq('pays_code', countryCode)
-    .in('statut', DELAY_ELIGIBLE_STATUSES)
-    .order('updated_at', { ascending: true })
-    .limit(batchLimit);
-
-  if (error) throw new Error(`Récupération des commandes impossible : ${error.message}`);
+  const {
+    commandes,
+    pages,
+    windowStart,
+  } = await getEligibleDelayedOrders({ db, countryCode, now, timeZone, pageSize });
 
   const stats = { processed: 0, sent: 0, skipped: 0, failed: 0 };
   const details = [];
@@ -110,7 +152,9 @@ export async function processDelayedOrders(options = {}) {
     at: now.toISOString(),
     timeZone,
     countryCode,
-    batchLimit,
+    windowStart: windowStart.toISOString(),
+    pageSize,
+    pages,
     stats,
     details,
   };
