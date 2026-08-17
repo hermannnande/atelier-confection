@@ -12,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Save,
+  Send,
   Smartphone,
   Wrench,
 } from 'lucide-react';
@@ -56,6 +57,9 @@ const CustomerSmsConfig = () => {
   const [historyFilters, setHistoryFilters] = useState({ status: '', eventCode: '' });
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0 });
+  const [reportPreview, setReportPreview] = useState(null);
+  const [reportPreviewLoading, setReportPreviewLoading] = useState(true);
+  const [sendingReport, setSendingReport] = useState(false);
 
   const templateLabels = useMemo(
     () => Object.fromEntries(templates.map((template) => [template.code, template.label])),
@@ -112,10 +116,24 @@ const CustomerSmsConfig = () => {
     }
   };
 
+  const loadReportPreview = async () => {
+    setReportPreviewLoading(true);
+    try {
+      const response = await api.get('/customer-sms/reports/preview');
+      setReportPreview(response.data?.data || null);
+    } catch (error) {
+      setReportPreview(null);
+      toast.error(error.response?.data?.message || 'Impossible de compter les reports du jour');
+    } finally {
+      setReportPreviewLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
     loadTemplates();
     loadHistory(1, { status: '', eventCode: '' });
+    loadReportPreview();
   }, []);
 
   const handleTemplateChange = (code, message) => {
@@ -180,6 +198,22 @@ const CustomerSmsConfig = () => {
     loadHistory(1, next);
   };
 
+  const sendReportJ0Batch = async () => {
+    setSendingReport(true);
+    try {
+      const response = await api.post('/customer-sms/reports/run-j0');
+      const sent = response.data?.stats?.sent || 0;
+      const failed = response.data?.stats?.failed || 0;
+      if (failed > 0) toast.error(`${failed} SMS du lot ont échoué`);
+      else toast.success(`${sent} SMS Report du jour J mis en envoi`);
+      await Promise.all([loadReportPreview(), loadHistory(1, historyFilters)]);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Envoi du Report du jour J impossible');
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-8">
       <header className="rounded-3xl bg-gradient-to-br from-sky-500 to-blue-700 p-7 text-white shadow-xl shadow-blue-500/20">
@@ -234,6 +268,39 @@ const CustomerSmsConfig = () => {
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-lg sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-widest text-amber-700">Envoi manuel ciblé</p>
+            <h2 className="mt-1 text-2xl font-black text-amber-950">Report du jour J</h2>
+            <p className="mt-2 text-sm text-amber-900/75">
+              Uniquement les commandes validées aujourd’hui encore actives dans Commandes. Chaque lot contient au maximum 5 SMS.
+            </p>
+            <p className="mt-3 text-lg font-black text-amber-950">
+              {reportPreviewLoading ? 'Comptage…' : `${reportPreview?.eligible || 0} client(s) restant(s)`}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:min-w-64">
+            <button
+              type="button"
+              onClick={loadReportPreview}
+              disabled={reportPreviewLoading || sendingReport}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-white px-5 py-3 font-black text-amber-900 disabled:opacity-50"
+            >
+              <RefreshCw size={18} className={reportPreviewLoading ? 'animate-spin' : ''} /> Actualiser le nombre
+            </button>
+            <button
+              type="button"
+              onClick={sendReportJ0Batch}
+              disabled={sendingReport || reportPreviewLoading || !reportPreview?.eligible}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 px-5 py-3 font-black text-white transition hover:bg-amber-700 disabled:opacity-50"
+            >
+              <Send size={18} /> {sendingReport ? 'Envoi du lot…' : 'Envoyer le prochain lot'}
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">

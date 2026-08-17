@@ -146,3 +146,32 @@ test('pagine toutes les commandes concernées au-delà de 100', async () => {
     ],
   );
 });
+
+test('cible uniquement le report J et limite un lot manuel', async () => {
+  const commandes = [
+    ...Array.from({ length: 7 }, (_, index) => commande(`j0-${index}`, '2026-08-07T09:00:00.000Z')),
+    commande('j1', '2026-08-06T09:00:00.000Z'),
+  ];
+  const { db } = createDatabase(commandes);
+  const sent = [];
+  const sender = {
+    async sendCommandeNotification(eventCode, order) {
+      sent.push([eventCode, order.id]);
+      return { success: true };
+    },
+  };
+
+  const result = await processDelayedOrders({
+    db,
+    sender,
+    dayDifferences: [0],
+    maxSends: 5,
+    now: new Date('2026-08-07T17:30:00.000Z'),
+    env: { CUSTOMER_SMS_COUNTRY_CODE: 'CI', CUSTOMER_SMS_TIME_ZONE: 'Africa/Abidjan' },
+  });
+
+  assert.equal(sent.length, 5);
+  assert.ok(sent.every(([eventCode]) => eventCode === 'retard_j0'));
+  assert.equal(result.maxSends, 5);
+  assert.deepEqual(result.requestedDays, [0]);
+});

@@ -112,6 +112,13 @@ export async function processDelayedOrders(options = {}) {
   const countryCode = (env.CUSTOMER_SMS_COUNTRY_CODE || env.WHATSAPP_COUNTRY_CODE || 'CI').trim().toUpperCase();
   const pageSize = getDelayPageSize(env);
   const sender = options.sender || options.whatsapp || customerSmsService;
+  const requestedDays = Array.isArray(options.dayDifferences)
+    ? new Set(options.dayDifferences.map((day) => Number(day)).filter((day) => [0, 1, 2].includes(day)))
+    : null;
+  const requestedMaxSends = Number.parseInt(String(options.maxSends ?? ''), 10);
+  const maxSends = Number.isFinite(requestedMaxSends) && requestedMaxSends > 0
+    ? requestedMaxSends
+    : null;
 
   const {
     commandes,
@@ -123,12 +130,13 @@ export async function processDelayedOrders(options = {}) {
   const details = [];
 
   for (const commande of commandes || []) {
+    if (maxSends !== null && stats.sent >= maxSends) break;
     stats.processed += 1;
     const validatedAt = getValidatedAt(commande);
     const dayDifference = validatedAt ? getCalendarDayDifference(validatedAt, now, timeZone) : null;
     const eventCode = getDelayEventCode(dayDifference);
 
-    if (!eventCode || validatedAt > now) {
+    if (!eventCode || validatedAt > now || (requestedDays && !requestedDays.has(dayDifference))) {
       stats.skipped += 1;
       continue;
     }
@@ -155,6 +163,8 @@ export async function processDelayedOrders(options = {}) {
     windowStart: windowStart.toISOString(),
     pageSize,
     pages,
+    requestedDays: requestedDays ? [...requestedDays] : null,
+    maxSends,
     stats,
     details,
   };
