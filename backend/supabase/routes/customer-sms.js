@@ -125,6 +125,76 @@ router.get('/history', authenticate, authorize('administrateur'), async (req, re
   }
 });
 
+async function ensureCustomerSmsReady(db) {
+  const configuration = await customerSmsService.getSystemStatus(process.env, db);
+  if (!configuration.ready) {
+    const error = new Error(configuration.enabled ? 'SMS_PROVIDER_PENDING' : 'CUSTOMER_SMS_DISABLED');
+    error.statusCode = 409;
+    error.configuration = configuration;
+    throw error;
+  }
+  return configuration;
+}
+
+router.get('/reports/preview', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const db = getSupabaseAdmin();
+    await ensureCustomerSmsReady(db);
+    const previewSender = {
+      async sendCommandeNotification(eventCode, commande) {
+        const alreadySent = await customerSmsService.hasAlreadySent(commande?.id, eventCode, db);
+        return alreadySent
+          ? { success: true, skipped: true, reason: 'ALREADY_SENT' }
+          : { success: true, preview: true };
+      },
+    };
+    const result = await processDelayedOrders({
+      db,
+      sender: previewSender,
+      dayDifferences: [0],
+    });
+    return res.json({
+      success: true,
+      data: {
+        eventCode: 'retard_j0',
+        eligible: result.stats.sent,
+        examined: result.stats.processed,
+        at: result.at,
+      },
+    });
+  } catch (error) {
+    console.error('Aperçu manuel SMS report J:', error.message);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      configuration: error.configuration,
+    });
+  }
+});
+
+// Un lot volontairement court laisse de la marge sous la limite SMSEnvoie
+// de 10 requêtes par minute. Les doublons sont ignorés par le service SMS.
+router.post('/reports/run-j0', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const db = getSupabaseAdmin();
+    await ensureCustomerSmsReady(db);
+    const result = await processDelayedOrders({
+      db,
+      sender: customerSmsService,
+      dayDifferences: [0],
+      maxSends: 5,
+    });
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Envoi manuel SMS report J:', error.message);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+      configuration: error.configuration,
+    });
+  }
+});
+
 // Préparé pour 17h30 à J, J+1 et J+2. Tant que le fournisseur SMS
 // n'est pas configuré, le cron répond "skipped" sans envoyer de message.
 router.get('/cron/retards-commandes', async (req, res) => {
