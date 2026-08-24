@@ -7,8 +7,12 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/images/favicon-512.png" />
     <link rel="apple-touch-icon" href="/images/favicon-180.png" />
     <title>Boutique - Atelier Confection</title>
+    <meta
+      name="description"
+      content="Découvrez les créations uniques de l'Atelier Confection : robes, ensembles et pièces confectionnées avec soin."
+    />
     <link rel="stylesheet" href="../css/style.css?v=20260613-4" />
-    <link rel="stylesheet" href="../css/boutique.css" />
+    <link rel="stylesheet" href="../css/boutique.css?v=20260824-perf2" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=optional" onload="this.onload=null;this.rel='stylesheet'">
@@ -94,7 +98,7 @@
       <section class="shop-filters">
         <div class="filters-container">
           <div class="filter-group">
-            <label class="filter-label">Catégorie</label>
+            <label class="filter-label" for="category-filter">Catégorie</label>
             <select class="filter-select" id="category-filter">
               <option value="all">Toutes les catégories</option>
               <option value="elegant">Élégant</option>
@@ -105,7 +109,7 @@
           </div>
 
           <div class="filter-group">
-            <label class="filter-label">Couleur</label>
+            <label class="filter-label" for="color-filter">Couleur</label>
             <select class="filter-select" id="color-filter">
               <option value="all">Toutes les couleurs</option>
               <option value="marron">Marron</option>
@@ -117,7 +121,7 @@
           </div>
 
           <div class="filter-group">
-            <label class="filter-label">Trier par</label>
+            <label class="filter-label" for="sort-filter">Trier par</label>
             <select class="filter-select" id="sort-filter">
               <option value="recent">Plus récent</option>
               <option value="price-asc">Prix croissant</option>
@@ -140,7 +144,7 @@
       </section>
 
       <!-- Pagination -->
-      <section class="pagination">
+      <section class="pagination" aria-label="Pagination du catalogue">
         <button class="pagination-btn" disabled>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -272,6 +276,6 @@
     <link rel="stylesheet" href="../css/cart-drawer.css?v=20260613-5">
     <script src="../js/main.js?v=20260824-perf2"></script>
     <script src="../js/cart-drawer.js?v=20260613-5"></script>
-    <script src="../js/boutique.js?v=20260824-perf1"></script>
+    <script src="../js/boutique.js?v=20260824-perf2"></script>
   </body>
 </html>

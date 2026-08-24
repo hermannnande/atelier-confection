@@ -454,6 +454,7 @@ function renderPagination(totalProducts) {
   }
 
   paginationNumbers.replaceChildren(fragment);
+  pagination?.classList.add('is-ready');
 }
 
 function renderCurrentPage({ scroll = false } = {}) {
