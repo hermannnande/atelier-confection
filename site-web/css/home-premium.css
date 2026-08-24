@@ -32,6 +32,24 @@ body.home-premium .hero {
   min-height: 640px;
 }
 
+/* Le contenu critique est visible dès le premier rendu : cela évite que les
+   animations d'entrée retardent ou invalident la mesure LCP. */
+body.home-premium .announcement-bar,
+body.home-premium .site-header,
+body.home-premium .brand,
+body.home-premium .brand-mark,
+body.home-premium .brand-mark svg,
+body.home-premium .brand-text,
+body.home-premium .main-nav .nav-link,
+body.home-premium .header-actions,
+body.home-premium .hero-tag,
+body.home-premium .hero-content h1,
+body.home-premium .hero-subtitle,
+body.home-premium .hero-actions,
+body.home-premium .hero-scroll-indicator {
+  animation: none;
+}
+
 /* Overlay plus cinématographique (la vidéo dessous reste intacte) */
 body.home-premium .hero-overlay {
   background:

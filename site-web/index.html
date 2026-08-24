@@ -17,7 +17,7 @@
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="css/style.css?v=20260824-perf1" />
-    <link rel="stylesheet" href="css/home-premium.css?v=20260824-perf1" />
+    <link rel="stylesheet" href="css/home-premium.css?v=20260824-perf2" />
   </head>
   <body class="home-premium">
     <div class="announcement-bar">
@@ -103,9 +103,9 @@
 
     <main>
       <section class="hero">
-        <picture class="hero-poster" id="heroPoster" aria-hidden="true">
+        <picture class="hero-poster" id="heroPoster">
           <source media="(max-width: 768px)" srcset="videos/hero-mobile-poster.webp?v=20260824-perf1">
-          <img src="videos/hero-desktop-poster.webp?v=20260824-perf1" alt="" width="1280" height="720" fetchpriority="high" decoding="async">
+          <img src="videos/hero-desktop-poster.webp?v=20260824-perf1" alt="Création élégante Nous Unique" width="1280" height="720" fetchpriority="high" decoding="async">
         </picture>
         <video
           class="hero-video"
@@ -161,7 +161,9 @@
 
             function schedule() {
               if (timer || started) return;
-              timer = window.setTimeout(start, 3000);
+              // Le poster reste le LCP stable. La vidéo démarre ensuite, ou
+              // immédiatement dès que la visiteuse interagit avec la page.
+              timer = window.setTimeout(start, 10000);
             }
 
             if (document.readyState === 'loading') {
@@ -171,6 +173,7 @@
             }
             document.addEventListener('pointerdown', start, { once: true, passive: true });
             document.addEventListener('keydown', start, { once: true });
+            document.addEventListener('scroll', start, { once: true, passive: true });
 
             function onBreakpointChange() {
               if (!started) return;
@@ -675,7 +678,7 @@
     </a>
 
     <link rel="stylesheet" href="css/cart-drawer.css?v=20260613-5">
-    <script src="js/main.js?v=20260824-perf1"></script>
+    <script src="js/main.js?v=20260824-perf2"></script>
     <script src="js/cart-drawer.js?v=20260613-5"></script>
     <script src="js/enhancements.js?v=20260824-perf1"></script>
   </body>

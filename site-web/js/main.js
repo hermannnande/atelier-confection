@@ -475,7 +475,7 @@ if (document.readyState === 'loading') {
     }
   });
 
-  const scheduleMusic = () => window.setTimeout(startMusic, 4500);
+  const scheduleMusic = () => window.setTimeout(startMusic, 10000);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scheduleMusic, { once: true });
   } else {
