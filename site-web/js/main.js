@@ -415,3 +415,173 @@ window.addEventListener("load", () => {
   bindProductAddToCartFallback();
   SiteStore.updateBadges();
 });
+
+// ===== AMBIANCE MUSICALE NOUS UNIQUE =====
+// Les navigateurs bloquent souvent l'autoplay sonore : dans ce cas, la
+// lecture commence des la premiere interaction du visiteur avec la page.
+(() => {
+  if (window.__nousUniqueBackgroundMusic) return;
+  window.__nousUniqueBackgroundMusic = true;
+
+  const AUDIO_URL = 'https://nousunique.com/wp-content/uploads/2026/08/Jazz-Background-Music-Bar-Lounge-Free-Music.mp3';
+  const SEGMENT_START = 0;
+  const SEGMENT_END = 30;
+  const ENABLED_KEY = 'nous-unique-background-music-enabled';
+  const TIME_KEY = 'nous-unique-background-music-time';
+
+  const audio = new Audio(AUDIO_URL);
+  audio.preload = 'auto';
+  audio.volume = 0.22;
+  audio.loop = false;
+  audio.setAttribute('playsinline', '');
+  audio.setAttribute('aria-hidden', 'true');
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .nu-music-toggle {
+      position: fixed;
+      left: 20px;
+      bottom: 20px;
+      z-index: 10000;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border: 1px solid rgba(194, 163, 107, .72);
+      border-radius: 999px;
+      background: rgba(15, 15, 15, .9);
+      color: #f4dfb6;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      font: 700 11px/1 Arial, sans-serif;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+    }
+    .nu-music-toggle:hover {
+      transform: translateY(-2px);
+      background: rgba(30, 25, 17, .96);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, .34);
+    }
+    .nu-music-toggle:focus-visible {
+      outline: 2px solid #d6b675;
+      outline-offset: 3px;
+    }
+    .nu-music-toggle__note {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f5e3bd, #b78a3b);
+      color: #111;
+      font-size: 15px;
+      box-shadow: 0 0 0 0 rgba(214, 182, 117, .35);
+    }
+    .nu-music-toggle.is-playing .nu-music-toggle__note {
+      animation: nu-music-pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes nu-music-pulse {
+      50% { box-shadow: 0 0 0 7px rgba(214, 182, 117, 0); transform: scale(1.06); }
+    }
+    @media (max-width: 640px) {
+      .nu-music-toggle { left: 12px; bottom: 12px; padding: 10px; }
+      .nu-music-toggle__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .nu-music-toggle, .nu-music-toggle__note { transition: none; animation: none !important; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'nu-music-toggle';
+  button.innerHTML = '<span class="nu-music-toggle__note" aria-hidden="true">&#9835;</span><span class="nu-music-toggle__label">Ambiance</span>';
+  document.body.appendChild(button);
+
+  let enabled = localStorage.getItem(ENABLED_KEY) !== 'false';
+
+  const updateButton = () => {
+    const playing = enabled && !audio.paused;
+    button.classList.toggle('is-playing', playing);
+    button.setAttribute('aria-pressed', String(playing));
+    button.setAttribute('aria-label', playing ? 'Mettre la musique en pause' : 'Jouer la musique d\'ambiance');
+    button.title = playing ? 'Mettre la musique en pause' : 'Jouer la musique d\'ambiance';
+  };
+
+  const keepInsideSegment = () => {
+    if (audio.currentTime >= SEGMENT_END || audio.currentTime < SEGMENT_START) {
+      audio.currentTime = SEGMENT_START;
+    }
+  };
+
+  const startMusic = async () => {
+    if (!enabled) return false;
+    keepInsideSegment();
+    try {
+      await audio.play();
+      updateButton();
+      return true;
+    } catch (error) {
+      updateButton();
+      return false;
+    }
+  };
+
+  audio.addEventListener('loadedmetadata', () => {
+    const savedTime = Number(sessionStorage.getItem(TIME_KEY));
+    if (Number.isFinite(savedTime) && savedTime >= SEGMENT_START && savedTime < SEGMENT_END) {
+      audio.currentTime = savedTime;
+    }
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (audio.currentTime >= SEGMENT_END) {
+      audio.currentTime = SEGMENT_START;
+      if (enabled) startMusic();
+    }
+  });
+
+  audio.addEventListener('play', updateButton);
+  audio.addEventListener('pause', updateButton);
+  audio.addEventListener('ended', () => {
+    audio.currentTime = SEGMENT_START;
+    if (enabled) startMusic();
+  });
+
+  button.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    if (!audio.paused) {
+      enabled = false;
+      localStorage.setItem(ENABLED_KEY, 'false');
+      audio.pause();
+    } else {
+      enabled = true;
+      localStorage.setItem(ENABLED_KEY, 'true');
+      await startMusic();
+    }
+    updateButton();
+  });
+
+  const unlockAudio = async () => {
+    if (await startMusic()) {
+      document.removeEventListener('pointerdown', unlockAudio, true);
+      document.removeEventListener('keydown', unlockAudio, true);
+    }
+  };
+
+  document.addEventListener('pointerdown', unlockAudio, true);
+  document.addEventListener('keydown', unlockAudio, true);
+  window.addEventListener('pagehide', () => {
+    if (Number.isFinite(audio.currentTime)) {
+      sessionStorage.setItem(TIME_KEY, String(audio.currentTime % SEGMENT_END));
+    }
+  });
+
+  updateButton();
+  startMusic();
+})();
