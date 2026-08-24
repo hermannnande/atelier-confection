@@ -410,6 +410,7 @@ body.home-premium .btn-primary-large:hover {
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
   body.home-premium .hero-content { margin-top: 48px; padding: 0 22px; }
+  body.home-premium .hero-content h1 { font-size: clamp(2.5rem, 11vw, 4rem); }
   body.home-premium .hero-tag { letter-spacing: 3px; gap: 10px; }
   body.home-premium .hero-tag::before,
   body.home-premium .hero-tag::after { width: 24px; }
