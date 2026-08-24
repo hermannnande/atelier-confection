@@ -50,6 +50,12 @@ body.home-premium .hero-scroll-indicator {
   animation: none;
 }
 
+body.home-premium .brand-text::after,
+body.home-premium .footer-logo .brand-text::after {
+  animation: none !important;
+  background-position: center;
+}
+
 /* Overlay plus cinématographique (la vidéo dessous reste intacte) */
 body.home-premium .hero-overlay {
   background:
