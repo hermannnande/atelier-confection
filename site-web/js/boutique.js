@@ -18,7 +18,11 @@ const readAdminProducts = () => {
 
 const readAdminCategories = () => {
   try {
-    const raw = localStorage.getItem('atelier-admin-categories');
+    // Ne jamais remplacer la source locale de l'administration par le cache
+    // public du catalogue : l'admin synchronise sa clé vers le serveur.
+    const raw =
+      localStorage.getItem('atelier-admin-categories') ||
+      localStorage.getItem('atelier-categories-cache');
     const categories = raw ? JSON.parse(raw) : [];
     return Array.isArray(categories) ? categories : [];
   } catch (e) {
@@ -67,9 +71,13 @@ const buildColorDots = (colors) => {
     .join('');
 };
 
-let adminProductsCache = [];
+const PAGE_SIZE = 12;
 
-const buildProductCard = (product, categories) => {
+let adminProductsCache = [];
+let filteredProductsCache = [];
+let currentPage = 1;
+
+const buildProductCard = (product, categories, index = 0) => {
   const name = product.name || 'Produit';
   const productId = String(
     product.id || (store?.slugify ? store.slugify(name) : name.toLowerCase().replace(/\s+/g, '-'))
@@ -97,7 +105,13 @@ const buildProductCard = (product, categories) => {
       data-colors="${colors.join(',')}"
     >
       <div class="product-image">
-        <img src="${image}" alt="${name}" loading="lazy" />
+        <img
+          src="${image}"
+          alt="${name}"
+          loading="${index < 4 ? 'eager' : 'lazy'}"
+          decoding="async"
+          fetchpriority="${index === 0 ? 'high' : 'auto'}"
+        />
         ${badge}
         <button class="product-favorite" aria-label="Ajouter aux favoris">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -122,7 +136,9 @@ const buildProductCard = (product, categories) => {
 
 const bindProductClickStore = () => {
   const container = document.querySelector('.products-container');
-  if (!container) return;
+  if (!container || container.dataset.productStoreBound === 'true') return;
+
+  container.dataset.productStoreBound = 'true';
 
   container.addEventListener('click', (event) => {
     const card = event.target.closest('.product-card');
@@ -131,7 +147,12 @@ const bindProductClickStore = () => {
     const id = card.dataset.id;
     const source = adminProductsCache.length ? adminProductsCache : readAdminProducts();
     if (!adminProductsCache.length) adminProductsCache = source;
-    const product = source.find((p) => String(p.id) === String(id));
+    const product = source.find((p) => {
+      const fallbackId = store?.slugify
+        ? store.slugify(p.name || '')
+        : String(p.name || '').toLowerCase().replace(/\s+/g, '-');
+      return String(p.id || fallbackId) === String(id);
+    });
     if (!product) return;
 
     try {
@@ -228,7 +249,7 @@ const hydrateCategoryFilterOptions = () => {
 // L'API (backend) est hébergée sur Vercel. Le site peut être servi depuis
 // nousunique.com ou ailleurs : on appelle donc toujours l'API Vercel (CORS *).
 const API_ORIGIN = 'https://atelier-confection.vercel.app';
-const API_URL = API_ORIGIN + '/api/ecommerce/products';
+const API_URL = API_ORIGIN + '/api/ecommerce/products?view=card';
 const CATEGORIES_API_URL = API_ORIGIN + '/api/ecommerce/categories';
 
 // Convertit un produit serveur (snake_case) vers le format du site (camelCase)
@@ -262,7 +283,7 @@ const refreshCategoriesFromServer = async () => {
       description: c.description || '',
       active: c.active !== false,
     }));
-    localStorage.setItem('atelier-admin-categories', JSON.stringify(categories));
+    localStorage.setItem('atelier-categories-cache', JSON.stringify(categories));
   } catch (e) { /* non bloquant: cache local utilisé */ }
 };
 
@@ -270,32 +291,38 @@ const renderProductList = (products) => {
   const container = document.querySelector('.products-container');
   if (!container) return;
 
-  const visible = products.filter((p) => p.active !== false);
-  if (!visible.length) {
+  container.querySelectorAll('.product-card').forEach((card) => {
+    productObserver.unobserve(card);
+  });
+
+  if (!products.length) {
     container.innerHTML = `
       <div style="padding: 40px; text-align: center; color: #6b7280;">
-        Aucun produit trouvé. Ajoutez des produits dans l'admin.
+        Aucun produit ne correspond à vos filtres.
       </div>
     `;
     return;
   }
 
   const categories = readAdminCategories().filter((cat) => cat.active !== false);
-  container.innerHTML = visible.map((p) => buildProductCard(p, categories)).join('');
+  container.innerHTML = products
+    .slice(0, PAGE_SIZE)
+    .map((p, index) => buildProductCard(p, categories, index))
+    .join('');
 };
 
 const finalizeRender = () => {
   hydrateCategoryFilterOptions();
-  bindFavorites();
   bindProductClickStore();
   applyCategoryFromURL();
-  updateProductCount();
-  observeAllCards();
+  refreshCatalog({ resetPage: true });
 };
 
 // SOURCE DE VÉRITÉ: le serveur. Le localStorage ne sert que de cache hors-ligne.
 const fetchAndRenderProducts = async () => {
-  await refreshCategoriesFromServer();
+  // Les deux requêtes sont indépendantes : les lancer ensemble évite une
+  // attente réseau séquentielle avant d'afficher le catalogue.
+  const categoriesPromise = refreshCategoriesFromServer();
 
   try {
     const res = await fetch(API_URL);
@@ -305,12 +332,14 @@ const fetchAndRenderProducts = async () => {
     const products = rows.map(mapApiProduct).filter((p) => p.active !== false);
 
     try {
-      localStorage.setItem('atelier-admin-products', JSON.stringify(products));
-      localStorage.setItem('atelier-products-cache', JSON.stringify(products));
+      // Cette réponse est volontairement compacte. Elle ne doit jamais être
+      // écrite dans les clés utilisées par l'administration ou par les fiches
+      // produit complètes, sous peine d'effacer galerie, vidéo, stock, etc.
+      localStorage.setItem('atelier-products-card-cache', JSON.stringify(products));
     } catch (e) { /* cache non bloquant */ }
 
     adminProductsCache = products;
-    renderProductList(products);
+    await categoriesPromise;
     finalizeRender();
     return;
   } catch (e) {
@@ -321,14 +350,14 @@ const fetchAndRenderProducts = async () => {
   const local = readAdminProducts();
   const cached = (() => {
     try {
-      const raw = localStorage.getItem('atelier-products-cache');
+      const raw = localStorage.getItem('atelier-products-card-cache');
       const arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
     } catch (e) { return []; }
   })();
   const fallback = local.length ? local : cached;
   adminProductsCache = fallback;
-  renderProductList(fallback);
+  await categoriesPromise;
   finalizeRender();
 };
 
@@ -338,163 +367,145 @@ const observeAllCards = () => {
   });
 };
 
-fetchAndRenderProducts();
-
 // Filtres
 const categoryFilter = document.getElementById('category-filter');
 const colorFilter = document.getElementById('color-filter');
 const sortFilter = document.getElementById('sort-filter');
 const productCount = document.getElementById('product-count');
+const pagination = document.querySelector('.pagination');
+const paginationNumbers = pagination?.querySelector('.pagination-numbers');
+const paginationButtons = pagination?.querySelectorAll('.pagination-btn') || [];
+const prevBtn = paginationButtons[0];
+const nextBtn = paginationButtons[paginationButtons.length - 1];
 
-// Fonction pour compter et afficher le nombre de produits visibles
-function updateProductCount() {
+// Le compteur représente toujours le total filtré, pas seulement la page courante.
+function updateProductCount(total = filteredProductsCache.length) {
   if (!productCount) return;
-  const visibleProducts = document.querySelectorAll('.product-card:not([style*="display: none"])').length;
-  productCount.textContent = visibleProducts;
+  productCount.textContent = String(total);
 }
 
-// Gestion du filtre de catégorie
-if (categoryFilter) {
-  categoryFilter.addEventListener('change', function() {
-    const selectedCategory = normalizeText(this.value);
-    const products = document.querySelectorAll('.product-card');
-    
-    products.forEach(product => {
-      if (selectedCategory === 'all') {
-        product.style.display = '';
-      } else {
-        const rawCategory = product.dataset.category || product.querySelector('.product-category')?.textContent.trim();
-        const category = normalizeText(rawCategory);
-        if (category.includes(selectedCategory)) {
-          product.style.display = '';
-        } else {
-          product.style.display = 'none';
-        }
-      }
-    });
-    
-    updateProductCount();
+function getFilteredAndSortedProducts() {
+  const categories = readAdminCategories().filter((cat) => cat.active !== false);
+  const selectedCategory = normalizeText(categoryFilter?.value || 'all');
+  const selectedColor = normalizeText(colorFilter?.value || 'all');
+  const sortType = sortFilter?.value || 'recent';
+
+  const products = adminProductsCache.filter((product) => {
+    if (product.active === false) return false;
+
+    if (selectedCategory && selectedCategory !== 'all') {
+      const categorySlug = normalizeText(product.category || '');
+      const categoryLabel = normalizeText(getCategoryLabel(product.category, categories));
+      const categoryMatches =
+        categorySlug === selectedCategory ||
+        categorySlug.includes(selectedCategory) ||
+        categoryLabel === selectedCategory ||
+        categoryLabel.includes(selectedCategory);
+
+      if (!categoryMatches) return false;
+    }
+
+    if (selectedColor && selectedColor !== 'all') {
+      const colors = Array.isArray(product.colors)
+        ? product.colors
+        : String(product.colors || '').split(',');
+      const colorMatches = colors.some((color) => {
+        const normalizedColor = normalizeText(color);
+        return normalizedColor === selectedColor || normalizedColor.includes(selectedColor);
+      });
+
+      if (!colorMatches) return false;
+    }
+
+    return true;
+  });
+
+  return products.sort((a, b) => {
+    if (sortType === 'price-asc') return (Number(a.price) || 0) - (Number(b.price) || 0);
+    if (sortType === 'price-desc') return (Number(b.price) || 0) - (Number(a.price) || 0);
+    if (sortType === 'name') {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'fr', {
+        sensitivity: 'base',
+      });
+    }
+    return 0;
   });
 }
 
-// Gestion du filtre de couleur
-if (colorFilter) {
-  colorFilter.addEventListener('change', function() {
-    const selectedColor = normalizeText(this.value);
-    const products = document.querySelectorAll('.product-card');
-    
-    products.forEach(product => {
-      if (selectedColor === 'all') {
-        // Ne pas masquer si déjà visible par le filtre de catégorie
-        if (product.style.display !== 'none') {
-          product.style.display = '';
-        }
-      } else {
-        const colors = normalizeText(product.dataset.colors || '');
-        const colorDots = Array.from(product.querySelectorAll('.color-dot'));
-        
-        // Vérifier si le produit a la couleur sélectionnée
-        const hasColor = colors.includes(selectedColor) || 
-                        colorDots.some(dot => {
-                          const bg = window.getComputedStyle(dot).backgroundColor;
-                          return bg && checkColorMatch(bg, selectedColor);
-                        });
-        
-        if (hasColor) {
-          // Ne masquer que si la catégorie ne le masque pas déjà
-          const categoryMatch = checkCategoryFilter(product);
-          if (categoryMatch) {
-            product.style.display = '';
-          }
-        } else {
-          product.style.display = 'none';
-        }
-      }
-    });
-    
-    updateProductCount();
+function renderPagination(totalProducts) {
+  const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
+  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  if (pagination) pagination.hidden = totalProducts === 0 || totalPages <= 1;
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPage >= totalPages || totalProducts === 0;
+  if (!paginationNumbers) return;
+
+  const fragment = document.createDocumentFragment();
+  for (let page = 1; page <= totalPages; page += 1) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `pagination-number${page === currentPage ? ' active' : ''}`;
+    button.dataset.page = String(page);
+    button.textContent = String(page);
+    button.setAttribute('aria-label', `Page ${page}`);
+    if (page === currentPage) button.setAttribute('aria-current', 'page');
+    fragment.appendChild(button);
+  }
+
+  paginationNumbers.replaceChildren(fragment);
+}
+
+function renderCurrentPage({ scroll = false } = {}) {
+  const totalPages = Math.max(1, Math.ceil(filteredProductsCache.length / PAGE_SIZE));
+  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageProducts = filteredProductsCache.slice(start, start + PAGE_SIZE);
+
+  renderProductList(pageProducts);
+  updateProductCount(filteredProductsCache.length);
+  renderPagination(filteredProductsCache.length);
+  bindFavorites();
+  observeAllCards();
+
+  if (scroll) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function refreshCatalog({ resetPage = true } = {}) {
+  filteredProductsCache = getFilteredAndSortedProducts();
+  if (resetPage) currentPage = 1;
+  renderCurrentPage();
+}
+
+function goToPage(page) {
+  const totalPages = Math.max(1, Math.ceil(filteredProductsCache.length / PAGE_SIZE));
+  const nextPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+  if (nextPage === currentPage) return;
+
+  currentPage = nextPage;
+  renderCurrentPage({ scroll: true });
+}
+
+[categoryFilter, colorFilter, sortFilter].forEach((filter) => {
+  filter?.addEventListener('change', () => {
+    refreshCatalog({ resetPage: true });
   });
-}
-
-function checkColorMatch(rgbColor, colorName) {
-  // Convertir le nom de couleur en correspondance approximative
-  const colorMap = {
-    'marron': ['139, 69, 19', '101, 67, 33'],
-    'noir': ['0, 0, 0', '51, 51, 51'],
-    'blanc': ['255, 255, 255', '245, 245, 220'],
-    'beige': ['210, 180, 140', '245, 245, 220'],
-    'bleu': ['135, 206, 235', '70, 130, 180'],
-    'bleu ciel': ['135, 206, 235'],
-    'gris fonce': ['51, 51, 51'],
-    'terracotta': ['194, 69, 45'],
-    'saumon': ['250, 128, 114'],
-    'orange': ['249, 115, 22'],
-    'violet': ['139, 92, 246'],
-    'rouge bordeaux': ['127, 29, 29'],
-    'vert treillis': ['21, 128, 61'],
-    'jaune moutarde': ['202, 138, 4']
-  };
-  
-  return colorMap[colorName]?.some(color => rgbColor.includes(color));
-}
-
-function checkCategoryFilter(product) {
-  const categoryFilter = document.getElementById('category-filter');
-  const selectedCategory = normalizeText(categoryFilter?.value);
-  
-  if (!selectedCategory || selectedCategory === 'all') return true;
-  
-  const rawCategory = product.dataset.category || product.querySelector('.product-category')?.textContent.trim();
-  const category = normalizeText(rawCategory);
-  return category.includes(selectedCategory);
-}
+});
 
 // Fonction pour réinitialiser tous les filtres
 function resetFilters() {
   if (categoryFilter) categoryFilter.value = 'all';
   if (colorFilter) colorFilter.value = 'all';
   if (sortFilter) sortFilter.value = 'recent';
-  
-  document.querySelectorAll('.product-card').forEach(product => {
-    product.style.display = '';
-  });
-  
-  updateProductCount();
+  refreshCatalog({ resetPage: true });
 }
 
-// Ajouter un bouton de réinitialisation si présent
 const resetBtn = document.getElementById('reset-filters');
 if (resetBtn) {
   resetBtn.addEventListener('click', resetFilters);
-}
-
-// Gestion du tri
-if (sortFilter) {
-  sortFilter.addEventListener('change', function() {
-    const sortType = this.value;
-    const container = document.querySelector('.products-container');
-    const products = Array.from(document.querySelectorAll('.product-card'));
-    
-    products.sort((a, b) => {
-      if (sortType === 'price-asc') {
-        const priceA = parseInt(a.querySelector('.price-current').textContent.replace(/[^0-9]/g, ''));
-        const priceB = parseInt(b.querySelector('.price-current').textContent.replace(/[^0-9]/g, ''));
-        return priceA - priceB;
-      } else if (sortType === 'price-desc') {
-        const priceA = parseInt(a.querySelector('.price-current').textContent.replace(/[^0-9]/g, ''));
-        const priceB = parseInt(b.querySelector('.price-current').textContent.replace(/[^0-9]/g, ''));
-        return priceB - priceA;
-      } else if (sortType === 'name') {
-        const nameA = a.querySelector('.product-name').textContent;
-        const nameB = b.querySelector('.product-name').textContent;
-        return nameA.localeCompare(nameB);
-      }
-      return 0;
-    });
-    
-    // Réorganiser les produits
-    products.forEach(product => container.appendChild(product));
-  });
 }
 
 // Animation au scroll
@@ -520,44 +531,16 @@ const productObserver = new IntersectionObserver((entries) => {
   });
 }, observerOptions);
 
-// L'observation des cartes se fait dans observeAllCards() appele par fetchAndRenderProducts()
-
-// Pagination
-document.querySelectorAll('.pagination-number').forEach(btn => {
-  btn.addEventListener('click', function() {
-    // Retirer l'active de tous les boutons
-    document.querySelectorAll('.pagination-number').forEach(b => b.classList.remove('active'));
-    // Ajouter l'active au bouton cliqué
-    this.classList.add('active');
-    
-    // Scroll vers le haut
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+// Les boutons numérotés sont recréés à chaque rendu. La délégation conserve
+// un seul listener sur leur conteneur, quelle que soit la page affichée.
+paginationNumbers?.addEventListener('click', (event) => {
+  const button = event.target.closest('.pagination-number');
+  if (!button || !paginationNumbers.contains(button)) return;
+  goToPage(button.dataset.page);
 });
 
-// Boutons précédent/suivant
-const prevBtn = document.querySelector('.pagination-btn:first-child');
-const nextBtn = document.querySelector('.pagination-btn:last-child');
-
-if (prevBtn) {
-  prevBtn.addEventListener('click', function() {
-    const activePage = document.querySelector('.pagination-number.active');
-    const prevPage = activePage.previousElementSibling;
-    if (prevPage && prevPage.classList.contains('pagination-number')) {
-      prevPage.click();
-    }
-  });
-}
-
-if (nextBtn) {
-  nextBtn.addEventListener('click', function() {
-    const activePage = document.querySelector('.pagination-number.active');
-    const nextPage = activePage.nextElementSibling;
-    if (nextPage && nextPage.classList.contains('pagination-number')) {
-      nextPage.click();
-    }
-  });
-}
+prevBtn?.addEventListener('click', () => goToPage(currentPage - 1));
+nextBtn?.addEventListener('click', () => goToPage(currentPage + 1));
 
 // Appliquer le filtre catégorie depuis l'URL (?cat=elegant)
 const applyCategoryFromURL = () => {
@@ -578,8 +561,9 @@ const applyCategoryFromURL = () => {
     } else {
       select.value = catParam;
     }
-    select.dispatchEvent(new Event('change'));
   } catch (e) { /* ignore */ }
 };
 
-// applyCategoryFromURL et updateProductCount sont appeles dans fetchAndRenderProducts()
+// Démarrer seulement après l'initialisation des filtres, de la pagination et
+// de l'observer afin qu'aucune réponse réseau rapide ne précède ces bindings.
+fetchAndRenderProducts();

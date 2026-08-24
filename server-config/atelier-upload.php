@@ -39,17 +39,17 @@ if (empty($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'] ?? '
   atlr_json(400, ['success' => false, 'message' => 'Aucun fichier recu']);
 }
 
-$file = $_FILES['file'];
+$atlr_file = $_FILES['file'];
 
 // --- Limite de taille (20 Mo) ---
-if (($file['size'] ?? 0) > 20 * 1024 * 1024) {
+if (($atlr_file['size'] ?? 0) > 20 * 1024 * 1024) {
   atlr_json(413, ['success' => false, 'message' => 'Image trop lourde (max 20 Mo)']);
 }
 
 // --- Validation stricte du type (images uniquement) ---
 $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
-$mime = $finfo ? finfo_file($finfo, $file['tmp_name']) : '';
+$mime = $finfo ? finfo_file($finfo, $atlr_file['tmp_name']) : '';
 if ($finfo) finfo_close($finfo);
 if (!in_array($mime, $allowed, true)) {
   atlr_json(400, ['success' => false, 'message' => 'Type non autorise: ' . $mime]);
@@ -75,7 +75,7 @@ $overrides = [
     'gif' => 'image/gif',
   ],
 ];
-$moved = wp_handle_upload($file, $overrides);
+$moved = wp_handle_upload($atlr_file, $overrides);
 if (!$moved || isset($moved['error'])) {
   atlr_json(500, ['success' => false, 'message' => $moved['error'] ?? 'Echec upload']);
 }

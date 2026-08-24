@@ -18,17 +18,38 @@ const requireToken = (req, res) => {
 // GET /api/ecommerce/products
 router.get('/', async (req, res) => {
   try {
+    // La vue "card" évite d'envoyer descriptions, galeries et vidéos aux
+    // pages qui n'affichent que des cartes produit.
+    const compact = req.query.view === 'card';
+    const fields = compact
+      ? 'id,name,category,price,original_price,colors,thumbnail,active,updated_at'
+      : '*';
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : null;
+
     const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
+    let query = supabase
       .from('ecommerce_products')
-      .select('*')
+      .select(fields)
       .order('updated_at', { ascending: false });
+    if (compact) query = query.eq('active', true);
+    if (limit) query = query.limit(limit);
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('❌ Supabase ecommerce_products list error:', error);
       return res.status(500).json({ success: false, message: error.message });
     }
 
+    res.set(
+      'Cache-Control',
+      compact
+        ? 'public, max-age=60, s-maxage=60, stale-while-revalidate=600'
+        : 'no-store',
+    );
     return res.json({ success: true, products: data || [] });
   } catch (e) {
     console.error('❌ /api/ecommerce/products error:', e);
@@ -57,6 +78,8 @@ router.get('/:id', async (req, res) => {
       return res.status(500).json({ success: false, message: error.message });
     }
 
+    // Une fiche doit refléter rapidement les modifications de l'administration.
+    res.set('Cache-Control', 'public, max-age=30, s-maxage=30, stale-while-revalidate=60');
     return res.json({ success: true, product: data });
   } catch (e) {
     console.error('❌ /api/ecommerce/products/:id error:', e);

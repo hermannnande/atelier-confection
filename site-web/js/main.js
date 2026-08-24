@@ -322,7 +322,7 @@ const renderHomeBestsellers = async () => {
   let products = [];
   try {
     const origin = 'https://atelier-confection.vercel.app';
-    const res = await fetch(`${origin}/api/ecommerce/products`);
+    const res = await fetch(`${origin}/api/ecommerce/products?view=card&limit=8`);
     if (res.ok) {
       const data = await res.json();
       const rows = Array.isArray(data) ? data : (data.products || []);
@@ -366,7 +366,7 @@ const renderHomeBestsellers = async () => {
          data-id="${p.id}" data-name="${p.name}" data-category="${p.category}"
          data-price="${p.price}" data-image="${p.image}">
         <div class="product-image">
-          <img src="${p.image}" alt="${p.name}" loading="lazy">
+          <img src="${p.image}" alt="${p.name}" loading="lazy" decoding="async" fetchpriority="low">
           <div class="product-badge ${p.badgeClass || ''}">${p.badge}</div>
         </div>
         <div class="product-info">
@@ -393,7 +393,7 @@ const renderHomeBestsellers = async () => {
          data-id="${id}" data-name="${p.name}" data-category="${cat}"
          data-price="${price}" data-image="${img}">
         <div class="product-image">
-          <img src="${img}" alt="${p.name}" loading="lazy">
+          <img src="${img}" alt="${p.name}" loading="lazy" decoding="async" fetchpriority="low">
           ${badge}
         </div>
         <div class="product-info">
@@ -408,13 +408,19 @@ const renderHomeBestsellers = async () => {
   }).join('');
 };
 
-window.addEventListener("load", () => {
+const initializeSite = () => {
   updateHeader();
   observeCategories();
   renderHomeBestsellers();
   bindProductAddToCartFallback();
   SiteStore.updateBadges();
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeSite, { once: true });
+} else {
+  initializeSite();
+}
 
 // ===== AMBIANCE MUSICALE NOUS UNIQUE =====
 // Version legere de 30 secondes, invisible et jouee en boucle.
@@ -426,11 +432,12 @@ window.addEventListener("load", () => {
   const AUDIO_URL = 'https://nousunique.com/wp-content/uploads/2026/08/Nous-Unique-Ambiance-Glamour-30s.mp3';
   const TIME_KEY = 'nous-unique-background-music-time';
 
-  const audio = new Audio(AUDIO_URL);
-  audio.preload = 'auto';
+  const audio = document.createElement('audio');
+  audio.preload = 'none';
   audio.autoplay = true;
   audio.volume = 0.10;
   audio.loop = true;
+  audio.src = AUDIO_URL;
   audio.setAttribute('playsinline', '');
   audio.setAttribute('aria-hidden', 'true');
 
@@ -468,5 +475,10 @@ window.addEventListener("load", () => {
     }
   });
 
-  startMusic();
+  const scheduleMusic = () => window.setTimeout(startMusic, 4500);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleMusic, { once: true });
+  } else {
+    scheduleMusic();
+  }
 })();

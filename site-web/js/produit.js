@@ -318,15 +318,19 @@ const renderGallery = (product) => {
     if (m.type === 'video') {
       return `
         <div class="gallery-item gallery-item-video${featuredClass}">
-          <video autoplay muted loop playsinline ${m.poster ? `poster="${m.poster}"` : ''}>
-            <source src="${m.src}" type="video/mp4" />
-          </video>
+          <video muted loop playsinline preload="none" data-src="${m.src}" ${m.poster ? `poster="${m.poster}"` : ''}></video>
         </div>
       `;
     }
     return `
       <div class="gallery-item${featuredClass}">
-        <img src="${m.src}" alt="${m.alt}" loading="lazy" />
+        <img
+          src="${m.src}"
+          alt="${m.alt}"
+          loading="${i === 0 ? 'eager' : 'lazy'}"
+          decoding="async"
+          fetchpriority="${i === 0 ? 'high' : 'auto'}"
+        />
       </div>
     `;
   });
@@ -339,6 +343,35 @@ const renderGallery = (product) => {
   gallery.classList.add(`gallery-count-${Math.min(total, 6)}`);
 
   gallery.innerHTML = parts.join('');
+
+  gallery.querySelectorAll('video[data-src]').forEach((video) => {
+    let timer = 0;
+    const start = () => {
+      if (video.src || !video.dataset.src) return;
+      video.src = video.dataset.src;
+      video.load();
+      const playPromise = video.play();
+      if (playPromise?.catch) playPromise.catch(() => {});
+    };
+    const schedule = () => {
+      if (navigator.connection?.saveData) return;
+      timer = window.setTimeout(start, 2200);
+    };
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        schedule();
+      }, { rootMargin: '100px' });
+      observer.observe(video);
+    } else {
+      schedule();
+    }
+    video.addEventListener('pointerdown', () => {
+      if (timer) window.clearTimeout(timer);
+      start();
+    }, { once: true, passive: true });
+  });
 };
 
 // ===== FAVORIS / PANIER =====
@@ -825,7 +858,7 @@ const fetchProductFromApi = async (id) => {
 // ===== PRODUITS SIMILAIRES (réels, depuis l'API) =====
 const fetchAllProductsFromApi = async () => {
   try {
-    const res = await fetch('https://atelier-confection.vercel.app/api/ecommerce/products');
+    const res = await fetch('https://atelier-confection.vercel.app/api/ecommerce/products?view=card');
     if (!res.ok) throw new Error('http');
     const data = await res.json();
     const rows = Array.isArray(data) ? data : (data.products || []);
@@ -868,7 +901,7 @@ const renderSimilarProducts = async (current) => {
       return `
         <a href="produit?id=${encodeURIComponent(p.id)}" class="similar-card">
           <div class="similar-image">
-            <img src="${img}" alt="${p.name}" loading="lazy" />
+            <img src="${img}" alt="${p.name}" loading="lazy" decoding="async" />
           </div>
           <div class="similar-info">
             <h3>${p.name}</h3>

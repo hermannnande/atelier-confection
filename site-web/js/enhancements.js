@@ -159,18 +159,6 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-// ===== LOADER DE PAGE =====
-const pageLoader = document.getElementById('pageLoader');
-
-window.addEventListener('load', () => {
-  setTimeout(() => {
-    pageLoader?.classList.add('fade-out');
-    setTimeout(() => {
-      if (pageLoader) pageLoader.style.display = 'none';
-    }, 400);
-  }, 300);
-});
-
 // ===== NEWSLETTER VALIDATION =====
 const newsletterForm = document.querySelector('.newsletter-form');
 

@@ -48,7 +48,36 @@ async function atlrUploadToWp(file) {
   return data.url;
 }
 
-function atlrPickAndUpload({ multiple, onUrl }) {
+async function atlrOptimizeImage(file, kind = 'gallery') {
+  if (!file?.type?.startsWith('image/') || file.type === 'image/gif') return file;
+  if (!('createImageBitmap' in window)) return file;
+
+  const bitmap = await createImageBitmap(file);
+  const maxWidth = kind === 'thumbnail' ? 600 : 1200;
+  const maxHeight = kind === 'thumbnail' ? 800 : 1600;
+  const ratio = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height);
+  const width = Math.max(1, Math.round(bitmap.width * ratio));
+  const height = Math.max(1, Math.round(bitmap.height * ratio));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d', { alpha: true });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.76));
+  if (!blob) return file;
+
+  const baseName = String(file.name || 'image').replace(/\.[^.]+$/, '');
+  return new File([blob], `${baseName}-optimized.webp`, {
+    type: 'image/webp',
+    lastModified: Date.now(),
+  });
+}
+
+function atlrPickAndUpload({ multiple, kind = 'gallery', onUrl }) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/png,image/jpeg,image/webp,image/gif';
@@ -65,7 +94,14 @@ function atlrPickAndUpload({ multiple, onUrl }) {
     atlrShowUploadStatus(`Téléversement... (0/${files.length})`);
     for (const file of files) {
       try {
-        const url = await atlrUploadToWp(file);
+        atlrShowUploadStatus(`Optimisation WebP... (${done}/${files.length})`);
+        let optimizedFile = file;
+        try {
+          optimizedFile = await atlrOptimizeImage(file, kind);
+        } catch (optimizeError) {
+          console.warn('Optimisation WebP impossible, envoi de l’original:', optimizeError);
+        }
+        const url = await atlrUploadToWp(optimizedFile);
         if (typeof onUrl === 'function') onUrl(url);
         done += 1;
         atlrShowUploadStatus(`Téléversement... (${done}/${files.length})`);
@@ -86,6 +122,7 @@ function atlrPickAndUpload({ multiple, onUrl }) {
 function openGalleryWidget() {
   atlrPickAndUpload({
     multiple: true,
+    kind: 'gallery',
     onUrl: (url) => {
       if (window.addCloudinaryImageToGallery) window.addCloudinaryImageToGallery(url);
     },
@@ -96,6 +133,7 @@ function openGalleryWidget() {
 function openThumbnailWidget() {
   atlrPickAndUpload({
     multiple: false,
+    kind: 'thumbnail',
     onUrl: (url) => {
       if (window.addCloudinaryThumbnail) window.addCloudinaryThumbnail(url);
     },

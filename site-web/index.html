@@ -12,9 +12,12 @@
     <meta name="description" content="Atelier Confection - Elegance sur mesure. Robes, ensembles et accessoires confectionnés avec soin à Abidjan.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=20260613-4" />
-    <link rel="stylesheet" href="css/home-premium.css?v=20260613-1" />
+    <link rel="preload" as="image" href="videos/hero-mobile-poster.webp?v=20260824-perf1" media="(max-width: 768px)" fetchpriority="high">
+    <link rel="preload" as="image" href="videos/hero-desktop-poster.webp?v=20260824-perf1" media="(min-width: 769px)" fetchpriority="high">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet"></noscript>
+    <link rel="stylesheet" href="css/style.css?v=20260824-perf1" />
+    <link rel="stylesheet" href="css/home-premium.css?v=20260824-perf1" />
   </head>
   <body class="home-premium">
     <div class="announcement-bar">
@@ -100,6 +103,10 @@
 
     <main>
       <section class="hero">
+        <picture class="hero-poster" id="heroPoster" aria-hidden="true">
+          <source media="(max-width: 768px)" srcset="videos/hero-mobile-poster.webp?v=20260824-perf1">
+          <img src="videos/hero-desktop-poster.webp?v=20260824-perf1" alt="" width="1280" height="720" fetchpriority="high" decoding="async">
+        </picture>
         <video
           class="hero-video"
           id="heroVideo"
@@ -107,16 +114,31 @@
           muted
           loop
           playsinline
-          preload="auto"
+          preload="none"
+          aria-hidden="true"
         ></video>
         <script>
           (function () {
             var v = document.getElementById('heroVideo');
+            var poster = document.getElementById('heroPoster');
             if (!v) return;
             var mq = window.matchMedia('(max-width: 768px)');
+            var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
             var current = '';
+            var started = false;
+            var timer = 0;
+
+            function preferredSource() {
+              if (mq.matches) return 'videos/hero-mobile.mp4?v=20260824-perf1';
+              return v.canPlayType('video/webm')
+                ? 'videos/hero-desktop.webm?v=20260824-perf1'
+                : 'videos/hero-desktop.mp4?v=20260824-perf1';
+            }
+
             function setSrc() {
-              var src = mq.matches ? 'videos/hero-mobile.mp4' : 'videos/hero-desktop.mp4';
+              if (navigator.connection && navigator.connection.saveData) return;
+              if (reducedMotion.matches) return;
+              var src = preferredSource();
               if (src === current) return;
               current = src;
               v.src = src;
@@ -124,9 +146,39 @@
               var p = v.play();
               if (p && p.catch) p.catch(function () {});
             }
-            setSrc();
-            if (mq.addEventListener) mq.addEventListener('change', setSrc);
-            else if (mq.addListener) mq.addListener(setSrc);
+
+            function start() {
+              if (started) return;
+              started = true;
+              if (timer) window.clearTimeout(timer);
+              setSrc();
+            }
+
+            v.addEventListener('playing', function () {
+              v.classList.add('is-ready');
+              if (poster) poster.classList.add('is-hidden');
+            }, { once: true });
+
+            function schedule() {
+              if (timer || started) return;
+              timer = window.setTimeout(start, 3000);
+            }
+
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', schedule, { once: true });
+            } else {
+              schedule();
+            }
+            document.addEventListener('pointerdown', start, { once: true, passive: true });
+            document.addEventListener('keydown', start, { once: true });
+
+            function onBreakpointChange() {
+              if (!started) return;
+              current = '';
+              setSrc();
+            }
+            if (mq.addEventListener) mq.addEventListener('change', onBreakpointChange);
+            else if (mq.addListener) mq.addListener(onBreakpointChange);
           })();
         </script>
         <div class="hero-overlay"></div>
@@ -223,9 +275,14 @@
             aria-label="Collection Elegant"
           >
             <img
-              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png"
+              src="images/collections/elegant-768.webp"
+              srcset="images/collections/elegant-480.webp 480w, images/collections/elegant-768.webp 768w"
+              sizes="(max-width: 768px) 100vw, 50vw"
               alt="Collection Elegant"
               loading="lazy"
+              decoding="async"
+              width="768"
+              height="1152"
             />
             <div class="category-overlay">
               <span>Elegant</span>
@@ -237,9 +294,14 @@
             aria-label="Collection Perle Rare"
           >
             <img
-              src="https://obrille.com/wp-content/uploads/2026/01/B2.png"
+              src="images/collections/perle-rare-768.webp"
+              srcset="images/collections/perle-rare-480.webp 480w, images/collections/perle-rare-768.webp 768w"
+              sizes="(max-width: 768px) 100vw, 50vw"
               alt="Collection Perle Rare"
               loading="lazy"
+              decoding="async"
+              width="768"
+              height="1156"
             />
             <div class="category-overlay">
               <span>Perle Rare</span>
@@ -251,9 +313,14 @@
             aria-label="Collection Perle Unique"
           >
             <img
-              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_52_59.png"
+              src="images/collections/perle-unique-768.webp"
+              srcset="images/collections/perle-unique-480.webp 480w, images/collections/perle-unique-768.webp 768w"
+              sizes="(max-width: 768px) 100vw, 50vw"
               alt="Collection Perle Unique"
               loading="lazy"
+              decoding="async"
+              width="768"
+              height="1152"
             />
             <div class="category-overlay">
               <span>Perle Unique</span>
@@ -265,9 +332,14 @@
             aria-label="Collection Style Event"
           >
             <img
-              src="https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-19_06_20.png"
+              src="images/collections/style-event-1024.webp"
+              srcset="images/collections/style-event-480.webp 480w, images/collections/style-event-768.webp 768w, images/collections/style-event-1024.webp 1024w"
+              sizes="(max-width: 768px) 100vw, 100vw"
               alt="Collection Style Event"
               loading="lazy"
+              decoding="async"
+              width="1024"
+              height="1536"
             />
             <div class="category-overlay">
               <span>Style Event</span>
@@ -351,7 +423,7 @@
               L'équipe est très professionnelle et à l'écoute."
             </p>
             <div class="testimonial-author">
-              <img src="https://i.pravatar.cc/150?img=1" alt="Cliente">
+              <img src="https://i.pravatar.cc/150?img=1" alt="Cliente" loading="lazy" decoding="async" width="56" height="56">
               <div>
                 <p class="author-name">Aminata K.</p>
                 <p class="author-location">Abidjan, Cocody</p>
@@ -366,7 +438,7 @@
               Toujours satisfaite de la qualité et du service rapide."
             </p>
             <div class="testimonial-author">
-              <img src="https://i.pravatar.cc/150?img=5" alt="Cliente">
+              <img src="https://i.pravatar.cc/150?img=5" alt="Cliente" loading="lazy" decoding="async" width="56" height="56">
               <div>
                 <p class="author-name">Fatoumata S.</p>
                 <p class="author-location">Abidjan, Plateau</p>
@@ -381,7 +453,7 @@
               Je recommande vivement !"
             </p>
             <div class="testimonial-author">
-              <img src="https://i.pravatar.cc/150?img=9" alt="Cliente">
+              <img src="https://i.pravatar.cc/150?img=9" alt="Cliente" loading="lazy" decoding="async" width="56" height="56">
               <div>
                 <p class="author-name">Adjoua M.</p>
                 <p class="author-location">Abidjan, Marcory</p>
@@ -595,12 +667,6 @@
       </svg>
     </button>
 
-    <!-- Loader -->
-    <div class="page-loader" id="pageLoader">
-      <div class="loader-spinner"></div>
-      <p>Chargement...</p>
-    </div>
-
     <!-- WhatsApp Floating Button -->
     <a href="https://wa.me/2250705881116?text=Bonjour%2C%20je%20suis%20int%C3%A9ress%C3%A9(e)%20par%20vos%20cr%C3%A9ations" target="_blank" class="whatsapp-float" aria-label="Nous contacter sur WhatsApp">
       <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
@@ -609,8 +675,8 @@
     </a>
 
     <link rel="stylesheet" href="css/cart-drawer.css?v=20260613-5">
-    <script src="js/main.js?v=20260612-1"></script>
+    <script src="js/main.js?v=20260824-perf1"></script>
     <script src="js/cart-drawer.js?v=20260613-5"></script>
-    <script src="js/enhancements.js?v=20260612-1"></script>
+    <script src="js/enhancements.js?v=20260824-perf1"></script>
   </body>
 </html>

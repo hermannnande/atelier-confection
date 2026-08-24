@@ -26,6 +26,7 @@ const DEFAULT_CATEGORIES = [
 // GET /api/ecommerce/categories
 router.get('/', async (req, res) => {
   try {
+    res.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=1800');
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('ecommerce_categories')

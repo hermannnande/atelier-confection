@@ -355,6 +355,18 @@ body.home-premium .btn-newsletter {
 body.home-premium .btn-newsletter:hover { background: var(--hp-gold-bright); }
 body.home-premium .newsletter-privacy { color: rgba(255, 255, 255, 0.5); }
 
+/* Les grandes sections hors écran ne sont rendues qu'à l'approche du viewport. */
+body.home-premium .categories,
+body.home-premium .bestsellers,
+body.home-premium .value-strip,
+body.home-premium .testimonials,
+body.home-premium .instagram-feed,
+body.home-premium .newsletter,
+body.home-premium .site-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 760px;
+}
+
 /* ================= BOUTONS GÉNÉRIQUES ================= */
 body.home-premium .btn-primary-large {
   border-radius: 0;
