@@ -2,17 +2,55 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calculateAdminRemunerationAlerts,
+  calculateProductionBonusAllocations,
   calculateRemunerationSummary,
+  getProductionBonusRule,
   normalizeDateKey,
   parseMoney,
   validateProductionIds,
   validateProductionItems,
 } from '../services/remuneration.service.js';
 
+test('applique les bonus journaliers selon le tarif et le quota', () => {
+  assert.deepEqual(getProductionBonusRule(700), { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 });
+  assert.deepEqual(getProductionBonusRule(900), { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 });
+  assert.deepEqual(getProductionBonusRule(1000), { groupe: 'tarifs_1000_plus', quota: 6, bonusUnitaire: 300 });
+  assert.equal(getProductionBonusRule(800), null);
+
+  const lowTarifModel = '11111111-1111-4111-8111-111111111111';
+  const highTarifModel = '22222222-2222-4222-8222-222222222222';
+  const allocations = calculateProductionBonusAllocations({
+    items: [
+      { modeleId: lowTarifModel, quantite: 4 },
+      { modeleId: highTarifModel, quantite: 8 },
+    ],
+    tarifByModele: new Map([
+      [lowTarifModel, { montant_unitaire: 900 }],
+      [highTarifModel, { montant_unitaire: 1000 }],
+    ]),
+    existingProductions: [{ quantite: 5, tarif_unitaire: 700 }],
+  });
+
+  assert.deepEqual(allocations[0], {
+    modeleId: lowTarifModel,
+    quantite: 4,
+    quantiteBonus: 2,
+    bonusUnitaire: 200,
+    montantBonus: 400,
+  });
+  assert.deepEqual(allocations[1], {
+    modeleId: highTarifModel,
+    quantite: 8,
+    quantiteBonus: 2,
+    bonusUnitaire: 300,
+    montantBonus: 600,
+  });
+});
+
 test('calcule les alertes de rémunération du tableau de bord administrateur', () => {
   assert.deepEqual(calculateAdminRemunerationAlerts({
     productions: [
-      { quantite: 3, montant_total: 7500, statut: 'en_attente' },
+      { quantite: 3, montant_total: 7500, montant_bonus: 600, statut: 'en_attente' },
       { quantite: 2, montant_total: 4000, statut: 'en_attente' },
       { quantite: 9, montant_total: 9000, statut: 'validee' },
     ],
@@ -23,7 +61,7 @@ test('calcule les alertes de rémunération du tableau de bord administrateur', 
   }), {
     productions: 2,
     pieces: 5,
-    montantProductions: 11500,
+    montantProductions: 12100,
     paiements: 1,
     montantPaiements: 5000,
     total: 3,
@@ -52,7 +90,7 @@ test('calcule les gains, réservations et paiements sans effacer l’historique'
     today: '2026-08-28',
     productions: [
       { date_production: '2026-08-28', quantite: 2, montant_total: 5000, statut: 'validee' },
-      { date_production: '2026-08-25', quantite: 1, montant_total: 2000, statut: 'validee' },
+      { date_production: '2026-08-25', quantite: 1, montant_total: 2000, montant_bonus: 300, statut: 'validee' },
       { date_production: '2026-08-28', quantite: 9, montant_total: 9000, statut: 'en_attente' },
     ],
     paiements: [
@@ -64,15 +102,15 @@ test('calcule les gains, réservations et paiements sans effacer l’historique'
   assert.equal(summary.aujourdHui, 5000);
   assert.equal(summary.saisieAujourdHui, 14000);
   assert.equal(summary.piecesSaisiesAujourdHui, 11);
-  assert.equal(summary.semaine, 7000);
-  assert.equal(summary.mois, 7000);
+  assert.equal(summary.semaine, 7300);
+  assert.equal(summary.mois, 7300);
   assert.equal(summary.piecesAujourdHui, 2);
-  assert.equal(summary.totalGagne, 7000);
+  assert.equal(summary.totalGagne, 7300);
   assert.equal(summary.totalPaye, 1000);
   assert.equal(summary.productionEnAttente, 9000);
   assert.equal(summary.piecesEnAttente, 9);
   assert.equal(summary.paiementEnAttente, 1500);
-  assert.equal(summary.soldeDisponible, 4500);
+  assert.equal(summary.soldeDisponible, 4800);
 });
 
 test('normalise les dates et montants financiers', () => {

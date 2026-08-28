@@ -19,6 +19,7 @@ const localToday = () => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 };
 const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const productionTotal = (item) => Number(item?.montant_total || 0) + Number(item?.montant_bonus || 0);
 
 const RemunerationsCouturiers = () => {
   const [loading, setLoading] = useState(true);
@@ -77,7 +78,7 @@ const RemunerationsCouturiers = () => {
       const group = grouped.get(key);
       group.items.push(item);
       group.pieces += Number(item.quantite || 0);
-      group.montant += Number(item.montant_total || 0);
+      group.montant += productionTotal(item);
     });
     return [...grouped.values()];
   }, [pendingProductions]);
@@ -270,8 +271,8 @@ const RemunerationsCouturiers = () => {
                 </div>
                 <div className="divide-y divide-gray-100">{group.items.map((item) => (
                   <div key={item.id} className="p-4 flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-                    <div className="min-w-0"><p className="font-bold text-gray-900">{item.modele?.nom || 'Tenue'}</p><p className="text-sm text-gray-500">{item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p></div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-lg sm:mr-2">{money(item.montant_total)}</p><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'valider')} className="btn btn-success disabled:opacity-50"><Check size={16} />Valider</button><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'refuser')} className="btn btn-danger disabled:opacity-50"><X size={16} />Refuser</button></div>
+                    <div className="min-w-0"><p className="font-bold text-gray-900">{item.modele?.nom || 'Tenue'}</p><p className="text-sm text-gray-500">{item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-black text-emerald-700 mt-1">Bonus : +{money(item.montant_bonus)} sur {item.quantite_bonus} pièce(s)</p>}</div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-lg sm:mr-2">{money(productionTotal(item))}</p><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'valider')} className="btn btn-success disabled:opacity-50"><Check size={16} />Valider</button><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'refuser')} className="btn btn-danger disabled:opacity-50"><X size={16} />Refuser</button></div>
                   </div>
                 ))}</div>
               </div>
@@ -300,7 +301,7 @@ const RemunerationsCouturiers = () => {
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <HistoryPanel title="Historique des productions" items={productions.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom} · {item.modele?.nom}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) · {item.statut}</p></div><p className="font-black">{money(item.montant_total)}</p></div>} />
+        <HistoryPanel title="Historique des productions" items={productions.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom} · {item.modele?.nom}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) · {item.statut}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-black text-emerald-700">Bonus : +{money(item.montant_bonus)}</p>}</div><p className="font-black">{money(productionTotal(item))}</p></div>} />
         <HistoryPanel title="Historique des paiements" items={paiements.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom}</p><p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('fr-FR')} · {item.statut}</p></div><p className="font-black">{money(item.montant)}</p></div>} />
       </div>
     </div>

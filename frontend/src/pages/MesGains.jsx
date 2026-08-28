@@ -23,6 +23,14 @@ const localToday = () => {
 };
 
 const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
+const productionTotal = (item) => Number(item?.montant_total || 0) + Number(item?.montant_bonus || 0);
+
+const getBonusRule = (tarifUnitaire) => {
+  const tarif = Number(tarifUnitaire || 0);
+  if (tarif === 700 || tarif === 900) return { group: 'tarifs_700_900', quota: 7, bonus: 200 };
+  if (tarif >= 1000) return { group: 'tarifs_1000_plus', quota: 6, bonus: 300 };
+  return null;
+};
 
 const statusStyles = {
   en_attente: 'bg-amber-100 text-amber-800',
@@ -83,16 +91,44 @@ const MesGains = () => {
   }, []);
 
   const tarifMap = useMemo(() => new Map(tarifs.map((item) => [item.modeleId, item])), [tarifs]);
-  const totalSaisi = useMemo(() => lignes.reduce((sum, ligne) => {
-    const tarif = tarifMap.get(ligne.modeleId);
-    return sum + Number(tarif?.montantUnitaire || 0) * Number(ligne.quantite || 0);
-  }, 0), [lignes, tarifMap]);
   const modelesDejaDeclares = useMemo(() => new Set(
     productions
       .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
       .map((item) => item.modele?.id)
       .filter(Boolean),
   ), [productions, dateProduction]);
+  const calculSaisie = useMemo(() => {
+    const quantitiesByGroup = new Map();
+    productions
+      .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
+      .forEach((item) => {
+        const rule = getBonusRule(item.tarif_unitaire);
+        if (!rule) return;
+        quantitiesByGroup.set(rule.group, Number(quantitiesByGroup.get(rule.group) || 0) + Number(item.quantite || 0));
+      });
+
+    const details = lignes.map((ligne) => {
+      const tarif = Number(tarifMap.get(ligne.modeleId)?.montantUnitaire || 0);
+      const quantite = Number(ligne.quantite || 0);
+      const montantBase = tarif * quantite;
+      const rule = getBonusRule(tarif);
+      if (!rule) return { montantBase, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0, total: montantBase };
+
+      const previousQuantity = Number(quantitiesByGroup.get(rule.group) || 0);
+      const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);
+      const quantiteBonus = Math.max(0, quantite - remainingWithoutBonus);
+      quantitiesByGroup.set(rule.group, previousQuantity + quantite);
+      const montantBonus = quantiteBonus * rule.bonus;
+      return { montantBase, quantiteBonus, bonusUnitaire: rule.bonus, montantBonus, total: montantBase + montantBonus };
+    });
+
+    return {
+      details,
+      montantBase: details.reduce((sum, item) => sum + item.montantBase, 0),
+      montantBonus: details.reduce((sum, item) => sum + item.montantBonus, 0),
+      total: details.reduce((sum, item) => sum + item.total, 0),
+    };
+  }, [dateProduction, lignes, productions, tarifMap]);
 
   const updateLigne = (index, key, value) => {
     setLignes((current) => current.map((ligne, i) => (i === index ? { ...ligne, [key]: value } : ligne)));
@@ -200,13 +236,23 @@ const MesGains = () => {
           <div className="bg-amber-50 text-amber-800 rounded-xl p-4">Aucun tarif n’est encore configuré. Contactez l’administrateur.</div>
         ) : (
           <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                <p className="font-black text-orange-900">Tarifs de 700 ou 900 FCFA</p>
+                <p className="text-sm text-orange-800 mt-1">Après 7 pièces dans la journée : <strong>+200 FCFA</strong> sur la 8ᵉ pièce et chacune des suivantes.</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="font-black text-emerald-900">Tarifs à partir de 1 000 FCFA</p>
+                <p className="text-sm text-emerald-800 mt-1">Après 6 pièces dans la journée : <strong>+300 FCFA</strong> sur la 7ᵉ pièce et chacune des suivantes.</p>
+              </div>
+            </div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Journée de production</label>
             <input type="date" max={localToday()} value={dateProduction} onChange={(event) => setDateProduction(event.target.value)} className="input max-w-xs mb-5" />
 
             <div className="space-y-3">
               {lignes.map((ligne, index) => {
                 const tarif = tarifMap.get(ligne.modeleId);
-                const subtotal = Number(tarif?.montantUnitaire || 0) * Number(ligne.quantite || 0);
+                const calcul = calculSaisie.details[index] || {};
                 return (
                   <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_150px_180px_44px] gap-3 items-end bg-gray-50 rounded-2xl p-4">
                     <div>
@@ -229,7 +275,8 @@ const MesGains = () => {
                       </div>
                     </div>
                     <div className="bg-white rounded-xl border p-3">
-                      <p className="text-xs text-gray-500">Sous-total</p><p className="font-black text-orange-700">{money(subtotal)}</p>
+                      <p className="text-xs text-gray-500">Sous-total</p><p className="font-black text-orange-700">{money(calcul.total)}</p>
+                      {Number(calcul.montantBonus || 0) > 0 && <p className="text-xs font-bold text-emerald-700 mt-1">Bonus : +{money(calcul.montantBonus)} ({calcul.quantiteBonus} pièce(s))</p>}
                     </div>
                     <button type="button" disabled={lignes.length === 1} onClick={() => removeLigne(index)} className="h-11 flex items-center justify-center rounded-xl text-red-600 bg-red-50 disabled:opacity-30"><Trash2 size={18} /></button>
                   </div>
@@ -239,9 +286,13 @@ const MesGains = () => {
 
             <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
               <button type="button" onClick={addLigne} className="btn btn-secondary"><Plus size={18} /> Ajouter une tenue</button>
-              <div className="text-right"><p className="text-xs uppercase font-bold text-gray-500">Total saisi</p><p className="text-3xl font-black text-orange-700">{money(totalSaisi)}</p></div>
+              <div className="text-right">
+                <p className="text-xs uppercase font-bold text-gray-500">Total saisi</p>
+                <p className="text-3xl font-black text-orange-700">{money(calculSaisie.total)}</p>
+                {calculSaisie.montantBonus > 0 && <p className="text-sm font-black text-emerald-700">dont +{money(calculSaisie.montantBonus)} de bonus</p>}
+              </div>
             </div>
-            <button type="button" disabled={saving || totalSaisi <= 0} onClick={submitProductions} className="btn btn-primary w-full mt-5 justify-center disabled:opacity-50">
+            <button type="button" disabled={saving || calculSaisie.total <= 0} onClick={submitProductions} className="btn btn-primary w-full mt-5 justify-center disabled:opacity-50">
               {saving ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} Envoyer pour validation
             </button>
           </>
@@ -264,8 +315,8 @@ const MesGains = () => {
         <HistoryList title="Historique des productions" empty="Aucune production déclarée">
           {productions.slice(0, 20).map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-3 py-3 border-b last:border-0">
-              <div className="min-w-0"><p className="font-bold truncate">{item.modele?.nom || 'Tenue'}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p>{item.motif_refus && <p className="text-xs text-red-600 mt-1">{item.motif_refus}</p>}</div>
-              <div className="text-right flex-shrink-0"><p className="font-black">{money(item.montant_total)}</p><StatusBadge status={item.statut} /></div>
+              <div className="min-w-0"><p className="font-bold truncate">{item.modele?.nom || 'Tenue'}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-bold text-emerald-700 mt-1">Bonus productivité : +{money(item.montant_bonus)} pour {item.quantite_bonus} pièce(s)</p>}{item.motif_refus && <p className="text-xs text-red-600 mt-1">{item.motif_refus}</p>}</div>
+              <div className="text-right flex-shrink-0"><p className="font-black">{money(productionTotal(item))}</p><StatusBadge status={item.statut} /></div>
             </div>
           ))}
         </HistoryList>

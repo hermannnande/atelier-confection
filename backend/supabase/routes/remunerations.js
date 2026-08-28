@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry } from '../middleware/country.js';
 import {
   calculateAdminRemunerationAlerts,
+  calculateProductionBonusAllocations,
   calculateRemunerationSummary,
   normalizeDateKey,
   parseMoney,
@@ -55,7 +56,7 @@ async function getFinancialRows(supabase, country, couturierId) {
   const [productionsResult, paymentsResult] = await Promise.all([
     supabase
       .from('productions_couturiers')
-      .select('id, date_production, quantite, tarif_unitaire, montant_total, statut, motif_refus, created_at, validee_at, modele:modeles(id, nom, image, categorie)')
+      .select('id, date_production, quantite, tarif_unitaire, quantite_bonus, bonus_unitaire, montant_bonus, montant_total, statut, motif_refus, created_at, validee_at, modele:modeles(id, nom, image, categorie)')
       .eq('pays_code', country)
       .eq('couturier_id', couturierId)
       .order('date_production', { ascending: false })
@@ -166,7 +167,7 @@ router.get('/me/productions', authorize('couturier'), async (req, res) => {
     const supabase = getSupabaseAdmin();
     let query = supabase
       .from('productions_couturiers')
-      .select('id, date_production, quantite, tarif_unitaire, montant_total, statut, motif_refus, created_at, validee_at, modele:modeles(id, nom, image, categorie)')
+      .select('id, date_production, quantite, tarif_unitaire, quantite_bonus, bonus_unitaire, montant_bonus, montant_total, statut, motif_refus, created_at, validee_at, modele:modeles(id, nom, image, categorie)')
       .eq('pays_code', req.country)
       .eq('couturier_id', req.userId)
       .order('date_production', { ascending: false })
@@ -218,30 +219,36 @@ router.post('/me/productions', authorize('couturier'), async (req, res) => {
 
     const { data: existing, error: existingError } = await supabase
       .from('productions_couturiers')
-      .select('modele_id, statut')
+      .select('modele_id, quantite, tarif_unitaire, statut')
       .eq('pays_code', req.country)
       .eq('couturier_id', req.userId)
       .eq('date_production', dateProduction)
-      .in('modele_id', modeleIds)
       .in('statut', ['en_attente', 'validee']);
     if (existingError) return res.status(500).json({ message: 'Impossible de vérifier la déclaration', error: existingError.message });
-    if ((existing || []).length > 0) {
+    if ((existing || []).some((item) => modeleIds.includes(item.modele_id))) {
       return res.status(409).json({ message: 'Une tenue sélectionnée a déjà été déclarée pour cette journée' });
     }
 
-    const rows = items.map((item) => ({
+    const itemsWithBonus = calculateProductionBonusAllocations({
+      items,
+      tarifByModele: tarifMap,
+      existingProductions: existing || [],
+    });
+    const rows = itemsWithBonus.map((item) => ({
       pays_code: req.country,
       couturier_id: req.userId,
       modele_id: item.modeleId,
       date_production: dateProduction,
       quantite: item.quantite,
       tarif_unitaire: Number(tarifMap.get(item.modeleId).montant_unitaire),
+      quantite_bonus: item.quantiteBonus,
+      bonus_unitaire: item.bonusUnitaire,
       statut: 'en_attente',
     }));
     const { data, error } = await supabase
       .from('productions_couturiers')
       .insert(rows)
-      .select('id, date_production, quantite, tarif_unitaire, montant_total, statut, created_at, modele:modeles(id, nom, image, categorie)');
+      .select('id, date_production, quantite, tarif_unitaire, quantite_bonus, bonus_unitaire, montant_bonus, montant_total, statut, created_at, modele:modeles(id, nom, image, categorie)');
     if (error) {
       const duplicate = error.code === '23505';
       return res.status(duplicate ? 409 : 500).json({
@@ -318,7 +325,7 @@ router.get('/admin/alertes', authorize('administrateur'), async (req, res) => {
     const [productionsResult, paiementsResult] = await Promise.all([
       supabase
         .from('productions_couturiers')
-        .select('quantite, montant_total, statut')
+        .select('quantite, montant_total, montant_bonus, statut')
         .eq('pays_code', req.country)
         .eq('statut', 'en_attente'),
       supabase
@@ -344,7 +351,7 @@ router.get('/admin/productions', authorize('administrateur'), async (req, res) =
     const supabase = getSupabaseAdmin();
     let query = supabase
       .from('productions_couturiers')
-      .select('id, date_production, quantite, tarif_unitaire, montant_total, statut, motif_refus, created_at, validee_at, couturier:users!productions_couturiers_couturier_id_fkey(id, nom, telephone), modele:modeles(id, nom, image, categorie)')
+      .select('id, date_production, quantite, tarif_unitaire, quantite_bonus, bonus_unitaire, montant_bonus, montant_total, statut, motif_refus, created_at, validee_at, couturier:users!productions_couturiers_couturier_id_fkey(id, nom, telephone), modele:modeles(id, nom, image, categorie)')
       .eq('pays_code', req.country)
       .order('created_at', { ascending: false });
     if (req.query.statut) query = query.eq('statut', req.query.statut);

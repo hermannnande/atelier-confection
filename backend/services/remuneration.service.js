@@ -63,6 +63,49 @@ export function parseMoney(value, { allowZero = false } = {}) {
   return Math.round(amount * 100) / 100;
 }
 
+export function getProductionBonusRule(tarifUnitaire) {
+  const tarif = Number(tarifUnitaire || 0);
+  if (tarif === 700 || tarif === 900) {
+    return { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 };
+  }
+  if (tarif >= 1000) {
+    return { groupe: 'tarifs_1000_plus', quota: 6, bonusUnitaire: 300 };
+  }
+  return null;
+}
+
+export function calculateProductionBonusAllocations({ items = [], tarifByModele = new Map(), existingProductions = [] }) {
+  const quantitiesByGroup = new Map();
+
+  existingProductions.forEach((item) => {
+    const rule = getProductionBonusRule(item.tarif_unitaire);
+    if (!rule) return;
+    quantitiesByGroup.set(rule.groupe, Number(quantitiesByGroup.get(rule.groupe) || 0) + Number(item.quantite || 0));
+  });
+
+  return items.map((item) => {
+    const tarif = Number(tarifByModele.get(item.modeleId)?.montant_unitaire || 0);
+    const rule = getProductionBonusRule(tarif);
+    if (!rule) return { ...item, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0 };
+
+    const previousQuantity = Number(quantitiesByGroup.get(rule.groupe) || 0);
+    const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);
+    const quantiteBonus = Math.max(0, Number(item.quantite || 0) - remainingWithoutBonus);
+    quantitiesByGroup.set(rule.groupe, previousQuantity + Number(item.quantite || 0));
+
+    return {
+      ...item,
+      quantiteBonus,
+      bonusUnitaire: rule.bonusUnitaire,
+      montantBonus: quantiteBonus * rule.bonusUnitaire,
+    };
+  });
+}
+
+function productionAmount(item) {
+  return Number(item.montant_total || 0) + Number(item.montant_bonus || 0);
+}
+
 export function calculateAdminRemunerationAlerts({ productions = [], paiements = [] }) {
   const pendingProductions = productions.filter((item) => item.statut === 'en_attente');
   const pendingPayments = paiements.filter((item) => item.statut === 'en_attente');
@@ -70,7 +113,7 @@ export function calculateAdminRemunerationAlerts({ productions = [], paiements =
   return {
     productions: pendingProductions.length,
     pieces: pendingProductions.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
-    montantProductions: pendingProductions.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    montantProductions: pendingProductions.reduce((sum, item) => sum + productionAmount(item), 0),
     paiements: pendingPayments.length,
     montantPaiements: pendingPayments.reduce((sum, item) => sum + Number(item.montant || 0), 0),
     total: pendingProductions.length + pendingPayments.length,
@@ -95,7 +138,7 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
     ['en_attente', 'validee'].includes(item.statut)
     && String(item.date_production || '').slice(0, 10) === todayKey
   ));
-  const totalGagne = validated.reduce((sum, item) => sum + Number(item.montant_total || 0), 0);
+  const totalGagne = validated.reduce((sum, item) => sum + productionAmount(item), 0);
   const totalPaye = paiements
     .filter((item) => item.statut === 'payee')
     .reduce((sum, item) => sum + Number(item.montant || 0), 0);
@@ -106,7 +149,7 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
   const sumFrom = (start, exact = false) => validated.reduce((sum, item) => {
     const key = String(item.date_production || '').slice(0, 10);
     const included = exact ? key === start : key >= start && key <= todayKey;
-    return included ? sum + Number(item.montant_total || 0) : sum;
+    return included ? sum + productionAmount(item) : sum;
   }, 0);
 
   const countFrom = (start, exact = false) => validated.reduce((sum, item) => {
@@ -116,7 +159,7 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
   }, 0);
 
   return {
-    saisieAujourdHui: submittedToday.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    saisieAujourdHui: submittedToday.reduce((sum, item) => sum + productionAmount(item), 0),
     piecesSaisiesAujourdHui: submittedToday.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
     aujourdHui: sumFrom(todayKey, true),
     semaine: sumFrom(weekStart),
@@ -126,7 +169,7 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
     piecesMois: countFrom(monthStart),
     totalGagne,
     totalPaye,
-    productionEnAttente: pending.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    productionEnAttente: pending.reduce((sum, item) => sum + productionAmount(item), 0),
     piecesEnAttente: pending.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
     paiementEnAttente,
     soldeDisponible: Math.max(0, totalGagne - totalPaye - paiementEnAttente),
