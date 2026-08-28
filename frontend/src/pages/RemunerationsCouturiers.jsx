@@ -8,6 +8,7 @@ import {
   Coins,
   Loader2,
   Save,
+  Search,
   Shirt,
   Users,
   X,
@@ -24,6 +25,8 @@ const RemunerationsCouturiers = () => {
   const [processingId, setProcessingId] = useState(null);
   const [tarifs, setTarifs] = useState([]);
   const [draftTarifs, setDraftTarifs] = useState({});
+  const [selectedTarifId, setSelectedTarifId] = useState('');
+  const [tarifSearch, setTarifSearch] = useState('');
   const [couturiers, setCouturiers] = useState([]);
   const [productions, setProductions] = useState([]);
   const [paiements, setPaiements] = useState([]);
@@ -41,6 +44,9 @@ const RemunerationsCouturiers = () => {
       const loadedTarifs = tarifsRes.data.tarifs || [];
       setTarifs(loadedTarifs);
       setDraftTarifs(Object.fromEntries(loadedTarifs.map((item) => [item.modeleId, item.montantUnitaire ?? ''])));
+      setSelectedTarifId((current) => (
+        loadedTarifs.some((item) => item.modeleId === current) ? current : ''
+      ));
       setCouturiers(resumeRes.data.couturiers || []);
       setProductions(productionsRes.data.productions || []);
       setPaiements(paiementsRes.data.paiements || []);
@@ -55,6 +61,20 @@ const RemunerationsCouturiers = () => {
 
   const pendingProductions = useMemo(() => productions.filter((item) => item.statut === 'en_attente'), [productions]);
   const pendingPayments = useMemo(() => paiements.filter((item) => item.statut === 'en_attente'), [paiements]);
+  const filteredTarifs = useMemo(() => {
+    const term = tarifSearch.trim().toLocaleLowerCase('fr-FR');
+    const sorted = [...tarifs].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+    if (!term) return sorted;
+    return sorted.filter((item) => `${item.nom} ${item.categorie || ''}`.toLocaleLowerCase('fr-FR').includes(term));
+  }, [tarifs, tarifSearch]);
+  const selectedTarif = useMemo(
+    () => tarifs.find((item) => item.modeleId === selectedTarifId) || null,
+    [tarifs, selectedTarifId],
+  );
+  const selectableTarifs = useMemo(() => {
+    if (!selectedTarif || filteredTarifs.some((item) => item.modeleId === selectedTarif.modeleId)) return filteredTarifs;
+    return [selectedTarif, ...filteredTarifs];
+  }, [filteredTarifs, selectedTarif]);
 
   const saveTarif = async (tarif) => {
     const amount = Number(draftTarifs[tarif.modeleId]);
@@ -123,15 +143,53 @@ const RemunerationsCouturiers = () => {
       </div>
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
-        <div className="flex items-center gap-3 mb-5"><div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl"><Shirt size={22} /></div><div><h2 className="text-xl font-black">Tarif de chaque tenue</h2><p className="text-sm text-gray-500">Ces montants seront copiés dans chaque nouvelle déclaration.</p></div></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {tarifs.map((tarif) => (
-            <div key={tarif.modeleId} className="bg-gray-50 border border-gray-100 rounded-2xl p-4">
-              <p className="font-black truncate">{tarif.nom}</p><p className="text-xs text-gray-500 mb-3">{tarif.categorie || 'Tenue'}</p>
-              <div className="flex gap-2"><input type="number" min="0" value={draftTarifs[tarif.modeleId] ?? ''} onChange={(event) => setDraftTarifs((current) => ({ ...current, [tarif.modeleId]: event.target.value }))} placeholder="Tarif FCFA" className="input" /><button type="button" onClick={() => saveTarif(tarif)} disabled={processingId === `tarif-${tarif.modeleId}`} className="btn btn-primary px-3 disabled:opacity-50">{processingId === `tarif-${tarif.modeleId}` ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}</button></div>
-            </div>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div className="flex items-center gap-3"><div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl"><Shirt size={22} /></div><div><h2 className="text-xl font-black">Tarif de chaque tenue</h2><p className="text-sm text-gray-500">Sélectionnez une tenue pour consulter ou modifier son tarif.</p></div></div>
+          <span className="self-start sm:self-auto px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-black">{tarifs.length} modèle{tarifs.length > 1 ? 's' : ''}</span>
         </div>
+        {tarifs.length === 0 ? <Empty text="Aucun modèle disponible" /> : (
+          <div className="max-w-3xl space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="block text-sm font-bold text-gray-700 mb-2">Rechercher une tenue</span>
+                <span className="relative block">
+                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input type="search" value={tarifSearch} onChange={(event) => setTarifSearch(event.target.value)} placeholder="Nom ou catégorie..." className="input pl-10" />
+                </span>
+              </label>
+              <label className="block">
+                <span className="block text-sm font-bold text-gray-700 mb-2">Tenue à tarifer</span>
+                <select value={selectedTarifId} onChange={(event) => setSelectedTarifId(event.target.value)} className="input bg-white">
+                  <option value="">Sélectionner une tenue</option>
+                  {selectableTarifs.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''}</option>)}
+                </select>
+                {tarifSearch && <span className="block mt-1.5 text-xs text-gray-500">{filteredTarifs.length} résultat{filteredTarifs.length > 1 ? 's' : ''}</span>}
+              </label>
+            </div>
+
+            {selectedTarif ? (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div className="min-w-0 sm:w-2/5">
+                    <p className="text-xs uppercase tracking-wide font-bold text-blue-600">Tenue sélectionnée</p>
+                    <p className="font-black text-lg text-gray-900 truncate">{selectedTarif.nom}</p>
+                    <p className="text-sm text-gray-500">{selectedTarif.categorie || 'Tenue'}</p>
+                  </div>
+                  <label className="block flex-1">
+                    <span className="block text-sm font-bold text-gray-700 mb-2">Montant par tenue confectionnée</span>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input type="number" min="0" value={draftTarifs[selectedTarif.modeleId] ?? ''} onChange={(event) => setDraftTarifs((current) => ({ ...current, [selectedTarif.modeleId]: event.target.value }))} placeholder="Tarif" className="input pr-16" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500">FCFA</span>
+                      </div>
+                      <button type="button" onClick={() => saveTarif(selectedTarif)} disabled={processingId === `tarif-${selectedTarif.modeleId}`} className="btn btn-primary px-4 disabled:opacity-50">{processingId === `tarif-${selectedTarif.modeleId}` ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}<span className="hidden sm:inline">Enregistrer</span></button>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            ) : <Empty text="Choisissez une tenue dans le menu pour définir son tarif" />}
+          </div>
+        )}
       </section>
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
