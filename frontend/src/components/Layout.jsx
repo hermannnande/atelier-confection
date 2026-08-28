@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import CountrySelector from './CountrySelector';
 import { useCountryStore } from '../store/countryStore';
+import api from '../services/api';
 import { 
   LayoutDashboard, 
   Package, 
@@ -26,13 +27,41 @@ import {
   Calendar,
   Coins
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const Layout = () => {
   const { user, logout } = useAuthStore();
   const { currentCountry } = useCountryStore();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [remunerationAlerts, setRemunerationAlerts] = useState({ productions: 0, paiements: 0, total: 0 });
+  const activeCountry = currentCountry || user?.pays_code || 'CI';
+
+  useEffect(() => {
+    if (user?.role !== 'administrateur' || activeCountry !== 'CI') {
+      setRemunerationAlerts({ productions: 0, paiements: 0, total: 0 });
+      return undefined;
+    }
+
+    let mounted = true;
+    const loadAlerts = async () => {
+      try {
+        const response = await api.get('/remunerations/admin/alertes');
+        if (mounted) setRemunerationAlerts(response.data || { productions: 0, paiements: 0, total: 0 });
+      } catch {
+        if (mounted) setRemunerationAlerts({ productions: 0, paiements: 0, total: 0 });
+      }
+    };
+
+    loadAlerts();
+    const intervalId = window.setInterval(loadAlerts, 30000);
+    window.addEventListener('remuneration-alerts-updated', loadAlerts);
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('remuneration-alerts-updated', loadAlerts);
+    };
+  }, [activeCountry, user?.role]);
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'], gradient: 'from-blue-500 to-cyan-500' },
@@ -47,7 +76,7 @@ const Layout = () => {
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier', 'styliste'], gradient: 'from-rose-500 to-red-500' },
     { name: 'Mes gains', href: '/mes-gains', icon: Coins, roles: ['couturier'], countries: ['CI'], gradient: 'from-orange-500 to-amber-500' },
-    { name: 'Rémunérations', href: '/remunerations-couturiers', icon: Coins, roles: ['administrateur'], countries: ['CI'], gradient: 'from-emerald-500 to-teal-600' },
+    { name: 'Rémunérations', href: '/remunerations-couturiers', icon: Coins, roles: ['administrateur'], countries: ['CI'], gradient: 'from-emerald-500 to-teal-600', alertCount: remunerationAlerts.total },
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
     { name: 'Livreurs', href: '/caisse-livreurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Comptabilité', href: '/comptabilite', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-amber-500 to-orange-500' },
@@ -181,12 +210,16 @@ const Layout = () => {
                     />
                   </div>
                   <span className={`
-                    relative z-10 text-sm font-bold transition-colors
+                    relative z-10 text-sm font-bold transition-colors flex-1
                     ${isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}
                   `}>
                     {item.name}
                   </span>
-                  {isActive && (
+                  {Number(item.alertCount || 0) > 0 ? (
+                    <span className="relative z-10 min-w-6 h-6 px-1.5 rounded-full bg-red-500 text-white text-xs font-black flex items-center justify-center shadow-md shadow-red-500/30">
+                      {item.alertCount > 99 ? '99+' : item.alertCount}
+                    </span>
+                  ) : isActive && (
                     <div className="absolute right-4 w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
                   )}
                 </Link>
@@ -246,10 +279,16 @@ const Layout = () => {
               </div>
 
               {/* Actions */}
-              <button className="hidden md:block relative p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
-                <Bell size={22} strokeWidth={2.5} />
-                <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              </button>
+              {user?.role === 'administrateur' && activeCountry === 'CI' ? (
+                <Link to="/remunerations-couturiers" aria-label={`${remunerationAlerts.total} alerte(s) de rémunération`} className="hidden md:block relative p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
+                  <Bell size={22} strokeWidth={2.5} />
+                  {remunerationAlerts.total > 0 && <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center animate-pulse">{remunerationAlerts.total > 99 ? '99+' : remunerationAlerts.total}</span>}
+                </Link>
+              ) : (
+                <button type="button" className="hidden md:block relative p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
+                  <Bell size={22} strokeWidth={2.5} />
+                </button>
+              )}
               
               <button className="hidden md:block p-3 text-gray-600 hover:bg-gray-100 rounded-xl transition-all hover:scale-110">
                 <Settings size={22} strokeWidth={2.5} />

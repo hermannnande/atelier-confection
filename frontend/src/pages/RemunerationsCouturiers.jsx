@@ -125,6 +125,7 @@ const RemunerationsCouturiers = () => {
       await api.patch(`/remunerations/admin/productions/${item.id}`, { action, motif });
       toast.success(action === 'valider' ? 'Production validée' : 'Production refusée');
       await loadData(true);
+      window.dispatchEvent(new Event('remuneration-alerts-updated'));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible de traiter la production');
     } finally { setProcessingId(null); }
@@ -150,6 +151,7 @@ const RemunerationsCouturiers = () => {
       });
       toast.success(action === 'valider' ? 'Journée de production validée' : 'Journée de production refusée');
       await loadData(true);
+      window.dispatchEvent(new Event('remuneration-alerts-updated'));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible de traiter cette journée');
     } finally { setProcessingId(null); }
@@ -169,6 +171,7 @@ const RemunerationsCouturiers = () => {
       await api.patch(`/remunerations/admin/paiements/${item.id}`, { action, noteAdmin });
       toast.success(action === 'payer' ? 'Paiement confirmé' : 'Demande refusée');
       await loadData(true);
+      window.dispatchEvent(new Event('remuneration-alerts-updated'));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible de traiter le paiement');
     } finally { setProcessingId(null); }

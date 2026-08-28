@@ -311,6 +311,32 @@ router.get('/admin/resume', authorize('administrateur'), async (req, res) => {
   }
 });
 
+router.get('/admin/alertes', authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const [productionsResult, paiementsResult] = await Promise.all([
+      supabase
+        .from('productions_couturiers')
+        .select('id', { count: 'exact', head: true })
+        .eq('pays_code', req.country)
+        .eq('statut', 'en_attente'),
+      supabase
+        .from('paiements_couturiers')
+        .select('id', { count: 'exact', head: true })
+        .eq('pays_code', req.country)
+        .eq('statut', 'en_attente'),
+    ]);
+    const error = productionsResult.error || paiementsResult.error;
+    if (error) return res.status(500).json({ message: 'Impossible de charger les alertes', error: error.message });
+
+    const productions = Number(productionsResult.count || 0);
+    const paiements = Number(paiementsResult.count || 0);
+    return res.json({ productions, paiements, total: productions + paiements });
+  } catch (error) {
+    return res.status(500).json({ message: 'Impossible de charger les alertes', error: error.message });
+  }
+});
+
 router.get('/admin/productions', authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
