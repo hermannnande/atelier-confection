@@ -87,6 +87,12 @@ const MesGains = () => {
     const tarif = tarifMap.get(ligne.modeleId);
     return sum + Number(tarif?.montantUnitaire || 0) * Number(ligne.quantite || 0);
   }, 0), [lignes, tarifMap]);
+  const modelesDejaDeclares = useMemo(() => new Set(
+    productions
+      .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
+      .map((item) => item.modele?.id)
+      .filter(Boolean),
+  ), [productions, dateProduction]);
 
   const updateLigne = (index, key, value) => {
     setLignes((current) => current.map((ligne, i) => (i === index ? { ...ligne, [key]: value } : ligne)));
@@ -140,7 +146,8 @@ const MesGains = () => {
   }
 
   const cards = [
-    { label: "Aujourd’hui", value: resume.aujourdHui, pieces: resume.piecesAujourdHui, icon: CalendarDays, colors: 'from-orange-500 to-amber-500' },
+    { label: "Saisi aujourd’hui", value: resume.saisieAujourdHui, pieces: resume.piecesSaisiesAujourdHui, piecesLabel: 'pièce(s) saisie(s)', icon: Shirt, colors: 'from-orange-500 to-amber-500' },
+    { label: "Validé aujourd’hui", value: resume.aujourdHui, pieces: resume.piecesAujourdHui, piecesLabel: 'pièce(s) validée(s)', icon: CheckCircle, colors: 'from-emerald-500 to-green-600' },
     { label: 'Cette semaine', value: resume.semaine, pieces: resume.piecesSemaine, icon: CalendarDays, colors: 'from-violet-500 to-purple-600' },
     { label: 'Ce mois', value: resume.mois, pieces: resume.piecesMois, icon: History, colors: 'from-blue-500 to-indigo-600' },
     { label: 'Disponible', value: resume.soldeDisponible, pieces: null, icon: Coins, colors: 'from-emerald-500 to-teal-600' },
@@ -158,16 +165,23 @@ const MesGains = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {cards.map(({ label, value, pieces, icon: Icon, colors }) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        {cards.map(({ label, value, pieces, piecesLabel = 'pièce(s) validée(s)', icon: Icon, colors }) => (
           <div key={label} className="stat-card">
             <div className={`w-11 h-11 bg-gradient-to-br ${colors} text-white rounded-xl flex items-center justify-center mb-4`}><Icon size={22} /></div>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</p>
             <p className="text-2xl sm:text-3xl font-black text-gray-900 mt-1">{money(value)}</p>
-            {pieces !== null && <p className="text-xs text-gray-500 mt-1">{Number(pieces || 0)} pièce(s) validée(s)</p>}
+            {pieces !== null && <p className="text-xs text-gray-500 mt-1">{Number(pieces || 0)} {piecesLabel}</p>}
           </div>
         ))}
       </div>
+
+      {Number(resume.productionEnAttente || 0) > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3 text-blue-900">
+          <Clock className="flex-shrink-0" />
+          <p><strong>{money(resume.productionEnAttente)}</strong> pour {Number(resume.piecesEnAttente || 0)} pièce(s) attend la validation de l’administrateur. Ce montant sera ajouté au solde disponible après validation.</p>
+        </div>
+      )}
 
       {Number(resume.paiementEnAttente || 0) > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 text-amber-900">
@@ -199,7 +213,11 @@ const MesGains = () => {
                       <label className="block text-xs font-bold text-gray-600 mb-1">Tenue</label>
                       <select value={ligne.modeleId} onChange={(event) => updateLigne(index, 'modeleId', event.target.value)} className="input">
                         <option value="">Sélectionner une tenue</option>
-                        {tarifs.map((item) => <option key={item.modeleId} value={item.modeleId}>{item.nom} — {money(item.montantUnitaire)}</option>)}
+                        {tarifs.map((item) => {
+                          const selectedElsewhere = lignes.some((other, otherIndex) => otherIndex !== index && other.modeleId === item.modeleId);
+                          const alreadySubmitted = modelesDejaDeclares.has(item.modeleId);
+                          return <option key={item.modeleId} value={item.modeleId} disabled={selectedElsewhere || alreadySubmitted}>{item.nom} — {money(item.montantUnitaire)}{alreadySubmitted ? ' · Déjà déclaré pour cette journée' : selectedElsewhere ? ' · Déjà sélectionné' : ''}</option>;
+                        })}
                       </select>
                     </div>
                     <div>

@@ -58,6 +58,11 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
   const monthStart = `${todayKey.slice(0, 7)}-01`;
 
   const validated = productions.filter((item) => item.statut === 'validee');
+  const pending = productions.filter((item) => item.statut === 'en_attente');
+  const submittedToday = productions.filter((item) => (
+    ['en_attente', 'validee'].includes(item.statut)
+    && String(item.date_production || '').slice(0, 10) === todayKey
+  ));
   const totalGagne = validated.reduce((sum, item) => sum + Number(item.montant_total || 0), 0);
   const totalPaye = paiements
     .filter((item) => item.statut === 'payee')
@@ -79,6 +84,8 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
   }, 0);
 
   return {
+    saisieAujourdHui: submittedToday.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    piecesSaisiesAujourdHui: submittedToday.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
     aujourdHui: sumFrom(todayKey, true),
     semaine: sumFrom(weekStart),
     mois: sumFrom(monthStart),
@@ -87,6 +94,8 @@ export function calculateRemunerationSummary({ productions = [], paiements = [],
     piecesMois: countFrom(monthStart),
     totalGagne,
     totalPaye,
+    productionEnAttente: pending.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    piecesEnAttente: pending.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
     paiementEnAttente,
     soldeDisponible: Math.max(0, totalGagne - totalPaye - paiementEnAttente),
     soldeAvantDemandes: Math.max(0, totalGagne - totalPaye),

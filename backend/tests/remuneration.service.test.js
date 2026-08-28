@@ -31,11 +31,15 @@ test('calcule les gains, réservations et paiements sans effacer l’historique'
   });
 
   assert.equal(summary.aujourdHui, 5000);
+  assert.equal(summary.saisieAujourdHui, 14000);
+  assert.equal(summary.piecesSaisiesAujourdHui, 11);
   assert.equal(summary.semaine, 7000);
   assert.equal(summary.mois, 7000);
   assert.equal(summary.piecesAujourdHui, 2);
   assert.equal(summary.totalGagne, 7000);
   assert.equal(summary.totalPaye, 1000);
+  assert.equal(summary.productionEnAttente, 9000);
+  assert.equal(summary.piecesEnAttente, 9);
   assert.equal(summary.paiementEnAttente, 1500);
   assert.equal(summary.soldeDisponible, 4500);
 });
