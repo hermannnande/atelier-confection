@@ -60,6 +60,27 @@ const RemunerationsCouturiers = () => {
   useEffect(() => { loadData(); }, []);
 
   const pendingProductions = useMemo(() => productions.filter((item) => item.statut === 'en_attente'), [productions]);
+  const pendingProductionGroups = useMemo(() => {
+    const grouped = new Map();
+    pendingProductions.forEach((item) => {
+      const key = `${item.couturier?.id || 'inconnu'}-${item.date_production}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          couturier: item.couturier,
+          date: item.date_production,
+          items: [],
+          pieces: 0,
+          montant: 0,
+        });
+      }
+      const group = grouped.get(key);
+      group.items.push(item);
+      group.pieces += Number(item.quantite || 0);
+      group.montant += Number(item.montant_total || 0);
+    });
+    return [...grouped.values()];
+  }, [pendingProductions]);
   const pendingPayments = useMemo(() => paiements.filter((item) => item.statut === 'en_attente'), [paiements]);
   const filteredTarifs = useMemo(() => {
     const term = tarifSearch.trim().toLocaleLowerCase('fr-FR');
@@ -106,6 +127,31 @@ const RemunerationsCouturiers = () => {
       await loadData(true);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible de traiter la production');
+    } finally { setProcessingId(null); }
+  };
+
+  const handleProductionGroup = async (group, action) => {
+    let motif = null;
+    if (action === 'valider') {
+      const confirmed = window.confirm(`Valider les ${group.pieces} pièce(s) déclarée(s) par ${group.couturier?.nom || 'ce couturier'} pour un total de ${money(group.montant)} ?`);
+      if (!confirmed) return;
+    } else {
+      motif = window.prompt(`Pourquoi refusez-vous les ${group.pieces} pièce(s) de cette journée ?`);
+      if (!motif) return;
+    }
+
+    const processingKey = `groupe-${group.key}`;
+    setProcessingId(processingKey);
+    try {
+      await api.patch('/remunerations/admin/productions/groupe', {
+        ids: group.items.map((item) => item.id),
+        action,
+        motif,
+      });
+      toast.success(action === 'valider' ? 'Journée de production validée' : 'Journée de production refusée');
+      await loadData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de traiter cette journée');
     } finally { setProcessingId(null); }
   };
 
@@ -209,14 +255,25 @@ const RemunerationsCouturiers = () => {
       </section>
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
-        <h2 className="text-xl font-black mb-5 flex items-center gap-2"><ClipboardCheck className="text-amber-600" />Productions à valider</h2>
+        <div className="mb-5"><h2 className="text-xl font-black flex items-center gap-2"><ClipboardCheck className="text-amber-600" />Productions à valider</h2><p className="text-sm text-gray-500 mt-1">Les déclarations sont regroupées par couturier et par journée.</p></div>
         {pendingProductions.length === 0 ? <Empty text="Aucune production en attente" /> : (
-          <div className="space-y-3">{pendingProductions.map((item) => (
-            <div key={item.id} className="border rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
-              <div className="min-w-0"><p className="font-black text-gray-900">{item.couturier?.nom || 'Couturier'} · {item.modele?.nom || 'Tenue'}</p><p className="text-sm text-gray-500">{item.date_production} · {item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p></div>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-xl mr-2">{money(item.montant_total)}</p><button type="button" disabled={processingId === item.id} onClick={() => handleProduction(item, 'valider')} className="btn btn-success"><Check size={17} />Valider</button><button type="button" disabled={processingId === item.id} onClick={() => handleProduction(item, 'refuser')} className="btn btn-danger"><X size={17} />Refuser</button></div>
-            </div>
-          ))}</div>
+          <div className="space-y-4">{pendingProductionGroups.map((group) => {
+            const groupProcessing = processingId === `groupe-${group.key}`;
+            return (
+              <div key={group.key} className="border border-amber-200 rounded-2xl overflow-hidden">
+                <div className="bg-amber-50 p-4 flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
+                  <div><p className="font-black text-lg text-gray-900">{group.couturier?.nom || 'Couturier'}</p><p className="text-sm text-gray-600">Journée du {new Date(`${group.date}T12:00:00`).toLocaleDateString('fr-FR')} · {group.items.length} modèle{group.items.length > 1 ? 's' : ''} · {group.pieces} pièce(s)</p></div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-2xl text-amber-800 sm:mr-2">{money(group.montant)}</p><button type="button" disabled={groupProcessing} onClick={() => handleProductionGroup(group, 'valider')} className="btn btn-success disabled:opacity-50">{groupProcessing ? <Loader2 className="animate-spin" size={17} /> : <Check size={17} />}Tout valider</button><button type="button" disabled={groupProcessing} onClick={() => handleProductionGroup(group, 'refuser')} className="btn btn-danger disabled:opacity-50"><X size={17} />Tout refuser</button></div>
+                </div>
+                <div className="divide-y divide-gray-100">{group.items.map((item) => (
+                  <div key={item.id} className="p-4 flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
+                    <div className="min-w-0"><p className="font-bold text-gray-900">{item.modele?.nom || 'Tenue'}</p><p className="text-sm text-gray-500">{item.quantite} pièce(s) × {money(item.tarif_unitaire)}</p></div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-lg sm:mr-2">{money(item.montant_total)}</p><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'valider')} className="btn btn-success disabled:opacity-50"><Check size={16} />Valider</button><button type="button" disabled={groupProcessing || processingId === item.id} onClick={() => handleProduction(item, 'refuser')} className="btn btn-danger disabled:opacity-50"><X size={16} />Refuser</button></div>
+                  </div>
+                ))}</div>
+              </div>
+            );
+          })}</div>
         )}
       </section>
 

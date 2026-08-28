@@ -6,6 +6,7 @@ import {
   calculateRemunerationSummary,
   normalizeDateKey,
   parseMoney,
+  validateProductionIds,
   validateProductionItems,
 } from '../../services/remuneration.service.js';
 
@@ -324,6 +325,60 @@ router.get('/admin/productions', authorize('administrateur'), async (req, res) =
     return res.json({ productions: data || [] });
   } catch (error) {
     return res.status(500).json({ message: 'Impossible de charger les productions', error: error.message });
+  }
+});
+
+router.patch('/admin/productions/groupe', authorize('administrateur'), async (req, res) => {
+  try {
+    const action = req.body.action;
+    if (!['valider', 'refuser'].includes(action)) {
+      return res.status(400).json({ message: 'Action invalide' });
+    }
+
+    let ids;
+    try {
+      ids = validateProductionIds(req.body.ids);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    const motif = safeNote(req.body.motif);
+    if (action === 'refuser' && (!motif || motif.length < 3)) {
+      return res.status(400).json({ message: 'Précisez le motif du refus' });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('productions_couturiers')
+      .select('id, pays_code, statut')
+      .in('id', ids);
+    if (existingError) return res.status(500).json({ message: 'Impossible de vérifier les productions', error: existingError.message });
+    if ((existing || []).length !== ids.length) return res.status(404).json({ message: 'Une production est introuvable' });
+    if (existing.some((item) => item.pays_code !== req.country)) return res.status(403).json({ message: 'Accès refusé pour ce pays' });
+    if (existing.some((item) => item.statut !== 'en_attente')) return res.status(409).json({ message: 'Une production a déjà été traitée' });
+
+    const { data, error } = await supabase
+      .from('productions_couturiers')
+      .update({
+        statut: action === 'valider' ? 'validee' : 'refusee',
+        motif_refus: action === 'refuser' ? motif : null,
+        validee_par: req.userId,
+        validee_at: new Date().toISOString(),
+      })
+      .in('id', ids)
+      .eq('pays_code', req.country)
+      .eq('statut', 'en_attente')
+      .select('*');
+    if (error || (data || []).length !== ids.length) {
+      return res.status(409).json({ message: 'Une production a déjà été traitée', error: error?.message });
+    }
+
+    return res.json({
+      message: action === 'valider' ? 'Productions validées' : 'Productions refusées',
+      productions: data,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Impossible de traiter les productions', error: error.message });
   }
 });
 

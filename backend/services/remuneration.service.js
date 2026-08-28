@@ -36,6 +36,24 @@ export function validateProductionItems(items) {
   });
 }
 
+export function validateProductionIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new Error('Sélectionnez au moins une production');
+  }
+  if (ids.length > 100) {
+    throw new Error('Vous ne pouvez pas traiter plus de 100 productions à la fois');
+  }
+
+  const uniqueIds = [...new Set(ids.map((id) => String(id || '').trim()))];
+  if (uniqueIds.length !== ids.length) {
+    throw new Error('Une production ne peut être sélectionnée qu’une fois');
+  }
+  if (uniqueIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+    throw new Error('Une production sélectionnée est invalide');
+  }
+  return uniqueIds;
+}
+
 export function parseMoney(value, { allowZero = false } = {}) {
   const amount = Number(value);
   const minimum = allowZero ? 0 : 0.01;

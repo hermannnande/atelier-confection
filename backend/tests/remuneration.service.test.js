@@ -4,6 +4,7 @@ import {
   calculateRemunerationSummary,
   normalizeDateKey,
   parseMoney,
+  validateProductionIds,
   validateProductionItems,
 } from '../services/remuneration.service.js';
 
@@ -14,6 +15,14 @@ test('valide une déclaration et refuse les modèles en double', () => {
     () => validateProductionItems([{ modeleId: id, quantite: 1 }, { modeleId: id, quantite: 2 }]),
     /même tenue/,
   );
+});
+
+test('valide une sélection groupée de productions sans doublon', () => {
+  const first = '11111111-1111-4111-8111-111111111111';
+  const second = '22222222-2222-4222-8222-222222222222';
+  assert.deepEqual(validateProductionIds([first, second]), [first, second]);
+  assert.throws(() => validateProductionIds([first, first]), /qu’une fois/);
+  assert.throws(() => validateProductionIds(['production-invalide']), /invalide/);
 });
 
 test('calcule les gains, réservations et paiements sans effacer l’historique', () => {
