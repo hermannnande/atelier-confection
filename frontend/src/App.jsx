@@ -26,6 +26,8 @@ import Presence from './pages/Presence';
 import HistoriquePresences from './pages/HistoriquePresences';
 import ModelesEnAttente from './pages/ModelesEnAttente';
 import CustomerSmsConfig from './pages/WhatsAppConfig';
+import MesGains from './pages/MesGains';
+import RemunerationsCouturiers from './pages/RemunerationsCouturiers';
 import Layout from './components/Layout';
 
 // Route protégée
@@ -133,6 +135,20 @@ function App() {
           <Route path="atelier/couturier" element={
             <ProtectedRoute allowedRoles={['couturier', 'styliste', 'gestionnaire', 'administrateur']}>
               <AtelierCouturier />
+            </ProtectedRoute>
+          } />
+
+          {/* Gains personnels - Couturiers */}
+          <Route path="mes-gains" element={
+            <ProtectedRoute allowedRoles={['couturier']}>
+              <MesGains />
+            </ProtectedRoute>
+          } />
+
+          {/* Tarifs, validations et paiements - Administrateurs */}
+          <Route path="remunerations-couturiers" element={
+            <ProtectedRoute allowedRoles={['administrateur']}>
+              <RemunerationsCouturiers />
             </ProtectedRoute>
           } />
           

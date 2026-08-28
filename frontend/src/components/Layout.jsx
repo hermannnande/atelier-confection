@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import CountrySelector from './CountrySelector';
+import { useCountryStore } from '../store/countryStore';
 import { 
   LayoutDashboard, 
   Package, 
@@ -22,12 +23,14 @@ import {
   Wallet,
   Shield,
   MessageSquareText,
-  Calendar
+  Calendar,
+  Coins
 } from 'lucide-react';
 import { useState } from 'react';
 
 const Layout = () => {
   const { user, logout } = useAuthStore();
+  const { currentCountry } = useCountryStore();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -43,6 +46,8 @@ const Layout = () => {
     { name: 'Modèles en attente', href: '/modeles-en-attente', icon: Package, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-purple-500 to-pink-500' },
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier', 'styliste'], gradient: 'from-rose-500 to-red-500' },
+    { name: 'Mes gains', href: '/mes-gains', icon: Coins, roles: ['couturier'], countries: ['CI'], gradient: 'from-orange-500 to-amber-500' },
+    { name: 'Rémunérations', href: '/remunerations-couturiers', icon: Coins, roles: ['administrateur'], countries: ['CI'], gradient: 'from-emerald-500 to-teal-600' },
     { name: 'Livraisons', href: '/livraisons', icon: Truck, roles: ['administrateur', 'gestionnaire', 'livreur'], gradient: 'from-indigo-500 to-blue-500' },
     { name: 'Livreurs', href: '/caisse-livreurs', icon: Users, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Comptabilité', href: '/comptabilite', icon: Wallet, roles: ['administrateur', 'gestionnaire'], gradient: 'from-amber-500 to-orange-500' },
@@ -54,7 +59,7 @@ const Layout = () => {
   ];
 
   const filteredNavigation = navigation.filter(item => 
-    item.roles.includes(user?.role)
+    item.roles.includes(user?.role) && (!item.countries || item.countries.includes(currentCountry || user?.pays_code || 'CI'))
   );
 
   const getRoleGradient = (role) => {
