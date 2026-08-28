@@ -63,6 +63,20 @@ export function parseMoney(value, { allowZero = false } = {}) {
   return Math.round(amount * 100) / 100;
 }
 
+export function calculateAdminRemunerationAlerts({ productions = [], paiements = [] }) {
+  const pendingProductions = productions.filter((item) => item.statut === 'en_attente');
+  const pendingPayments = paiements.filter((item) => item.statut === 'en_attente');
+
+  return {
+    productions: pendingProductions.length,
+    pieces: pendingProductions.reduce((sum, item) => sum + Number(item.quantite || 0), 0),
+    montantProductions: pendingProductions.reduce((sum, item) => sum + Number(item.montant_total || 0), 0),
+    paiements: pendingPayments.length,
+    montantPaiements: pendingPayments.reduce((sum, item) => sum + Number(item.montant || 0), 0),
+    total: pendingProductions.length + pendingPayments.length,
+  };
+}
+
 function mondayOf(dateKey) {
   const date = new Date(`${dateKey}T12:00:00Z`);
   const day = date.getUTCDay();

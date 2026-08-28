@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry } from '../middleware/country.js';
 import {
+  calculateAdminRemunerationAlerts,
   calculateRemunerationSummary,
   normalizeDateKey,
   parseMoney,
@@ -317,21 +318,22 @@ router.get('/admin/alertes', authorize('administrateur'), async (req, res) => {
     const [productionsResult, paiementsResult] = await Promise.all([
       supabase
         .from('productions_couturiers')
-        .select('id', { count: 'exact', head: true })
+        .select('quantite, montant_total, statut')
         .eq('pays_code', req.country)
         .eq('statut', 'en_attente'),
       supabase
         .from('paiements_couturiers')
-        .select('id', { count: 'exact', head: true })
+        .select('montant, statut')
         .eq('pays_code', req.country)
         .eq('statut', 'en_attente'),
     ]);
     const error = productionsResult.error || paiementsResult.error;
     if (error) return res.status(500).json({ message: 'Impossible de charger les alertes', error: error.message });
 
-    const productions = Number(productionsResult.count || 0);
-    const paiements = Number(paiementsResult.count || 0);
-    return res.json({ productions, paiements, total: productions + paiements });
+    return res.json(calculateAdminRemunerationAlerts({
+      productions: productionsResult.data || [],
+      paiements: paiementsResult.data || [],
+    }));
   } catch (error) {
     return res.status(500).json({ message: 'Impossible de charger les alertes', error: error.message });
   }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useCountryStore } from '../store/countryStore';
 import api from '../services/api';
 import { 
   ShoppingBag, 
@@ -13,19 +15,55 @@ import {
   DollarSign,
   Sparkles,
   ArrowUpRight,
-  BarChart3
+  BarChart3,
+  Banknote,
+  BellRing,
+  ClipboardCheck,
+  Shirt
 } from 'lucide-react';
 import Presence from './Presence';
 
 const Dashboard = () => {
   const { user } = useAuthStore();
+  const { currentCountry } = useCountryStore();
   const [stats, setStats] = useState(null);
+  const [remunerationAlerts, setRemunerationAlerts] = useState({
+    productions: 0,
+    pieces: 0,
+    montantProductions: 0,
+    paiements: 0,
+    montantPaiements: 0,
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
   const attendanceRoles = ['gestionnaire', 'appelant', 'styliste', 'couturier'];
 
   useEffect(() => {
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'administrateur' || currentCountry !== 'CI') return undefined;
+
+    let mounted = true;
+    const fetchRemunerationAlerts = async () => {
+      try {
+        const response = await api.get('/remunerations/admin/alertes');
+        if (mounted) setRemunerationAlerts(response.data);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des rémunérations:', error);
+      }
+    };
+
+    fetchRemunerationAlerts();
+    const intervalId = window.setInterval(fetchRemunerationAlerts, 30000);
+    window.addEventListener('remuneration-alerts-updated', fetchRemunerationAlerts);
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('remuneration-alerts-updated', fetchRemunerationAlerts);
+    };
+  }, [currentCountry, user?.role]);
 
   const fetchStats = async () => {
     try {
@@ -192,6 +230,51 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Rémunérations à traiter - Visible uniquement pour l'administrateur en Côte d'Ivoire */}
+      {user?.role === 'administrateur' && currentCountry === 'CI' && (
+        <section className="animate-slide-up max-w-full" aria-labelledby="remunerations-dashboard-title">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+            <div>
+              <h2 id="remunerations-dashboard-title" className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-3">
+                <span className="w-1 h-8 bg-gradient-to-b from-amber-500 to-red-500 rounded-full flex-shrink-0"></span>
+                Rémunérations à traiter
+              </h2>
+              <p className="text-sm text-gray-500 mt-1 sm:ml-4">Productions déclarées et demandes de paiement des couturiers.</p>
+            </div>
+            <Link to="/remunerations-couturiers" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-black hover:bg-gray-800 transition-colors shadow-lg">
+              Ouvrir les validations
+              <ArrowUpRight size={17} />
+            </Link>
+          </div>
+
+          {remunerationAlerts.total > 0 ? (
+            <Link to="/remunerations-couturiers" className="mb-4 block rounded-2xl border border-red-200 bg-gradient-to-r from-red-50 to-amber-50 p-4 sm:p-5 hover:shadow-lg transition-all">
+              <div className="flex items-center gap-3">
+                <span className="relative flex-shrink-0 p-3 rounded-2xl bg-red-100 text-red-600">
+                  <BellRing size={24} />
+                  <span className="absolute -top-2 -right-2 min-w-6 h-6 px-1 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center">{remunerationAlerts.total > 99 ? '99+' : remunerationAlerts.total}</span>
+                </span>
+                <div className="min-w-0">
+                  <p className="font-black text-gray-900">Votre validation est attendue</p>
+                  <p className="text-sm text-gray-600">{remunerationAlerts.productions} déclaration(s) de production et {remunerationAlerts.paiements} demande(s) de paiement.</p>
+                </div>
+              </div>
+            </Link>
+          ) : (
+            <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+              Tout est à jour : aucune production ni demande de paiement en attente.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+            <RemunerationCard icon={ClipboardCheck} label="Déclarations à valider" value={remunerationAlerts.productions} detail="journées et modèles saisis" color="amber" />
+            <RemunerationCard icon={Shirt} label="Pièces en attente" value={remunerationAlerts.pieces} detail="pièces à contrôler" color="blue" />
+            <RemunerationCard icon={DollarSign} label="Productions en attente" value={`${Number(remunerationAlerts.montantProductions || 0).toLocaleString('fr-FR')} FCFA`} detail="montant à valider" color="emerald" />
+            <RemunerationCard icon={Banknote} label="Paiements demandés" value={`${Number(remunerationAlerts.montantPaiements || 0).toLocaleString('fr-FR')} FCFA`} detail={`${remunerationAlerts.paiements} demande(s)`} color="purple" />
+          </div>
+        </section>
+      )}
+
       {/* Statistiques principales avec glassmorphism */}
       <div className="animate-slide-up max-w-full">
         <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-2 sm:space-x-3">
@@ -328,5 +411,22 @@ const Dashboard = () => {
     </div>
   );
 };
+
+function RemunerationCard({ icon: Icon, label, value, detail, color }) {
+  const styles = {
+    amber: 'bg-amber-100 text-amber-700',
+    blue: 'bg-blue-100 text-blue-700',
+    emerald: 'bg-emerald-100 text-emerald-700',
+    purple: 'bg-purple-100 text-purple-700',
+  };
+  return (
+    <Link to="/remunerations-couturiers" className="stat-card group max-w-full hover:-translate-y-1 transition-transform">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${styles[color]}`}><Icon size={22} /></div>
+      <p className="text-xs uppercase font-bold text-gray-500">{label}</p>
+      <p className="text-2xl font-black mt-1 break-words">{value}</p>
+      <p className="text-xs text-gray-500 mt-2 group-hover:text-gray-700">{detail}</p>
+    </Link>
+  );
+}
 
 export default Dashboard;

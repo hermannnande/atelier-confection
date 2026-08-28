@@ -1,12 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  calculateAdminRemunerationAlerts,
   calculateRemunerationSummary,
   normalizeDateKey,
   parseMoney,
   validateProductionIds,
   validateProductionItems,
 } from '../services/remuneration.service.js';
+
+test('calcule les alertes de rémunération du tableau de bord administrateur', () => {
+  assert.deepEqual(calculateAdminRemunerationAlerts({
+    productions: [
+      { quantite: 3, montant_total: 7500, statut: 'en_attente' },
+      { quantite: 2, montant_total: 4000, statut: 'en_attente' },
+      { quantite: 9, montant_total: 9000, statut: 'validee' },
+    ],
+    paiements: [
+      { montant: 5000, statut: 'en_attente' },
+      { montant: 2000, statut: 'payee' },
+    ],
+  }), {
+    productions: 2,
+    pieces: 5,
+    montantProductions: 11500,
+    paiements: 1,
+    montantPaiements: 5000,
+    total: 3,
+  });
+});
 
 test('valide une déclaration et refuse les modèles en double', () => {
   const id = '11111111-1111-4111-8111-111111111111';
