@@ -75,6 +75,10 @@ const RemunerationsCouturiers = () => {
     if (!selectedTarif || filteredTarifs.some((item) => item.modeleId === selectedTarif.modeleId)) return filteredTarifs;
     return [selectedTarif, ...filteredTarifs];
   }, [filteredTarifs, selectedTarif]);
+  const tarifsSansMontant = useMemo(() => tarifs.filter((item) => !item.configured), [tarifs]);
+  const tarifsAvecMontant = useMemo(() => tarifs.filter((item) => item.configured), [tarifs]);
+  const selectableSansMontant = useMemo(() => selectableTarifs.filter((item) => !item.configured), [selectableTarifs]);
+  const selectableAvecMontant = useMemo(() => selectableTarifs.filter((item) => item.configured), [selectableTarifs]);
 
   const saveTarif = async (tarif) => {
     const amount = Number(draftTarifs[tarif.modeleId]);
@@ -145,7 +149,10 @@ const RemunerationsCouturiers = () => {
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <div className="flex items-center gap-3"><div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl"><Shirt size={22} /></div><div><h2 className="text-xl font-black">Tarif de chaque tenue</h2><p className="text-sm text-gray-500">Sélectionnez une tenue pour consulter ou modifier son tarif.</p></div></div>
-          <span className="self-start sm:self-auto px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-black">{tarifs.length} modèle{tarifs.length > 1 ? 's' : ''}</span>
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+            <span className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-black">{tarifsSansMontant.length} sans tarif</span>
+            <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black">{tarifsAvecMontant.length} tarifé{tarifsAvecMontant.length > 1 ? 's' : ''}</span>
+          </div>
         </div>
         {tarifs.length === 0 ? <Empty text="Aucun modèle disponible" /> : (
           <div className="max-w-3xl space-y-4">
@@ -161,7 +168,16 @@ const RemunerationsCouturiers = () => {
                 <span className="block text-sm font-bold text-gray-700 mb-2">Tenue à tarifer</span>
                 <select value={selectedTarifId} onChange={(event) => setSelectedTarifId(event.target.value)} className="input bg-white">
                   <option value="">Sélectionner une tenue</option>
-                  {selectableTarifs.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''}</option>)}
+                  {selectableSansMontant.length > 0 && (
+                    <optgroup label={`À TARIFER EN PRIORITÉ (${selectableSansMontant.length})`}>
+                      {selectableSansMontant.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''} — Sans tarif</option>)}
+                    </optgroup>
+                  )}
+                  {selectableAvecMontant.length > 0 && (
+                    <optgroup label={`TARIFS DÉJÀ AJOUTÉS (${selectableAvecMontant.length})`}>
+                      {selectableAvecMontant.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''} — {money(tarif.montantUnitaire)}</option>)}
+                    </optgroup>
+                  )}
                 </select>
                 {tarifSearch && <span className="block mt-1.5 text-xs text-gray-500">{filteredTarifs.length} résultat{filteredTarifs.length > 1 ? 's' : ''}</span>}
               </label>
@@ -171,7 +187,7 @@ const RemunerationsCouturiers = () => {
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                   <div className="min-w-0 sm:w-2/5">
-                    <p className="text-xs uppercase tracking-wide font-bold text-blue-600">Tenue sélectionnée</p>
+                    <span className={`inline-flex mb-2 px-2.5 py-1 rounded-full text-[11px] uppercase tracking-wide font-black ${selectedTarif.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{selectedTarif.configured ? 'Tarif déjà ajouté' : 'Tarif à ajouter en priorité'}</span>
                     <p className="font-black text-lg text-gray-900 truncate">{selectedTarif.nom}</p>
                     <p className="text-sm text-gray-500">{selectedTarif.categorie || 'Tenue'}</p>
                   </div>
