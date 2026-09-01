@@ -6,6 +6,7 @@ import {
 } from '../services/order-organization.service.js';
 
 test('accepte uniquement les couleurs d’organisation proposées', () => {
+  assert.deepEqual(ORDER_ORGANIZATION_COLORS, ['yellow']);
   for (const color of ORDER_ORGANIZATION_COLORS) {
     assert.equal(parseOrderOrganizationColor(color), color);
   }

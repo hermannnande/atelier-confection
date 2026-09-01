@@ -1,9 +1,5 @@
 export const ORDER_ORGANIZATION_COLORS = Object.freeze([
   'yellow',
-  'green',
-  'blue',
-  'pink',
-  'purple',
 ]);
 
 export function parseOrderOrganizationColor(value) {
