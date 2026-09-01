@@ -4,8 +4,11 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
+const AGED_VALIDATED_CARD_CLASS = '!bg-violet-100 !border-violet-500 ring-2 ring-violet-200 shadow-violet-200/60';
+const AGED_VALIDATED_DAYS = 5;
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
 const normalizeSize = (value) => String(value || '').trim().toUpperCase();
@@ -505,8 +508,14 @@ const Commandes = () => {
           {filteredCommandes.map((commande) => {
             const commandeId = commande._id || commande.id;
             const isMarked = isCardMarked(commande);
+            const isAgedValidated = isValidatedForAtLeastDays(commande, AGED_VALIDATED_DAYS);
             return (
-              <div key={commandeId} className={`card relative hover:shadow-md transition-all max-w-full overflow-visible ${isMarked ? MARKED_CARD_CLASS : ''}`}>
+              <div
+                key={commandeId}
+                className={`card relative hover:shadow-md transition-all max-w-full overflow-visible ${
+                  isAgedValidated ? AGED_VALIDATED_CARD_CLASS : (isMarked ? MARKED_CARD_CLASS : '')
+                }`}
+              >
                 <button
                   type="button"
                   onClick={() => setCardColor(commande, isMarked ? 'none' : 'yellow')}
