@@ -2,8 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Filter, AlertCircle, Eye, Edit, Send, Package } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Palette, Check, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+
+const CARD_COLOR_OPTIONS = [
+  { id: 'none', label: 'Aucune couleur', dot: 'bg-white border-gray-300', card: '' },
+  { id: 'yellow', label: 'Jaune', dot: 'bg-amber-300 border-amber-400', card: '!bg-amber-50 !border-amber-300' },
+  { id: 'green', label: 'Vert', dot: 'bg-emerald-300 border-emerald-400', card: '!bg-emerald-50 !border-emerald-300' },
+  { id: 'blue', label: 'Bleu', dot: 'bg-blue-300 border-blue-400', card: '!bg-blue-50 !border-blue-300' },
+  { id: 'pink', label: 'Rose', dot: 'bg-pink-300 border-pink-400', card: '!bg-pink-50 !border-pink-300' },
+  { id: 'purple', label: 'Violet', dot: 'bg-violet-300 border-violet-400', card: '!bg-violet-50 !border-violet-300' },
+];
 
 const Commandes = () => {
   const [commandes, setCommandes] = useState([]);
@@ -14,13 +23,18 @@ const Commandes = () => {
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
+  const [openColorPickerId, setOpenColorPickerId] = useState(null);
+  const [savingColorId, setSavingColorId] = useState(null);
   const { user } = useAuthStore();
 
   useEffect(() => {
     fetchCommandes();
+
+    const intervalId = setInterval(() => fetchCommandes(true), 15000);
+    return () => clearInterval(intervalId);
   }, [filterStatut, filterUrgence]);
 
-  const fetchCommandes = async () => {
+  const fetchCommandes = async (silent = false) => {
     try {
       const params = {};
       if (filterStatut) params.statut = filterStatut;
@@ -65,12 +79,12 @@ const Commandes = () => {
       
       setCommandes(commandesTriees);
       // Vérifier la disponibilité en stock
-      verifierStockPourCommandes(commandesTriees);
+      if (!silent) verifierStockPourCommandes(commandesTriees);
     } catch (error) {
-      toast.error('Erreur lors du chargement des commandes');
+      if (!silent) toast.error('Erreur lors du chargement des commandes');
       console.error(error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -183,6 +197,33 @@ const Commandes = () => {
 
   const peutEnvoyerAAtelier = () => {
     return user?.role === 'administrateur' || user?.role === 'gestionnaire';
+  };
+
+  const setCardColor = async (commande, colorId) => {
+    const commandeId = commande._id || commande.id;
+    setSavingColorId(commandeId);
+    try {
+      const response = await api.patch(`/commandes/${commandeId}/couleur-organisation`, {
+        couleur: colorId === 'none' ? null : colorId,
+      });
+      setCommandes((current) => current.map((item) => (
+        (item._id || item.id) === commandeId ? response.data.commande : item
+      )));
+      setOpenColorPickerId(null);
+      toast.success(colorId === 'none' ? 'Couleur retirée pour tous' : 'Couleur visible par tous');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l’enregistrement de la couleur');
+      console.error(error);
+    } finally {
+      setSavingColorId(null);
+    }
+  };
+
+  const getCardColor = (commande) => {
+    const colorId = commande.couleurOrganisation ?? commande.couleur_organisation;
+    const colorStatus = commande.couleurOrganisationStatut ?? commande.couleur_organisation_statut;
+    if (!colorId || colorStatus !== commande.statut) return CARD_COLOR_OPTIONS[0];
+    return CARD_COLOR_OPTIONS.find((option) => option.id === colorId) || CARD_COLOR_OPTIONS[0];
   };
 
   const getStatutBadge = (statut) => {
@@ -311,10 +352,53 @@ const Commandes = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
-          {filteredCommandes.map((commande) => (
-            <div key={commande._id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
-              <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
-                <div className="flex-1 min-w-0 w-full">
+          {filteredCommandes.map((commande) => {
+            const commandeId = commande._id || commande.id;
+            const selectedColor = getCardColor(commande);
+            const pickerOpen = openColorPickerId === commandeId;
+            return (
+              <div key={commandeId} className={`card relative hover:shadow-md transition-all max-w-full overflow-visible ${selectedColor.card}`}>
+                <button
+                  type="button"
+                  onClick={() => setOpenColorPickerId((current) => current === commandeId ? null : commandeId)}
+                  disabled={savingColorId === commandeId}
+                  className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full border-2 shadow-sm flex items-center justify-center transition-transform active:scale-90 ${selectedColor.id === 'none' ? 'bg-white border-gray-200 text-gray-600' : `${selectedColor.dot} text-gray-800`}`}
+                  title="Changer la couleur de cette carte"
+                  aria-label={`Changer la couleur de ${commande.numeroCommande}`}
+                  aria-expanded={pickerOpen}
+                >
+                  {savingColorId === commandeId
+                    ? <Loader2 size={17} className="animate-spin" />
+                    : <Palette size={17} />}
+                </button>
+
+                {pickerOpen && (
+                  <div className="absolute top-14 right-3 z-30 w-52 bg-white rounded-2xl border border-gray-200 shadow-2xl p-3" role="dialog" aria-label="Choisir une couleur">
+                    <p className="text-xs font-black text-gray-700 mb-2">Couleur d’organisation</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {CARD_COLOR_OPTIONS.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setCardColor(commande, option.id)}
+                          disabled={savingColorId === commandeId}
+                          className="flex flex-col items-center gap-1 rounded-xl p-1.5 hover:bg-gray-100"
+                          title={option.label}
+                          aria-label={option.label}
+                        >
+                          <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${option.dot}`}>
+                            {selectedColor.id === option.id && <Check size={15} className="text-gray-800" />}
+                          </span>
+                          <span className="text-[10px] text-gray-600">{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2">Visible par tous jusqu’au prochain changement d’étape.</p>
+                  </div>
+                )}
+
+                <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
+                <div className="flex-1 min-w-0 w-full pr-11 lg:pr-12">
                   <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate flex-shrink-0">
                       {commande.numeroCommande}
@@ -407,9 +491,10 @@ const Commandes = () => {
                     <span>Voir</span>
                   </Link>
                 </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -417,7 +502,4 @@ const Commandes = () => {
 };
 
 export default Commandes;
-
-
-
 

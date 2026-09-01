@@ -35,6 +35,10 @@ export function mapCommande(row) {
       motifRefus: row.motif_refus,
       emballeAt: row.emballe_at,
       emballeParId: row.emballe_par_id,
+      couleurOrganisation: row.couleur_organisation,
+      couleurOrganisationStatut: row.couleur_organisation_statut,
+      couleurOrganisationPar: row.couleur_organisation_par,
+      couleurOrganisationAt: row.couleur_organisation_at,
     })
   );
 }
@@ -77,6 +81,5 @@ export function mapLivraison(row) {
     })
   );
 }
-
 
 

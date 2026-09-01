@@ -5,6 +5,7 @@ import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
+import { parseOrderOrganizationColor } from '../../services/order-organization.service.js';
 
 const router = express.Router();
 
@@ -224,6 +225,61 @@ router.get('/:id', authenticate, resolveCountry, async (req, res) => {
     return res.json({ commande });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
+  }
+});
+
+router.patch('/:id/couleur-organisation', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    let couleur;
+    try {
+      couleur = parseOrderOrganizationColor(req.body.couleur);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('commandes')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('commandes')
+      .update({
+        couleur_organisation: couleur,
+        couleur_organisation_statut: couleur ? existing.statut : null,
+        couleur_organisation_par: couleur ? req.userId : null,
+        couleur_organisation_at: couleur ? now : null,
+      })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        message: 'Erreur lors de l’enregistrement de la couleur',
+        error: error.message,
+      });
+    }
+
+    const usersById = await hydrateUsersForCommandes(supabase, [data]);
+    const commande = mapCommande(attachUsers(data, usersById));
+    return res.json({
+      message: couleur ? 'Couleur visible par tous enregistrée' : 'Couleur retirée',
+      commande,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erreur lors de l’enregistrement de la couleur',
+      error: error.message,
+    });
   }
 });
 
