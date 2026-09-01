@@ -6,6 +6,10 @@ import { mapCommande, mapUser } from '../map.js';
 import smsService from '../../services/sms.service.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 import { parseOrderOrganizationColor } from '../../services/order-organization.service.js';
+import {
+  buildOrderStatistics,
+  resolveStatisticsDateRange,
+} from '../../services/order-statistics.service.js';
 
 const router = express.Router();
 
@@ -730,73 +734,67 @@ router.delete('/:id', authenticate, resolveCountry, authorize('administrateur'),
 router.get('/statistiques/analyse', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const { periode = 'mois' } = req.query;
-
-    const now = new Date();
-    let dateFrom;
-    if (periode === 'jour') {
-      dateFrom = new Date(now); dateFrom.setDate(dateFrom.getDate() - 30);
-    } else if (periode === 'semaine') {
-      dateFrom = new Date(now); dateFrom.setDate(dateFrom.getDate() - 84);
-    } else {
-      dateFrom = new Date(now); dateFrom.setFullYear(dateFrom.getFullYear() - 1);
+    let range;
+    try {
+      range = resolveStatisticsDateRange(req.query);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
     }
 
-    const { data: commandes, error } = await supabase
-      .from('commandes')
-      .select('modele, couleur, taille, prix, statut, created_at, pays_code')
-      .eq('pays_code', req.country)
-      .gte('created_at', dateFrom.toISOString());
-
-    if (error) return res.status(500).json({ message: 'Erreur', error: error.message });
-
-    const modeles = {};
-    const couleurs = {};
-    const tailles = {};
-    const parPeriode = {};
-    let totalCA = 0;
-
-    (commandes || []).forEach((c) => {
-      const nom = c.modele?.nom || 'Inconnu';
-      modeles[nom] = (modeles[nom] || 0) + 1;
-
-      const col = c.couleur || 'Non spécifié';
-      couleurs[col] = (couleurs[col] || 0) + 1;
-
-      const t = c.taille || 'N/A';
-      tailles[t] = (tailles[t] || 0) + 1;
-
-      totalCA += Number(c.prix) || 0;
-
-      const d = new Date(c.created_at);
-      let key;
-      if (periode === 'jour') {
-        key = d.toISOString().slice(0, 10);
-      } else if (periode === 'semaine') {
-        const jan1 = new Date(d.getFullYear(), 0, 1);
-        const week = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
-        key = `${d.getFullYear()}-S${String(week).padStart(2, '0')}`;
-      } else {
-        key = d.toISOString().slice(0, 7);
+    const fields = 'id, modele, prix, statut, created_at, updated_at, date_livraison, historique';
+    const fetchAllPages = async (createQuery) => {
+      const rows = [];
+      const pageSize = 1000;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await createQuery().range(from, from + pageSize - 1);
+        if (error) throw error;
+        const page = data || [];
+        rows.push(...page);
+        if (page.length < pageSize) break;
       }
-      parPeriode[key] = (parPeriode[key] || 0) + 1;
+      return rows;
+    };
+
+    const [receivedOrders, deliveredOrders, cancelledCandidates] = await Promise.all([
+      fetchAllPages(() => supabase
+        .from('commandes')
+        .select(fields)
+        .eq('pays_code', req.country)
+        .gte('created_at', range.start.toISOString())
+        .lt('created_at', range.endExclusive.toISOString())
+        .order('created_at', { ascending: true })),
+      fetchAllPages(() => supabase
+        .from('commandes')
+        .select(fields)
+        .eq('pays_code', req.country)
+        .gte('date_livraison', range.start.toISOString())
+        .lt('date_livraison', range.endExclusive.toISOString())
+        .order('date_livraison', { ascending: true })),
+      fetchAllPages(() => supabase
+        .from('commandes')
+        .select(fields)
+        .eq('pays_code', req.country)
+        .eq('statut', 'annulee')
+        .order('updated_at', { ascending: true })),
+    ]);
+
+    const statistics = buildOrderStatistics({
+      receivedOrders,
+      deliveredOrders,
+      cancelledCandidates,
+      range,
     });
 
-    const toSorted = (obj) => Object.entries(obj)
-      .map(([nom, count]) => ({ nom, count }))
-      .sort((a, b) => b.count - a.count);
-
-    const periodeData = Object.entries(parPeriode)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
     return res.json({
-      totalCommandes: (commandes || []).length,
-      chiffreAffaires: totalCA,
-      modelesPopulaires: toSorted(modeles).slice(0, 10),
-      couleursPopulaires: toSorted(couleurs).slice(0, 10),
-      taillesPopulaires: toSorted(tailles),
-      commandesParPeriode: periodeData
+      periode: {
+        dateDebut: range.dateDebut,
+        dateFin: range.dateFin,
+        nombreJours: range.nombreJours,
+        fuseauHoraire: 'Africa/Abidjan',
+      },
+      totalCommandes: statistics.recues,
+      chiffreAffaires: statistics.chiffreAffairesLivre,
+      ...statistics,
     });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur statistiques', error: error.message });
