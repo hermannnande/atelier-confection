@@ -71,11 +71,12 @@ async function hydrateSessionRow(supabase, sess) {
   const s = { ...sess, livraisons: livraisons || [] };
   const nombreLivres = s.livraisons.filter((l) => l.statut === 'livree').length;
   const nombreEnCours = s.livraisons.filter((l) => l.statut === 'en_cours').length;
-  const nombreRefuses = s.livraisons.filter((l) => l.statut === 'refusee').length;
+  const nombreRefuses = s.livraisons.filter((l) => ['refusee', 'retournee'].includes(l.statut)).length;
+  const nombreRefusesAConfirmer = s.livraisons.filter((l) => l.statut === 'refusee').length;
   s.nombreLivres = nombreLivres;
   s.nombreEnCours = nombreEnCours;
   s.nombreRefuses = nombreRefuses;
-  s.nombreRestants = nombreEnCours + nombreRefuses;
+  s.nombreRestants = nombreEnCours + nombreRefusesAConfirmer;
   s.nombre_livraisons = s.livraisons.length;
   s.montant_total = s.livraisons
     .filter((l) => l.statut === 'livree')
@@ -280,10 +281,16 @@ router.post('/:sessionId/cloturer', authenticate, resolveCountry, authorize('ges
           .eq('id', commande.id);
       }
 
-      // Supprimer les livraisons refusées (remises en stock)
+      // Conserver la livraison dans l'historique du livreur après le retour stock.
       await supabase
         .from('livraisons')
-        .delete()
+        .update({
+          statut: 'retournee',
+          date_retour: new Date().toISOString(),
+          verifie_par_gestionnaire: true,
+          gestionnaire_id: req.userId,
+          commentaire_gestionnaire: 'Retour au stock confirmé à la clôture de caisse',
+        })
         .eq('session_caisse_id', sessionId)
         .eq('statut', 'refusee');
     }
@@ -433,7 +440,17 @@ router.post('/livreur/:livreurId/cloturer-tout', authenticate, resolveCountry, a
           await supabase.from('commandes').update({ statut: 'en_stock', livreur_id: null }).eq('id', commande.id);
         }
       }
-      await supabase.from('livraisons').delete().in('session_caisse_id', sessionIds).eq('statut', 'refusee');
+      await supabase
+        .from('livraisons')
+        .update({
+          statut: 'retournee',
+          date_retour: new Date().toISOString(),
+          verifie_par_gestionnaire: true,
+          gestionnaire_id: req.userId,
+          commentaire_gestionnaire: 'Retour au stock confirmé à la clôture de caisse',
+        })
+        .in('session_caisse_id', sessionIds)
+        .eq('statut', 'refusee');
     }
 
     const totalColis = openSessions.reduce((s, ss) => s + (ss.nombre_livraisons || 0), 0);

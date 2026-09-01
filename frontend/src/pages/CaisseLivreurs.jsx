@@ -232,13 +232,15 @@ const Livreurs = () => {
     const reportees = [];
     const livreesNonPayees = [];
     const refuseesNonRetournees = [];
+    const refuseesHistorique = [];
     for (const l of livraisonsTourneeSelectionnee) {
       if (l.statut === 'en_cours') enCours.push(l);
       else if (l.statut === 'reportee') reportees.push(l);
       else if (l.statut === 'livree' && !l.paiementRecu) livreesNonPayees.push(l);
       else if (l.statut === 'refusee' && !l.verifieParGestionnaire) refuseesNonRetournees.push(l);
+      else if (l.statut === 'retournee' || (l.statut === 'refusee' && l.verifieParGestionnaire)) refuseesHistorique.push(l);
     }
-    return { enCours, reportees, livreesNonPayees, refuseesNonRetournees };
+    return { enCours, reportees, livreesNonPayees, refuseesNonRetournees, refuseesHistorique };
   }, [livraisonsTourneeSelectionnee]);
 
   const montantSelectionne = useMemo(() => {
@@ -887,6 +889,31 @@ function TourneeDetailModal({
             </section>
           )}
 
+          {/* REFUS CLIENT — HISTORIQUE CONSERVÉ */}
+          {grouped.refuseesHistorique.length > 0 && (
+            <section>
+              <h3 className="text-sm font-black text-red-700 uppercase mb-2 flex items-center gap-2">
+                <XCircle size={16} />
+                REFUS CLIENT — RETOURNÉS AU STOCK ({grouped.refuseesHistorique.length})
+              </h3>
+              <p className="text-[11px] text-red-700 mb-2 italic">
+                Ces colis restent dans l’historique du livreur, mais leur montant n’est pas ajouté à l’argent dû.
+              </p>
+              <div className="space-y-2">
+                {grouped.refuseesHistorique.map((l) => (
+                  <LivraisonRow
+                    key={l._id || l.id}
+                    livraison={l}
+                    variant="retournee"
+                    onSupprimerOrpheline={onSupprimerOrpheline}
+                    processing={processing}
+                    userRole={userRole}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Note bas */}
           <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-800">
             <p className="font-bold mb-1">💡 Comment ça marche :</p>
@@ -895,6 +922,7 @@ function TourneeDetailModal({
               <li>Les colis assignés un autre jour apparaissent dans une autre carte</li>
               <li>Les colis "Reportés" restent dans leur tournée d'origine avec étiquette orange</li>
               <li>Quand le livreur "Reprend" un colis reporté, il bascule dans la tournée du jour</li>
+              <li>Les colis refusés restent visibles dans l’historique après leur retour au stock</li>
             </ul>
           </div>
         </div>
@@ -987,6 +1015,7 @@ function LivraisonRow({
       ? 'border-emerald-400 bg-emerald-50 shadow-sm'
       : 'border-gray-200 bg-white hover:border-emerald-300',
     refusee: 'border-red-200 bg-red-50/40',
+    retournee: 'border-red-200 bg-red-50/40',
   }[variant];
 
   return (
@@ -1010,6 +1039,11 @@ function LivraisonRow({
           {variant === 'reportee' && (
             <span className="inline-block bg-orange-200 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
               🔄 À REPRENDRE
+            </span>
+          )}
+          {variant === 'retournee' && (
+            <span className="inline-block bg-red-100 text-red-800 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
+              ❌ REFUS CLIENT · RETOURNÉ AU STOCK
             </span>
           )}
           <p className="text-xs text-gray-700 truncate">
