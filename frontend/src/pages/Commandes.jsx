@@ -324,6 +324,13 @@ const Commandes = () => {
     if (taille) counts.set(taille, (counts.get(taille) || 0) + 1);
     return counts;
   }, new Map());
+  const pendingSizeCounts = commandes.reduce((counts, commande) => {
+    if (commande.statut !== 'validee') return counts;
+    const taille = normalizeSize(commande.taille);
+    if (taille) counts.set(taille, (counts.get(taille) || 0) + 1);
+    return counts;
+  }, new Map());
+  const pendingTotal = commandes.filter((commande) => commande.statut === 'validee').length;
   const availableSizes = Array.from(sizeCounts.keys()).sort(compareSizes);
 
   const filteredCommandes = commandes.filter((commande) => {
@@ -408,7 +415,7 @@ const Commandes = () => {
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2 mb-2">
             <Ruler size={17} className="text-primary-600 flex-shrink-0" />
-            <p className="text-sm font-bold text-gray-800">Trier par taille</p>
+            <p className="text-sm font-bold text-gray-800">Trier par taille <span className="font-medium text-gray-500">· nombres à envoyer</span></p>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrer les commandes par taille">
             <button
@@ -421,7 +428,7 @@ const Commandes = () => {
               }`}
               aria-pressed={!filterTaille}
             >
-              Toutes <span className="ml-1 opacity-80">({commandes.length})</span>
+              Toutes <span className="ml-1 opacity-80">({pendingTotal})</span>
             </button>
             {availableSizes.map((taille) => (
               <button
@@ -435,7 +442,7 @@ const Commandes = () => {
                 }`}
                 aria-pressed={filterTaille === taille}
               >
-                {taille} <span className="ml-1 opacity-80">({sizeCounts.get(taille)})</span>
+                {taille} <span className="ml-1 opacity-80">({pendingSizeCounts.get(taille) || 0})</span>
               </button>
             ))}
           </div>
