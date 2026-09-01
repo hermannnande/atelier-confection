@@ -101,3 +101,47 @@ test('utilise les productions validées de la rémunération pour les couturiers
   assert.equal(couturier.totalGagne, 7800);
   assert.equal(couturier.detailsParModele[0].piecesValidees, 8);
 });
+
+test('attribue la performance à l’appelant qui a réellement traité la commande en ligne', () => {
+  const stats = buildPerformanceStatistics({
+    range,
+    users: [
+      { id: 'a1', nom: 'Awa', role: 'appelant', actif: true },
+      { id: 'a2', nom: 'Binta', role: 'appelant', actif: true },
+    ],
+    commandes: [
+      {
+        id: 'web1',
+        appelant_id: null,
+        modele: { nom: 'Robe Web' },
+        prix: 18000,
+        statut: 'livree',
+        created_at: '2026-08-31T20:00:00.000Z',
+        date_livraison: '2026-09-01T17:00:00.000Z',
+        historique: [
+          { statut: 'validee', utilisateur: 'a2', date: '2026-09-01T08:30:00.000Z' },
+        ],
+      },
+      {
+        id: 'web2',
+        appelant_id: null,
+        modele: { nom: 'Robe Web' },
+        prix: 12000,
+        statut: 'annulee',
+        created_at: '2026-09-01T07:00:00.000Z',
+        historique: [
+          { statut: 'annulee', utilisateur: 'a1', date: '2026-09-01T09:00:00.000Z' },
+        ],
+      },
+    ],
+    livraisons: [],
+    productions: [],
+  });
+
+  const awa = stats.appelants.find((item) => item.personne.id === 'a1');
+  const binta = stats.appelants.find((item) => item.personne.id === 'a2');
+  assert.equal(awa.annulees, 1);
+  assert.equal(binta.validees, 1);
+  assert.equal(binta.livrees, 1);
+  assert.equal(binta.montantLivre, 18000);
+});

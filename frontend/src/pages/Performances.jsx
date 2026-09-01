@@ -31,9 +31,10 @@ const TAB_CONFIG = {
     label: 'Appelants',
     title: 'Performances des appelants',
     icon: Users,
-    primary: 'recues',
+    primary: 'validees',
+    source: 'Source : actions réellement effectuées sur les commandes',
     metrics: [
-      { key: 'recues', label: 'Reçues', color: 'text-indigo-700 bg-indigo-50' },
+      { key: 'recues', label: 'Commandes créées', color: 'text-indigo-700 bg-indigo-50' },
       { key: 'validees', label: 'Validées', color: 'text-blue-700 bg-blue-50' },
       { key: 'livrees', label: 'Livrées', color: 'text-emerald-700 bg-emerald-50' },
       { key: 'annulees', label: 'Annulées', color: 'text-rose-700 bg-rose-50' },

@@ -9,15 +9,21 @@ function inRange(value, range) {
   return Boolean(date && date >= range.start && date < range.endExclusive);
 }
 
-function historyDate(commande, statut) {
+function historyEvent(commande, statut) {
   const historique = Array.isArray(commande?.historique) ? commande.historique : [];
   for (let index = historique.length - 1; index >= 0; index -= 1) {
     const event = historique[index];
     if (event?.statut !== statut) continue;
     const date = validDate(event.date);
-    if (date) return date;
+    if (date) return { ...event, date };
   }
   return null;
+}
+
+function eventOwner(records, event, fallbackId) {
+  const actorId = event?.utilisateur?.id || event?.utilisateur;
+  if (actorId) return records.get(actorId) || null;
+  return records.get(fallbackId) || null;
 }
 
 function person(user) {
@@ -121,26 +127,29 @@ export function buildPerformanceStatistics({
   const commandesById = new Map(commandes.map((commande) => [commande.id, commande]));
 
   for (const commande of commandes) {
-    const appelant = appelants.get(commande.appelant_id);
-    if (appelant) {
-      if (inRange(commande.created_at, range)) {
-        appelant.recues += 1;
-        addModel(appelant, commande.modele, 'recues');
-      }
-      if (inRange(historyDate(commande, 'validee'), range)) {
-        appelant.validees += 1;
-        addModel(appelant, commande.modele, 'validees');
-      }
-      if (commande.statut === 'livree' && inRange(commande.date_livraison, range)) {
-        const amount = Number(commande.prix) || 0;
-        appelant.livrees += 1;
-        appelant.montantLivre += amount;
-        addModel(appelant, commande.modele, 'livrees', 1, amount);
-      }
-      if (inRange(historyDate(commande, 'annulee'), range)) {
-        appelant.annulees += 1;
-        addModel(appelant, commande.modele, 'annulees');
-      }
+    const createur = appelants.get(commande.appelant_id);
+    const validation = historyEvent(commande, 'validee');
+    const responsable = eventOwner(appelants, validation, commande.appelant_id);
+    const annulation = historyEvent(commande, 'annulee');
+    const annuleePar = eventOwner(appelants, annulation, commande.appelant_id);
+
+    if (createur && inRange(commande.created_at, range)) {
+      createur.recues += 1;
+      addModel(createur, commande.modele, 'recues');
+    }
+    if (responsable && inRange(validation?.date, range)) {
+      responsable.validees += 1;
+      addModel(responsable, commande.modele, 'validees');
+    }
+    if (responsable && commande.statut === 'livree' && inRange(commande.date_livraison, range)) {
+      const amount = Number(commande.prix) || 0;
+      responsable.livrees += 1;
+      responsable.montantLivre += amount;
+      addModel(responsable, commande.modele, 'livrees', 1, amount);
+    }
+    if (annuleePar && inRange(annulation?.date, range)) {
+      annuleePar.annulees += 1;
+      addModel(annuleePar, commande.modele, 'annulees');
     }
 
     const styliste = stylistes.get(commande.styliste_id);
@@ -149,7 +158,7 @@ export function buildPerformanceStatistics({
         styliste.demarrees += 1;
         addModel(styliste, commande.modele, 'demarrees');
       }
-      if (inRange(historyDate(commande, 'en_couture'), range)) {
+      if (inRange(historyEvent(commande, 'en_couture')?.date, range)) {
         styliste.terminees += 1;
         addModel(styliste, commande.modele, 'terminees');
       }
@@ -207,7 +216,7 @@ export function buildPerformanceStatistics({
   }
 
   return {
-    appelants: finish(appelants, 'recues'),
+    appelants: finish(appelants, 'validees'),
     stylistes: finish(stylistes, 'terminees'),
     couturiers: finish(couturiers, 'piecesValidees'),
     livreurs: finish(livreurs, 'livrees'),
