@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Loader2 } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
@@ -22,7 +22,7 @@ const Commandes = () => {
   useEffect(() => {
     fetchCommandes();
 
-    const intervalId = setInterval(() => fetchCommandes(true), 15000);
+    const intervalId = setInterval(() => fetchCommandes(true), 5000);
     return () => clearInterval(intervalId);
   }, [filterStatut, filterUrgence]);
 
@@ -193,16 +193,39 @@ const Commandes = () => {
 
   const setCardColor = async (commande, colorId) => {
     const commandeId = commande._id || commande.id;
+    const nextColor = colorId === 'none' ? null : 'yellow';
+    const previousColor = {
+      couleurOrganisation: commande.couleurOrganisation,
+      couleurOrganisationStatut: commande.couleurOrganisationStatut,
+      couleur_organisation: commande.couleur_organisation,
+      couleur_organisation_statut: commande.couleur_organisation_statut,
+    };
+
+    setCommandes((current) => current.map((item) => (
+      (item._id || item.id) === commandeId
+        ? {
+            ...item,
+            couleurOrganisation: nextColor,
+            couleurOrganisationStatut: nextColor ? commande.statut : null,
+            couleur_organisation: nextColor,
+            couleur_organisation_statut: nextColor ? commande.statut : null,
+          }
+        : item
+    )));
     setSavingColorId(commandeId);
+
     try {
       const response = await api.patch(`/commandes/${commandeId}/couleur-organisation`, {
-        couleur: colorId === 'none' ? null : colorId,
+        couleur: nextColor,
       });
       setCommandes((current) => current.map((item) => (
         (item._id || item.id) === commandeId ? response.data.commande : item
       )));
       toast.success(colorId === 'none' ? 'Couleur retirée pour tous' : 'Couleur visible par tous');
     } catch (error) {
+      setCommandes((current) => current.map((item) => (
+        (item._id || item.id) === commandeId ? { ...item, ...previousColor } : item
+      )));
       toast.error(error.response?.data?.message || 'Erreur lors de l’enregistrement de la couleur');
       console.error(error);
     } finally {
@@ -356,11 +379,9 @@ const Commandes = () => {
                   aria-label={`${isMarked ? 'Retirer la couleur de' : 'Colorer'} ${commande.numeroCommande}`}
                   aria-pressed={isMarked}
                 >
-                  {savingColorId === commandeId
-                    ? <Loader2 size={17} className="animate-spin" />
-                    : isMarked
-                      ? <Check size={17} />
-                      : <span className="w-4 h-4 rounded-full bg-amber-300 border border-amber-400" />}
+                  {isMarked
+                    ? <Check size={17} />
+                    : <span className="w-4 h-4 rounded-full bg-amber-300 border border-amber-400" />}
                 </button>
 
                 <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
