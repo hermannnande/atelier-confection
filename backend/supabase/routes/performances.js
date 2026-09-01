@@ -2,8 +2,23 @@ import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry } from '../middleware/country.js';
+import { resolveStatisticsDateRange } from '../../services/order-statistics.service.js';
+import { buildPerformanceStatistics } from '../../services/performance-statistics.service.js';
 
 const router = express.Router();
+
+async function fetchAllPages(createQuery) {
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await createQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return rows;
+}
 
 const isDateInRange = (value, dateDebut, dateFin) => {
   if (!value) return false;
@@ -19,6 +34,68 @@ const isDateInRange = (value, dateDebut, dateFin) => {
   }
   return true;
 };
+
+router.get('/analyse', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    let range;
+    try {
+      range = resolveStatisticsDateRange(req.query);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const usersQuery = supabase
+      .from('users')
+      .select('id, nom, email, telephone, role, actif')
+      .eq('pays_code', req.country)
+      .in('role', ['appelant', 'styliste', 'couturier', 'livreur'])
+      .eq('actif', true)
+      .order('nom', { ascending: true });
+
+    const [usersResult, commandes, livraisons, productions] = await Promise.all([
+      usersQuery,
+      fetchAllPages(() => supabase
+        .from('commandes')
+        .select('id, appelant_id, styliste_id, modele, prix, statut, created_at, date_decoupe, date_livraison, historique')
+        .eq('pays_code', req.country)
+        .order('created_at', { ascending: true })),
+      fetchAllPages(() => supabase
+        .from('livraisons')
+        .select('id, commande_id, livreur_id, statut, date_assignation, date_livraison, date_retour, motif_refus')
+        .eq('pays_code', req.country)
+        .order('date_assignation', { ascending: true })),
+      fetchAllPages(() => supabase
+        .from('productions_couturiers')
+        .select('id, couturier_id, date_production, quantite, montant_total, montant_bonus, statut, modele:modeles(id, nom)')
+        .eq('pays_code', req.country)
+        .gte('date_production', range.dateDebut)
+        .lte('date_production', range.dateFin)
+        .order('date_production', { ascending: true })),
+    ]);
+
+    if (usersResult.error) throw usersResult.error;
+    const performances = buildPerformanceStatistics({
+      users: usersResult.data || [],
+      commandes,
+      livraisons,
+      productions,
+      range,
+    });
+
+    return res.json({
+      periode: {
+        dateDebut: range.dateDebut,
+        dateFin: range.dateFin,
+        nombreJours: range.nombreJours,
+        fuseauHoraire: 'Africa/Abidjan',
+      },
+      ...performances,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors du calcul des performances', error: error.message });
+  }
+});
 
 router.get('/overview', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
   try {
@@ -321,6 +398,5 @@ router.get('/livreurs', authenticate, resolveCountry, authorize('gestionnaire', 
 });
 
 export default router;
-
 
 

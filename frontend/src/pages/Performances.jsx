@@ -1,449 +1,346 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../store/authStore';
-import { BarChart3, TrendingUp, Users, Award, Calendar, Filter, X } from 'lucide-react';
+import {
+  Award,
+  BarChart3,
+  CalendarDays,
+  Coins,
+  Loader2,
+  Scissors,
+  Search,
+  Truck,
+  Users,
+} from 'lucide-react';
+
+const toInputDate = (date) => date.toISOString().slice(0, 10);
+
+const shiftDate = (dateValue, days) => {
+  const date = new Date(`${dateValue}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return toInputDate(date);
+};
+
+const formatDate = (value, options = {}) => new Date(`${value}T12:00:00.000Z`)
+  .toLocaleDateString('fr-FR', options);
+
+const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} F`;
+
+const TAB_CONFIG = {
+  appelants: {
+    label: 'Appelants',
+    title: 'Performances des appelants',
+    icon: Users,
+    primary: 'recues',
+    metrics: [
+      { key: 'recues', label: 'Reçues', color: 'text-indigo-700 bg-indigo-50' },
+      { key: 'validees', label: 'Validées', color: 'text-blue-700 bg-blue-50' },
+      { key: 'livrees', label: 'Livrées', color: 'text-emerald-700 bg-emerald-50' },
+      { key: 'annulees', label: 'Annulées', color: 'text-rose-700 bg-rose-50' },
+      { key: 'montantLivre', label: 'Montant livré', color: 'text-amber-800 bg-amber-50', money: true },
+    ],
+    modelMetrics: [
+      { key: 'recues', label: 'reçues' },
+      { key: 'validees', label: 'validées' },
+      { key: 'livrees', label: 'livrées' },
+      { key: 'annulees', label: 'annulées' },
+    ],
+  },
+  stylistes: {
+    label: 'Stylistes',
+    title: 'Performances des stylistes',
+    icon: Scissors,
+    primary: 'terminees',
+    metrics: [
+      { key: 'demarrees', label: 'Découpes démarrées', color: 'text-amber-700 bg-amber-50' },
+      { key: 'terminees', label: 'Découpes terminées', color: 'text-emerald-700 bg-emerald-50' },
+    ],
+    modelMetrics: [
+      { key: 'demarrees', label: 'démarrées' },
+      { key: 'terminees', label: 'terminées' },
+    ],
+  },
+  couturiers: {
+    label: 'Couturiers',
+    title: 'Performances des couturiers',
+    icon: Coins,
+    primary: 'piecesValidees',
+    source: 'Source : productions validées dans Rémunération',
+    metrics: [
+      { key: 'piecesValidees', label: 'Pièces validées', color: 'text-emerald-700 bg-emerald-50' },
+      { key: 'piecesEnAttente', label: 'Pièces à valider', color: 'text-amber-700 bg-amber-50' },
+      { key: 'gainsBase', label: 'Gains de base', color: 'text-blue-700 bg-blue-50', money: true },
+      { key: 'bonus', label: 'Bonus', color: 'text-purple-700 bg-purple-50', money: true },
+      { key: 'totalGagne', label: 'Total gagné', color: 'text-emerald-800 bg-emerald-100', money: true },
+    ],
+    modelMetrics: [
+      { key: 'piecesValidees', label: 'pièces validées' },
+      { key: 'piecesEnAttente', label: 'en attente' },
+      { key: 'montant', label: 'gagné', money: true },
+      { key: 'bonus', label: 'bonus', money: true },
+    ],
+  },
+  livreurs: {
+    label: 'Livreurs',
+    title: 'Performances des livreurs',
+    icon: Truck,
+    primary: 'livrees',
+    metrics: [
+      { key: 'assignees', label: 'Colis assignés', color: 'text-blue-700 bg-blue-50' },
+      { key: 'livrees', label: 'Livrés', color: 'text-emerald-700 bg-emerald-50' },
+      { key: 'refusees', label: 'Refusés', color: 'text-rose-700 bg-rose-50' },
+      { key: 'tauxReussite', label: 'Taux de réussite', color: 'text-indigo-700 bg-indigo-50', percent: true },
+      { key: 'montantLivre', label: 'Montant livré', color: 'text-amber-800 bg-amber-50', money: true },
+    ],
+    modelMetrics: [
+      { key: 'assignees', label: 'assignés' },
+      { key: 'livrees', label: 'livrés' },
+      { key: 'refusees', label: 'refusés' },
+    ],
+  },
+};
 
 const Performances = () => {
-  const { user } = useAuthStore();
-  const [appelants, setAppelants] = useState([]);
-  const [couturiers, setCouturiers] = useState([]);
-  const [stylistes, setStylistes] = useState([]);
-  const [livreurs, setLivreurs] = useState([]);
-  
-  // Filtre de date
-  const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  
-  // Définir l'onglet actif par défaut selon le rôle
-  const getDefaultTab = () => {
-    if (user?.role === 'administrateur' || user?.role === 'gestionnaire') return 'appelants';
-    if (user?.role === 'appelant') return 'appelants';
-    if (user?.role === 'styliste') return 'stylistes';
-    if (user?.role === 'couturier') return 'couturiers';
-    if (user?.role === 'livreur') return 'livreurs';
-    return 'appelants';
-  };
-  
-  const [activeTab, setActiveTab] = useState(getDefaultTab());
+  const today = toInputDate(new Date());
+  const [dateDebut, setDateDebut] = useState(today);
+  const [dateFin, setDateFin] = useState(today);
+  const [activeTab, setActiveTab] = useState('appelants');
+  const [search, setSearch] = useState('');
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPerformances();
+    if (dateDebut && dateFin && dateDebut <= dateFin) fetchPerformances();
   }, [dateDebut, dateFin]);
 
   const fetchPerformances = async () => {
     try {
-      // Construire les query params pour le filtre de date
-      const params = {};
-      if (dateDebut) params.dateDebut = dateDebut;
-      if (dateFin) params.dateFin = dateFin;
-      
-      const [appelRes, coutRes, stylRes, livrRes] = await Promise.all([
-        api.get('/performances/appelants', { params }),
-        api.get('/performances/couturiers', { params }),
-        api.get('/performances/stylistes', { params }),
-        api.get('/performances/livreurs', { params })
-      ]);
-
-      // Filtrer les performances selon le rôle de l'utilisateur
-      const isAdmin = user?.role === 'administrateur' || user?.role === 'gestionnaire';
-      const userId = user?._id || user?.id;
-
-      setAppelants(isAdmin ? appelRes.data.performances : 
-        appelRes.data.performances.filter(p => (p.appelant._id || p.appelant.id) === userId));
-      
-      setCouturiers(isAdmin ? coutRes.data.performances : 
-        coutRes.data.performances.filter(p => (p.couturier._id || p.couturier.id) === userId));
-      
-      setStylistes(isAdmin ? stylRes.data.performances : 
-        stylRes.data.performances.filter(p => (p.styliste._id || p.styliste.id) === userId));
-      
-      setLivreurs(isAdmin ? livrRes.data.performances : 
-        livrRes.data.performances.filter(p => (p.livreur._id || p.livreur.id) === userId));
+      setLoading(true);
+      const { data } = await api.get('/performances/analyse', {
+        params: { dateDebut, dateFin },
+      });
+      setStats(data);
     } catch (error) {
-      toast.error('Erreur lors du chargement');
       console.error(error);
+      toast.error(error.response?.data?.message || 'Erreur lors du chargement des performances');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  const setRange = (start, end = start) => {
+    setDateDebut(start);
+    setDateFin(end);
+  };
+
+  const config = TAB_CONFIG[activeTab];
+  const performances = stats?.[activeTab] || [];
+  const filteredPerformances = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return performances;
+    return performances.filter((item) => (
+      item.personne.nom.toLowerCase().includes(term)
+      || String(item.personne.email || item.personne.telephone || '').toLowerCase().includes(term)
+    ));
+  }, [performances, search]);
+
+  const singleDay = dateDebut === dateFin;
+  const periodLabel = singleDay
+    ? formatDate(dateDebut, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : `du ${formatDate(dateDebut)} au ${formatDate(dateFin)}`;
+
+  if (loading && !stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="animate-spin text-purple-600" size={40} />
       </div>
     );
   }
 
-  // Filtrer les onglets selon le rôle de l'utilisateur
-  const getAllTabs = () => {
-    const allTabs = [
-      { id: 'appelants', name: 'Appelants', count: appelants.length, roles: ['administrateur', 'gestionnaire', 'appelant'] },
-      { id: 'stylistes', name: 'Stylistes', count: stylistes.length, roles: ['administrateur', 'gestionnaire', 'styliste'] },
-      { id: 'couturiers', name: 'Couturiers', count: couturiers.length, roles: ['administrateur', 'gestionnaire', 'couturier'] },
-      { id: 'livreurs', name: 'Livreurs', count: livreurs.length, roles: ['administrateur', 'gestionnaire', 'livreur'] },
-    ];
-    
-    // Si admin ou gestionnaire, afficher tous les onglets
-    if (user?.role === 'administrateur' || user?.role === 'gestionnaire') {
-      return allTabs;
-    }
-    
-    // Sinon, afficher uniquement l'onglet correspondant au rôle
-    return allTabs.filter(tab => tab.roles.includes(user?.role));
-  };
-  
-  const tabs = getAllTabs();
-
-  const resetFilters = () => {
-    setDateDebut('');
-    setDateFin('');
-  };
-
-  const hasActiveFilters = dateDebut || dateFin;
-
   return (
-    <div className="space-y-4 sm:space-y-6 overflow-x-hidden max-w-full px-2 sm:px-4">
-      {/* En-tête */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 sm:p-6 lg:p-8 text-white max-w-full overflow-hidden">
-        <div className="flex items-center justify-between gap-2 sm:gap-4 min-w-0">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-            <BarChart3 size={28} className="flex-shrink-0" />
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2 truncate">
-                {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-                  ? 'Tableau de Bord des Performances' 
-                  : 'Mes Performances'}
-              </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-purple-100 truncate">
-                {user?.role === 'administrateur' || user?.role === 'gestionnaire'
-                  ? 'Suivez les performances de votre équipe'
-                  : 'Consultez vos statistiques personnelles'}
-              </p>
-            </div>
+    <div className="space-y-5 sm:space-y-6 max-w-full overflow-x-hidden">
+      <header className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 sm:p-7 text-white">
+        <div className="flex items-center gap-3">
+          <BarChart3 size={30} className="flex-shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl font-black">Performances réelles</h1>
+            <p className="text-sm text-purple-100 mt-1">Résultats de l’équipe selon les dates réelles de chaque activité</p>
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`btn-secondary flex items-center gap-2 flex-shrink-0 ${showFilters ? 'bg-white' : ''}`}
-          >
-            <Filter size={18} />
-            <span className="hidden sm:inline">Filtres</span>
-            {hasActiveFilters && (
-              <span className="bg-purple-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {(dateDebut ? 1 : 0) + (dateFin ? 1 : 0)}
-              </span>
-            )}
-          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Filtres de date */}
-      {showFilters && (
-        <div className="card animate-slide-up">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="text-purple-600" size={20} />
-              <h3 className="font-semibold text-gray-900">Filtrer par période</h3>
-            </div>
-            {hasActiveFilters && (
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-black text-gray-800 flex items-center gap-2">
+            <CalendarDays size={19} className="text-purple-600" />
+            Jour ou période
+          </h2>
+          {loading && <Loader2 className="animate-spin text-purple-500" size={18} />}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setRange(today)} className="btn btn-primary btn-sm">Aujourd’hui</button>
+          <button type="button" onClick={() => setRange(shiftDate(today, -1))} className="btn btn-secondary btn-sm">Hier</button>
+          <button type="button" onClick={() => setRange(shiftDate(today, -6), today)} className="btn btn-secondary btn-sm">7 derniers jours</button>
+          <button type="button" onClick={() => setRange(`${today.slice(0, 8)}01`, today)} className="btn btn-secondary btn-sm">Ce mois</button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="space-y-1">
+            <span className="text-xs font-bold text-gray-600">Jour précis</span>
+            <input
+              type="date"
+              value={singleDay ? dateDebut : ''}
+              onChange={(event) => event.target.value && setRange(event.target.value)}
+              className="input"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-bold text-gray-600">Date de début</span>
+            <input
+              type="date"
+              value={dateDebut}
+              max={dateFin}
+              onChange={(event) => setDateDebut(event.target.value)}
+              className="input"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-bold text-gray-600">Date de fin</span>
+            <input
+              type="date"
+              value={dateFin}
+              min={dateDebut}
+              onChange={(event) => setDateFin(event.target.value)}
+              className="input"
+            />
+          </label>
+        </div>
+
+        <p className="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-sm font-bold text-purple-800 capitalize">
+          {periodLabel}
+        </p>
+      </section>
+
+      <nav className="bg-white rounded-2xl border border-gray-200 shadow-sm p-2 overflow-x-auto">
+        <div className="flex min-w-max gap-1">
+          {Object.entries(TAB_CONFIG).map(([key, tab]) => {
+            const Icon = tab.icon;
+            return (
               <button
-                onClick={resetFilters}
-                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1 font-medium"
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                  activeTab === key
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
               >
-                <X size={16} />
-                Réinitialiser
+                <Icon size={16} />
+                {tab.label}
+                <span className={`text-xs rounded-full px-2 py-0.5 ${activeTab === key ? 'bg-white/20' : 'bg-gray-100'}`}>
+                  {(stats?.[key] || []).length}
+                </span>
               </button>
-            )}
+            );
+          })}
+        </div>
+      </nav>
+
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-gray-900">{config.title}</h2>
+            {config.source && <p className="text-xs font-bold text-emerald-700 mt-1">{config.source}</p>}
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label">
-                Date de début
-              </label>
-              <input
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                className="input"
+          <label className="relative sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Rechercher une personne..."
+              className="input pl-9"
+            />
+          </label>
+        </div>
+
+        {filteredPerformances.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4">
+            {filteredPerformances.map((performance, index) => (
+              <PerformanceCard
+                key={performance.personne.id}
+                performance={performance}
+                index={index}
+                config={config}
               />
-            </div>
-            <div>
-              <label className="label">
-                Date de fin
-              </label>
-              <input
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                className="input"
-              />
-            </div>
-          </div>
-          
-          {hasActiveFilters && (
-            <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-              <p className="text-sm text-purple-800">
-                <span className="font-semibold">Période active :</span> {' '}
-                {dateDebut && `Du ${new Date(dateDebut).toLocaleDateString('fr-FR')}`}
-                {dateDebut && dateFin && ' '}
-                {dateFin && `au ${new Date(dateFin).toLocaleDateString('fr-FR')}`}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="card max-w-full overflow-hidden">
-        <div className="flex gap-1 sm:gap-2 border-b border-gray-200 overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 sm:px-4 py-2 sm:py-3 font-medium transition-colors relative text-xs sm:text-sm lg:text-base whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab.name}
-              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs rounded-full bg-gray-100">
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contenu - Appelants */}
-      {activeTab === 'appelants' && (
-        <div className="space-y-3 sm:space-y-4">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-              ? 'Performances des Appelants' 
-              : 'Mes Performances'}
-          </h2>
-          {appelants.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-gray-600">
-                {user?.role === 'administrateur' || user?.role === 'gestionnaire'
-                  ? 'Aucune performance disponible'
-                  : 'Vous n\'avez pas encore de statistiques'}
-              </p>
-            </div>
-          ) : (
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
-            {appelants.map((perf, index) => (
-              <div key={perf.appelant.id} className="card hover:shadow-md transition-shadow max-w-full overflow-hidden">
-                <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
-                  <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
-                      <Award className={`flex-shrink-0 ${
-                        index === 0 ? 'text-yellow-500' :
-                        index === 1 ? 'text-gray-400' :
-                        'text-orange-600'
-                      }`} size={20} />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 truncate">{perf.appelant.nom}</h3>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">{perf.appelant.email}</p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xl sm:text-2xl font-bold text-primary-600">{perf.totalCommandes}</p>
-                    <p className="text-xs sm:text-sm text-gray-600">commandes</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Validées</p>
-                    <p className="font-medium text-green-600">{perf.commandesValidees}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Annulées</p>
-                    <p className="font-medium text-red-600">{perf.commandesAnnulees}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">En attente</p>
-                    <p className="font-medium text-yellow-600">{perf.commandesEnAttente}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Taux validation</p>
-                    <p className="font-medium text-primary-600">{perf.tauxValidation}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">CA généré</p>
-                    <p className="font-medium text-gray-900">
-                      {perf.chiffreAffaires.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  </div>
-                </div>
-              </div>
             ))}
           </div>
-          )}
-        </div>
-      )}
-
-      {/* Contenu - Stylistes */}
-      {activeTab === 'stylistes' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-              ? 'Performances des Stylistes' 
-              : 'Mes Performances'}
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {stylistes.map((perf, index) => (
-              <div key={perf.styliste.id} className="card hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
-                      <Award className={`${
-                        index === 0 ? 'text-yellow-500' :
-                        index === 1 ? 'text-gray-400' :
-                        'text-orange-600'
-                      }`} size={24} />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{perf.styliste.nom}</h3>
-                      <p className="text-sm text-gray-600">{perf.styliste.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-8">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-yellow-600">{perf.totalCommandesTraitees}</p>
-                      <p className="text-sm text-gray-600">Découpées</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-600">{perf.commandesEnCours}</p>
-                      <p className="text-sm text-gray-600">En cours</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Contenu - Couturiers */}
-      {activeTab === 'couturiers' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-              ? 'Performances des Couturiers' 
-              : 'Mes Performances'}
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {couturiers.map((perf, index) => (
-              <div key={perf.couturier.id} className="card hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
-                      <Award className={`${
-                        index === 0 ? 'text-yellow-500' :
-                        index === 1 ? 'text-gray-400' :
-                        'text-orange-600'
-                      }`} size={24} />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{perf.couturier.nom}</h3>
-                      <p className="text-sm text-gray-600">{perf.couturier.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-8">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{perf.totalCommandesTraitees}</p>
-                      <p className="text-sm text-gray-600">Terminées</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-orange-600">{perf.commandesEnCours}</p>
-                      <p className="text-sm text-gray-600">En cours</p>
-                    </div>
-                    {perf.tempsMoyenConfection > 0 && (
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-primary-600">{perf.tempsMoyenConfection}</p>
-                        <p className="text-sm text-gray-600">Jours/pièce</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Contenu - Livreurs */}
-      {activeTab === 'livreurs' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {user?.role === 'administrateur' || user?.role === 'gestionnaire' 
-              ? 'Performances des Livreurs' 
-              : 'Mes Performances'}
-          </h2>
-          <div className="grid grid-cols-1 gap-4">
-            {livreurs.map((perf, index) => (
-              <div key={perf.livreur.id} className="card hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4">
-                    {(user?.role === 'administrateur' || user?.role === 'gestionnaire') && index < 3 && (
-                      <Award className={`${
-                        index === 0 ? 'text-yellow-500' :
-                        index === 1 ? 'text-gray-400' :
-                        'text-orange-600'
-                      }`} size={24} />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{perf.livreur.nom}</h3>
-                      <p className="text-sm text-gray-600">{perf.livreur.telephone}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary-600">{perf.totalLivraisons}</p>
-                    <p className="text-sm text-gray-600">livraisons</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Réussies</p>
-                    <p className="font-medium text-green-600">{perf.livraisonsReussies}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Refusées</p>
-                    <p className="font-medium text-red-600">{perf.livraisonsRefusees}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">En cours</p>
-                    <p className="font-medium text-yellow-600">{perf.livraisonsEnCours}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Taux réussite</p>
-                    <p className="font-medium text-primary-600">{perf.tauxReussite}%</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">CA livré</p>
-                    <p className="font-medium text-gray-900">
-                      {perf.chiffreAffaires.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ) : (
+          <div className="card text-center py-12 text-gray-500">Aucune performance pour cette recherche</div>
+        )}
+      </section>
     </div>
   );
 };
 
+const PerformanceCard = ({ performance, index, config }) => (
+  <article className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5">
+    <div className="flex items-center gap-3 mb-4">
+      {index < 3 && Number(performance[config.primary] || 0) > 0 && (
+        <Award
+          size={24}
+          className={index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : 'text-orange-600'}
+        />
+      )}
+      <div className="min-w-0">
+        <h3 className="font-black text-gray-900 truncate">{performance.personne.nom}</h3>
+        <p className="text-xs text-gray-500 truncate">
+          {performance.personne.email || performance.personne.telephone || 'Aucun contact'}
+        </p>
+      </div>
+    </div>
+
+    <div className={`grid grid-cols-2 ${config.metrics.length > 2 ? 'lg:grid-cols-5' : 'sm:grid-cols-2'} gap-2 sm:gap-3`}>
+      {config.metrics.map((metric) => (
+        <div key={metric.key} className={`rounded-xl px-3 py-3 ${metric.color}`}>
+          <p className="text-[10px] sm:text-xs font-bold uppercase leading-tight">{metric.label}</p>
+          <p className={`${metric.money ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'} font-black mt-1 truncate`}>
+            {metric.money
+              ? money(performance[metric.key])
+              : metric.percent
+                ? `${performance[metric.key] || 0}%`
+                : Number(performance[metric.key] || 0).toLocaleString('fr-FR')}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    {performance.detailsParModele?.length > 0 && (
+      <details className="mt-4 group">
+        <summary className="cursor-pointer rounded-xl bg-gray-50 hover:bg-gray-100 px-4 py-3 text-sm font-black text-gray-700">
+          Voir le détail par modèle ({performance.detailsParModele.length})
+        </summary>
+        <div className="mt-2 divide-y divide-gray-100 border border-gray-100 rounded-xl px-3">
+          {performance.detailsParModele.map((modele) => (
+            <div key={modele.nom} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="font-bold text-gray-900">{modele.nom}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {config.modelMetrics
+                  .filter((metric) => Number(modele[metric.key] || 0) > 0)
+                  .map((metric) => (
+                    <span key={metric.key} className="text-xs font-bold bg-gray-100 text-gray-700 rounded-full px-2.5 py-1">
+                      {metric.money ? money(modele[metric.key]) : modele[metric.key]} {metric.label}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+    )}
+  </article>
+);
+
 export default Performances;
-
-
-
-
