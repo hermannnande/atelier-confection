@@ -2,10 +2,24 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
+
+const normalizeSize = (value) => String(value || '').trim().toUpperCase();
+
+const compareSizes = (a, b) => {
+  const rankA = SIZE_ORDER.indexOf(a);
+  const rankB = SIZE_ORDER.indexOf(b);
+  if (rankA !== -1 || rankB !== -1) {
+    if (rankA === -1) return 1;
+    if (rankB === -1) return -1;
+    return rankA - rankB;
+  }
+  return a.localeCompare(b, 'fr', { numeric: true });
+};
 
 const Commandes = () => {
   const [commandes, setCommandes] = useState([]);
@@ -13,6 +27,7 @@ const Commandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
+  const [filterTaille, setFilterTaille] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
@@ -304,13 +319,21 @@ const Commandes = () => {
     return labels[statut] || statut;
   };
 
+  const sizeCounts = commandes.reduce((counts, commande) => {
+    const taille = normalizeSize(commande.taille);
+    if (taille) counts.set(taille, (counts.get(taille) || 0) + 1);
+    return counts;
+  }, new Map());
+  const availableSizes = Array.from(sizeCounts.keys()).sort(compareSizes);
+
   const filteredCommandes = commandes.filter((commande) => {
     const matchSearch = 
       commande.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commande.client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchSearch;
+    const matchTaille = !filterTaille || normalizeSize(commande.taille) === filterTaille;
+
+    return matchSearch && matchTaille;
   });
 
   if (loading) {
@@ -381,6 +404,42 @@ const Commandes = () => {
             </select>
           </div>
         </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Ruler size={17} className="text-primary-600 flex-shrink-0" />
+            <p className="text-sm font-bold text-gray-800">Trier par taille</p>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrer les commandes par taille">
+            <button
+              type="button"
+              onClick={() => setFilterTaille('')}
+              className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-bold border transition-all active:scale-95 ${
+                !filterTaille
+                  ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-primary-300'
+              }`}
+              aria-pressed={!filterTaille}
+            >
+              Toutes <span className="ml-1 opacity-80">({commandes.length})</span>
+            </button>
+            {availableSizes.map((taille) => (
+              <button
+                key={taille}
+                type="button"
+                onClick={() => setFilterTaille(taille)}
+                className={`flex-shrink-0 min-w-14 rounded-full px-4 py-2 text-sm font-black border transition-all active:scale-95 ${
+                  filterTaille === taille
+                    ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
+                    : 'bg-white border-gray-200 text-gray-700 hover:border-primary-300'
+                }`}
+                aria-pressed={filterTaille === taille}
+              >
+                {taille} <span className="ml-1 opacity-80">({sizeCounts.get(taille)})</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Liste des commandes */}
@@ -391,7 +450,7 @@ const Commandes = () => {
             Aucune commande trouvée
           </h3>
           <p className="text-gray-600">
-            {searchTerm || filterStatut || filterUrgence
+            {searchTerm || filterStatut || filterUrgence || filterTaille
               ? 'Essayez de modifier vos filtres'
               : 'Créez votre première commande'}
           </p>
