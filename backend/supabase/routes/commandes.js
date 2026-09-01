@@ -287,6 +287,60 @@ router.patch('/:id/couleur-organisation', authenticate, resolveCountry, authoriz
   }
 });
 
+router.patch('/:id/note', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const noteValue = req.body.noteAppelant ?? req.body.note ?? '';
+    if (typeof noteValue !== 'string') {
+      return res.status(400).json({ message: 'La note doit être un texte' });
+    }
+
+    const note = noteValue.trim();
+    if (note.length > 1000) {
+      return res.status(400).json({ message: 'La note ne peut pas dépasser 1 000 caractères' });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('commandes')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    const historique = Array.isArray(existing.historique) ? existing.historique : [];
+    historique.push({
+      action: note ? 'Note de commande modifiée' : 'Note de commande supprimée',
+      statut: existing.statut,
+      utilisateur: req.userId,
+      date: new Date().toISOString(),
+    });
+
+    const { data, error } = await supabase
+      .from('commandes')
+      .update({ note_appelant: note || null, historique })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Erreur lors de la modification de la note', error: error.message });
+    }
+
+    const usersById = await hydrateUsersForCommandes(supabase, [data]);
+    const commande = mapCommande(attachUsers(data, usersById));
+    return res.json({
+      message: note ? 'Note enregistrée' : 'Note supprimée',
+      commande,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la modification de la note', error: error.message });
+  }
+});
+
 router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();

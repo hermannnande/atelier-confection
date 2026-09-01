@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
@@ -17,6 +17,9 @@ const Commandes = () => {
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
   const [savingColorId, setSavingColorId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [savingNoteId, setSavingNoteId] = useState(null);
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -189,6 +192,36 @@ const Commandes = () => {
 
   const peutEnvoyerAAtelier = () => {
     return user?.role === 'administrateur' || user?.role === 'gestionnaire';
+  };
+
+  const canEditNote = user?.role === 'administrateur' || user?.role === 'gestionnaire';
+
+  const startEditingNote = (commande) => {
+    setEditingNoteId(commande._id || commande.id);
+    setNoteDraft(commande.noteAppelant || '');
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteId(null);
+    setNoteDraft('');
+  };
+
+  const saveNote = async (commande) => {
+    const commandeId = commande._id || commande.id;
+    setSavingNoteId(commandeId);
+    try {
+      const response = await api.patch(`/commandes/${commandeId}/note`, { note: noteDraft });
+      setCommandes((current) => current.map((item) => (
+        (item._id || item.id) === commandeId ? response.data.commande : item
+      )));
+      cancelEditingNote();
+      toast.success(noteDraft.trim() ? 'Note enregistrée' : 'Note supprimée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de la note');
+      console.error(error);
+    } finally {
+      setSavingNoteId(null);
+    }
   };
 
   const setCardColor = async (commande, colorId) => {
@@ -434,12 +467,59 @@ const Commandes = () => {
                     </div>
                   </div>
 
-                  {commande.noteAppelant && (
-                    <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 rounded-lg overflow-hidden max-w-full">
-                      <p className="text-xs sm:text-sm text-gray-700 break-all overflow-wrap-anywhere">
-                        <span className="font-medium">Note: </span>
-                        {commande.noteAppelant}
+                  {editingNoteId === commandeId ? (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl max-w-full">
+                      <label className="text-xs font-bold text-gray-700 block mb-1.5" htmlFor={`note-${commandeId}`}>
+                        Note de la commande
+                      </label>
+                      <textarea
+                        id={`note-${commandeId}`}
+                        value={noteDraft}
+                        onChange={(event) => setNoteDraft(event.target.value)}
+                        maxLength={1000}
+                        rows={3}
+                        autoFocus
+                        className="input resize-y text-sm"
+                        placeholder="Ajouter une précision sur cette commande..."
+                      />
+                      <div className="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <span className="text-[11px] text-gray-500">{noteDraft.length}/1000 caractères</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEditingNote}
+                            disabled={savingNoteId === commandeId}
+                            className="btn btn-secondary btn-sm flex-1 sm:flex-none inline-flex items-center justify-center gap-1"
+                          >
+                            <X size={14} /> Annuler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveNote(commande)}
+                            disabled={savingNoteId === commandeId}
+                            className="btn btn-primary btn-sm flex-1 sm:flex-none inline-flex items-center justify-center gap-1 disabled:opacity-60"
+                          >
+                            <Save size={14} /> {savingNoteId === commandeId ? 'Enregistrement...' : 'Enregistrer'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (commande.noteAppelant || canEditNote) && (
+                    <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 rounded-lg overflow-hidden max-w-full flex items-start justify-between gap-2">
+                      <p className="text-xs sm:text-sm text-gray-700 break-words overflow-wrap-anywhere min-w-0">
+                        <span className="font-medium">Note : </span>
+                        {commande.noteAppelant || <span className="italic text-gray-500">Aucune note</span>}
                       </p>
+                      {canEditNote && (
+                        <button
+                          type="button"
+                          onClick={() => startEditingNote(commande)}
+                          className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-yellow-100 active:scale-95 transition-all"
+                          aria-label={`Modifier la note de ${commande.numeroCommande}`}
+                        >
+                          <Pencil size={13} /> Modifier
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
