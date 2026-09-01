@@ -9,6 +9,8 @@ const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
 const normalizeSize = (value) => String(value || '').trim().toUpperCase();
+const modelLabel = (commande) => String(commande?.modele?.nom || commande?.modele || 'Modèle inconnu').trim();
+const normalizeModel = (commande) => modelLabel(commande).toLocaleLowerCase('fr');
 
 const compareSizes = (a, b) => {
   const rankA = SIZE_ORDER.indexOf(a);
@@ -28,6 +30,7 @@ const Commandes = () => {
   const [filterStatut, setFilterStatut] = useState('');
   const [filterUrgence, setFilterUrgence] = useState('');
   const [filterTaille, setFilterTaille] = useState('');
+  const [filterModele, setFilterModele] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
@@ -324,14 +327,32 @@ const Commandes = () => {
     if (taille) counts.set(taille, (counts.get(taille) || 0) + 1);
     return counts;
   }, new Map());
+  const modelLabels = commandes.reduce((labels, commande) => {
+    const key = normalizeModel(commande);
+    if (key && !labels.has(key)) labels.set(key, modelLabel(commande));
+    return labels;
+  }, new Map());
   const pendingSizeCounts = commandes.reduce((counts, commande) => {
-    if (commande.statut !== 'validee') return counts;
+    if (commande.statut !== 'validee' || (filterModele && normalizeModel(commande) !== filterModele)) return counts;
     const taille = normalizeSize(commande.taille);
     if (taille) counts.set(taille, (counts.get(taille) || 0) + 1);
     return counts;
   }, new Map());
-  const pendingTotal = commandes.filter((commande) => commande.statut === 'validee').length;
+  const pendingModelCounts = commandes.reduce((counts, commande) => {
+    if (commande.statut !== 'validee' || (filterTaille && normalizeSize(commande.taille) !== filterTaille)) return counts;
+    const modele = normalizeModel(commande);
+    if (modele) counts.set(modele, (counts.get(modele) || 0) + 1);
+    return counts;
+  }, new Map());
+  const pendingSizeTotal = commandes.filter((commande) => (
+    commande.statut === 'validee' && (!filterModele || normalizeModel(commande) === filterModele)
+  )).length;
+  const pendingModelTotal = commandes.filter((commande) => (
+    commande.statut === 'validee' && (!filterTaille || normalizeSize(commande.taille) === filterTaille)
+  )).length;
   const availableSizes = Array.from(sizeCounts.keys()).sort(compareSizes);
+  const availableModels = Array.from(modelLabels, ([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr', { numeric: true }));
 
   const filteredCommandes = commandes.filter((commande) => {
     const matchSearch = 
@@ -339,8 +360,9 @@ const Commandes = () => {
       commande.client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTaille = !filterTaille || normalizeSize(commande.taille) === filterTaille;
+    const matchModele = !filterModele || normalizeModel(commande) === filterModele;
 
-    return matchSearch && matchTaille;
+    return matchSearch && matchTaille && matchModele;
   });
 
   if (loading) {
@@ -413,7 +435,23 @@ const Commandes = () => {
         </div>
 
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
+          <label className="block max-w-xl">
+            <span className="text-sm font-bold text-gray-800 block mb-2">Trier par modèle <span className="font-medium text-gray-500">· nombres à envoyer</span></span>
+            <select
+              value={filterModele}
+              onChange={(event) => setFilterModele(event.target.value)}
+              className="input text-sm sm:text-base"
+            >
+              <option value="">Tous les modèles ({pendingModelTotal})</option>
+              {availableModels.map((modele) => (
+                <option key={modele.value} value={modele.value}>
+                  {modele.label} ({pendingModelCounts.get(modele.value) || 0})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex items-center gap-2 mb-2 mt-4">
             <Ruler size={17} className="text-primary-600 flex-shrink-0" />
             <p className="text-sm font-bold text-gray-800">Trier par taille <span className="font-medium text-gray-500">· nombres à envoyer</span></p>
           </div>
@@ -428,7 +466,7 @@ const Commandes = () => {
               }`}
               aria-pressed={!filterTaille}
             >
-              Toutes <span className="ml-1 opacity-80">({pendingTotal})</span>
+              Toutes <span className="ml-1 opacity-80">({pendingSizeTotal})</span>
             </button>
             {availableSizes.map((taille) => (
               <button
@@ -457,7 +495,7 @@ const Commandes = () => {
             Aucune commande trouvée
           </h3>
           <p className="text-gray-600">
-            {searchTerm || filterStatut || filterUrgence || filterTaille
+            {searchTerm || filterStatut || filterUrgence || filterTaille || filterModele
               ? 'Essayez de modifier vos filtres'
               : 'Créez votre première commande'}
           </p>
