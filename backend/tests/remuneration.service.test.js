@@ -11,39 +11,56 @@ import {
   validateProductionItems,
 } from '../services/remuneration.service.js';
 
-test('applique les bonus journaliers selon le tarif et le quota', () => {
-  assert.deepEqual(getProductionBonusRule(700), { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 });
-  assert.deepEqual(getProductionBonusRule(900), { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 });
-  assert.deepEqual(getProductionBonusRule(1000), { groupe: 'tarifs_1000_plus', quota: 6, bonusUnitaire: 300 });
-  assert.equal(getProductionBonusRule(800), null);
+test('applique 250 FCFA à chaque tenue à partir de la septième de la journée', () => {
+  const expectedRule = { groupe: 'toutes_tenues', quota: 6, bonusUnitaire: 250 };
+  assert.deepEqual(getProductionBonusRule(700), expectedRule);
+  assert.deepEqual(getProductionBonusRule(800), expectedRule);
+  assert.deepEqual(getProductionBonusRule(1000), expectedRule);
 
   const lowTarifModel = '11111111-1111-4111-8111-111111111111';
   const highTarifModel = '22222222-2222-4222-8222-222222222222';
   const allocations = calculateProductionBonusAllocations({
     items: [
       { modeleId: lowTarifModel, quantite: 4 },
-      { modeleId: highTarifModel, quantite: 8 },
+      { modeleId: highTarifModel, quantite: 4 },
     ],
     tarifByModele: new Map([
       [lowTarifModel, { montant_unitaire: 900 }],
       [highTarifModel, { montant_unitaire: 1000 }],
     ]),
-    existingProductions: [{ quantite: 5, tarif_unitaire: 700 }],
+    existingProductions: [],
   });
 
   assert.deepEqual(allocations[0], {
     modeleId: lowTarifModel,
     quantite: 4,
-    quantiteBonus: 2,
-    bonusUnitaire: 200,
-    montantBonus: 400,
+    quantiteBonus: 0,
+    bonusUnitaire: 250,
+    montantBonus: 0,
   });
   assert.deepEqual(allocations[1], {
     modeleId: highTarifModel,
-    quantite: 8,
+    quantite: 4,
     quantiteBonus: 2,
-    bonusUnitaire: 300,
-    montantBonus: 600,
+    bonusUnitaire: 250,
+    montantBonus: 500,
+  });
+});
+
+test('tient compte des tenues déjà déclarées pendant la même journée', () => {
+  const modeleId = '33333333-3333-4333-8333-333333333333';
+  const [allocation] = calculateProductionBonusAllocations({
+    items: [{ modeleId, quantite: 3 }],
+    tarifByModele: new Map([[modeleId, { montant_unitaire: 500 }]]),
+    existingProductions: [{ quantite: 6, tarif_unitaire: 1400 }],
+  });
+
+  assert.deepEqual(allocation, {
+    modeleId,
+    quantite: 3,
+    quantiteBonus: 3,
+    bonusUnitaire: 250,
+    montantBonus: 750,
   });
 });
 

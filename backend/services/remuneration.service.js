@@ -63,30 +63,20 @@ export function parseMoney(value, { allowZero = false } = {}) {
   return Math.round(amount * 100) / 100;
 }
 
-export function getProductionBonusRule(tarifUnitaire) {
-  const tarif = Number(tarifUnitaire || 0);
-  if (tarif === 700 || tarif === 900) {
-    return { groupe: 'tarifs_700_900', quota: 7, bonusUnitaire: 200 };
-  }
-  if (tarif >= 1000) {
-    return { groupe: 'tarifs_1000_plus', quota: 6, bonusUnitaire: 300 };
-  }
-  return null;
+export function getProductionBonusRule() {
+  return { groupe: 'toutes_tenues', quota: 6, bonusUnitaire: 250 };
 }
 
-export function calculateProductionBonusAllocations({ items = [], tarifByModele = new Map(), existingProductions = [] }) {
+export function calculateProductionBonusAllocations({ items = [], existingProductions = [] }) {
   const quantitiesByGroup = new Map();
 
   existingProductions.forEach((item) => {
-    const rule = getProductionBonusRule(item.tarif_unitaire);
-    if (!rule) return;
+    const rule = getProductionBonusRule();
     quantitiesByGroup.set(rule.groupe, Number(quantitiesByGroup.get(rule.groupe) || 0) + Number(item.quantite || 0));
   });
 
   return items.map((item) => {
-    const tarif = Number(tarifByModele.get(item.modeleId)?.montant_unitaire || 0);
-    const rule = getProductionBonusRule(tarif);
-    if (!rule) return { ...item, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0 };
+    const rule = getProductionBonusRule();
 
     const previousQuantity = Number(quantitiesByGroup.get(rule.groupe) || 0);
     const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);

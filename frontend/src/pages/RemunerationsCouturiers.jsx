@@ -196,6 +196,11 @@ const RemunerationsCouturiers = () => {
         <SummaryCard icon={Coins} label="Total encore dû" value={money(totalDu)} color="emerald" />
       </div>
 
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+        <p className="font-black">Règle du bonus de productivité</p>
+        <p className="mt-1 text-sm">Les 6 premières tenues de chaque journée sont au tarif normal. De la 7ᵉ tenue jusqu’aux suivantes : <strong>+250 FCFA par tenue</strong>, tous modèles et tous tarifs confondus.</p>
+      </div>
+
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <div className="flex items-center gap-3"><div className="p-2.5 bg-blue-100 text-blue-700 rounded-xl"><Shirt size={22} /></div><div><h2 className="text-xl font-black">Tarif de chaque tenue</h2><p className="text-sm text-gray-500">Sélectionnez une tenue pour consulter ou modifier son tarif.</p></div></div>

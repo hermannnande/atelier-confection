@@ -25,12 +25,7 @@ const localToday = () => {
 const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 const productionTotal = (item) => Number(item?.montant_total || 0) + Number(item?.montant_bonus || 0);
 
-const getBonusRule = (tarifUnitaire) => {
-  const tarif = Number(tarifUnitaire || 0);
-  if (tarif === 700 || tarif === 900) return { group: 'tarifs_700_900', quota: 7, bonus: 200 };
-  if (tarif >= 1000) return { group: 'tarifs_1000_plus', quota: 6, bonus: 300 };
-  return null;
-};
+const getBonusRule = () => ({ group: 'toutes_tenues', quota: 6, bonus: 250 });
 
 const statusStyles = {
   en_attente: 'bg-amber-100 text-amber-800',
@@ -102,8 +97,7 @@ const MesGains = () => {
     productions
       .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
       .forEach((item) => {
-        const rule = getBonusRule(item.tarif_unitaire);
-        if (!rule) return;
+        const rule = getBonusRule();
         quantitiesByGroup.set(rule.group, Number(quantitiesByGroup.get(rule.group) || 0) + Number(item.quantite || 0));
       });
 
@@ -111,8 +105,7 @@ const MesGains = () => {
       const tarif = Number(tarifMap.get(ligne.modeleId)?.montantUnitaire || 0);
       const quantite = Number(ligne.quantite || 0);
       const montantBase = tarif * quantite;
-      const rule = getBonusRule(tarif);
-      if (!rule) return { montantBase, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0, total: montantBase };
+      const rule = getBonusRule();
 
       const previousQuantity = Number(quantitiesByGroup.get(rule.group) || 0);
       const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);
@@ -236,15 +229,9 @@ const MesGains = () => {
           <div className="bg-amber-50 text-amber-800 rounded-xl p-4">Aucun tarif n’est encore configuré. Contactez l’administrateur.</div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
-                <p className="font-black text-orange-900">Tarifs de 700 ou 900 FCFA</p>
-                <p className="text-sm text-orange-800 mt-1">Après 7 pièces dans la journée : <strong>+200 FCFA</strong> sur la 8ᵉ pièce et chacune des suivantes.</p>
-              </div>
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <p className="font-black text-emerald-900">Tarifs à partir de 1 000 FCFA</p>
-                <p className="text-sm text-emerald-800 mt-1">Après 6 pièces dans la journée : <strong>+300 FCFA</strong> sur la 7ᵉ pièce et chacune des suivantes.</p>
-              </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 mb-5">
+              <p className="font-black text-emerald-900">Bonus de productivité · toutes les tenues</p>
+              <p className="text-sm text-emerald-800 mt-1">Les 6 premières pièces de la journée sont au tarif normal. La 7ᵉ pièce et chacune des suivantes reçoivent <strong>+250 FCFA</strong>, tous modèles et tous tarifs confondus.</p>
             </div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Journée de production</label>
             <input type="date" max={localToday()} value={dateProduction} onChange={(event) => setDateProduction(event.target.value)} className="input max-w-xs mb-5" />
