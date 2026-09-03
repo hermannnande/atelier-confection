@@ -12,7 +12,7 @@
       content="Découvrez les créations uniques de l'Atelier Confection : robes, ensembles et pièces confectionnées avec soin."
     />
     <link rel="stylesheet" href="../css/style.css?v=20260613-4" />
-    <link rel="stylesheet" href="../css/boutique.css?v=20260824-perf2" />
+    <link rel="stylesheet" href="../css/boutique.css?v=20260903-scroll1" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=optional" onload="this.onload=null;this.rel='stylesheet'">
@@ -138,50 +138,28 @@
 
       <!-- Grille de produits -->
       <section class="products-grid">
-        <div class="products-container">
+        <div class="products-container" id="products-container" aria-busy="true">
           <!-- Produits injectés par boutique.js (depuis l'admin) -->
         </div>
       </section>
 
-      <!-- Pagination -->
-      <section class="pagination" aria-label="Pagination du catalogue">
-        <button class="pagination-btn" disabled>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Précédent
-        </button>
-        <div class="pagination-numbers">
-          <button class="pagination-number active">1</button>
-          <button class="pagination-number">2</button>
-          <button class="pagination-number">3</button>
-          <button class="pagination-number">4</button>
+      <!-- Chargement progressif du catalogue -->
+      <section class="catalog-progress" id="catalog-progress" aria-label="Chargement progressif du catalogue">
+        <div class="catalog-load-sentinel" id="catalog-load-sentinel" aria-hidden="true"></div>
+        <div class="catalog-load-status is-loading" id="catalog-load-status" role="status" aria-live="polite" aria-atomic="true">
+          <span class="catalog-loader-dots" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </span>
+          <span id="catalog-load-text">Chargement du catalogue…</span>
         </div>
-        <button class="pagination-btn">
-          Suivant
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+        <button
+          class="catalog-load-more"
+          id="catalog-load-more-fallback"
+          type="button"
+          aria-controls="products-container"
+          hidden
+        >
+          Afficher plus de tenues
         </button>
       </section>
     </main>
@@ -276,6 +254,6 @@
     <link rel="stylesheet" href="../css/cart-drawer.css?v=20260613-5">
     <script src="../js/main.js?v=20260824-perf2"></script>
     <script src="../js/cart-drawer.js?v=20260613-5"></script>
-    <script src="../js/boutique.js?v=20260903-recent2"></script>
+    <script src="../js/boutique.js?v=20260903-scroll1"></script>
   </body>
 </html>

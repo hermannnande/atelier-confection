@@ -75,7 +75,9 @@ const PAGE_SIZE = 12;
 
 let adminProductsCache = [];
 let filteredProductsCache = [];
-let currentPage = 1;
+let visibleProductCount = 0;
+let isLoadingMore = false;
+let catalogRevision = 0;
 
 const buildProductCard = (product, categories, index = 0) => {
   const name = product.name || 'Produit';
@@ -199,13 +201,14 @@ const setFavoriteState = (btn, isFavorite) => {
   }
 };
 
-const bindFavorites = () => {
-  document.querySelectorAll('.product-favorite').forEach(btn => {
-    const card = btn.closest('.product-card');
-    if (!card) return;
+const bindFavorites = (cards = document.querySelectorAll('.product-card')) => {
+  Array.from(cards).forEach((card) => {
+    const btn = card.querySelector('.product-favorite');
+    if (!btn || btn.dataset.favoriteBound === 'true') return;
 
     const product = getProductData(card);
     setFavoriteState(btn, store.isInWishlist(product.id));
+    btn.dataset.favoriteBound = 'true';
 
     btn.addEventListener('click', function(e) {
       e.preventDefault();
@@ -289,35 +292,49 @@ const refreshCategoriesFromServer = async () => {
   } catch (e) { /* non bloquant: cache local utilisé */ }
 };
 
-const renderProductList = (products) => {
+const renderProductList = (products, { append = false, startIndex = 0 } = {}) => {
   const container = document.querySelector('.products-container');
-  if (!container) return;
+  if (!container) return [];
 
-  container.querySelectorAll('.product-card').forEach((card) => {
-    productObserver.unobserve(card);
-  });
+  if (!append) {
+    container.querySelectorAll('.product-card').forEach((card) => {
+      productObserver.unobserve(card);
+    });
+  }
 
   if (!products.length) {
-    container.innerHTML = `
-      <div style="padding: 40px; text-align: center; color: #6b7280;">
-        Aucun produit ne correspond à vos filtres.
-      </div>
-    `;
-    return;
+    if (!append) {
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: #6b7280;">
+          Aucun produit ne correspond à vos filtres.
+        </div>
+      `;
+    }
+    return [];
   }
 
   const categories = readAdminCategories().filter((cat) => cat.active !== false);
-  container.innerHTML = products
-    .slice(0, PAGE_SIZE)
-    .map((p, index) => buildProductCard(p, categories, index))
+  const existingCardCount = append
+    ? container.querySelectorAll('.product-card').length
+    : 0;
+  const markup = products
+    .map((p, index) => buildProductCard(p, categories, startIndex + index))
     .join('');
+
+  if (append) {
+    container.insertAdjacentHTML('beforeend', markup);
+  } else {
+    container.innerHTML = markup;
+  }
+
+  return Array.from(container.querySelectorAll('.product-card')).slice(existingCardCount);
 };
 
 const finalizeRender = () => {
   hydrateCategoryFilterOptions();
   bindProductClickStore();
   applyCategoryFromURL();
-  refreshCatalog({ resetPage: true });
+  refreshCatalog();
 };
 
 // SOURCE DE VÉRITÉ: le serveur. Le localStorage ne sert que de cache hors-ligne.
@@ -363,22 +380,18 @@ const fetchAndRenderProducts = async () => {
   finalizeRender();
 };
 
-const observeAllCards = () => {
-  document.querySelectorAll('.product-card').forEach(card => {
-    productObserver.observe(card);
-  });
-};
-
 // Filtres
 const categoryFilter = document.getElementById('category-filter');
 const colorFilter = document.getElementById('color-filter');
 const sortFilter = document.getElementById('sort-filter');
 const productCount = document.getElementById('product-count');
-const pagination = document.querySelector('.pagination');
-const paginationNumbers = pagination?.querySelector('.pagination-numbers');
-const paginationButtons = pagination?.querySelectorAll('.pagination-btn') || [];
-const prevBtn = paginationButtons[0];
-const nextBtn = paginationButtons[paginationButtons.length - 1];
+const productsContainer = document.getElementById('products-container');
+const catalogProgress = document.getElementById('catalog-progress');
+const catalogLoadSentinel = document.getElementById('catalog-load-sentinel');
+const catalogLoadStatus = document.getElementById('catalog-load-status');
+const catalogLoadText = document.getElementById('catalog-load-text');
+const catalogLoadMoreFallback = document.getElementById('catalog-load-more-fallback');
+const supportsIntersectionObserver = 'IntersectionObserver' in window;
 
 // Le compteur représente toujours le total filtré, pas seulement la page courante.
 function updateProductCount(total = filteredProductsCache.length) {
@@ -448,67 +461,88 @@ function getFilteredAndSortedProducts() {
   });
 }
 
-function renderPagination(totalProducts) {
-  const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
-  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+function updateCatalogProgress() {
+  const totalProducts = filteredProductsCache.length;
+  const displayedProducts = Math.min(visibleProductCount, totalProducts);
+  const hasMoreProducts = displayedProducts < totalProducts;
 
-  if (pagination) pagination.hidden = totalProducts === 0 || totalPages <= 1;
-  if (prevBtn) prevBtn.disabled = currentPage <= 1;
-  if (nextBtn) nextBtn.disabled = currentPage >= totalPages || totalProducts === 0;
-  if (!paginationNumbers) return;
-
-  const fragment = document.createDocumentFragment();
-  for (let page = 1; page <= totalPages; page += 1) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `pagination-number${page === currentPage ? ' active' : ''}`;
-    button.dataset.page = String(page);
-    button.textContent = String(page);
-    button.setAttribute('aria-label', `Page ${page}`);
-    if (page === currentPage) button.setAttribute('aria-current', 'page');
-    fragment.appendChild(button);
+  if (catalogProgress) catalogProgress.hidden = totalProducts === 0;
+  if (catalogLoadStatus) {
+    catalogLoadStatus.classList.toggle('is-complete', !hasMoreProducts);
+    catalogLoadStatus.classList.toggle('is-loading', isLoadingMore);
+  }
+  if (catalogLoadText) {
+    if (!isLoadingMore) {
+      if (hasMoreProducts) {
+        catalogLoadText.textContent = supportsIntersectionObserver
+          ? `${displayedProducts} produits affichés sur ${totalProducts}. Continuez à défiler.`
+          : `${displayedProducts} produits affichés sur ${totalProducts}. Utilisez le bouton pour afficher la suite.`;
+      } else if (totalProducts > 0) {
+        catalogLoadText.textContent = `Tous les ${totalProducts} produits sont affichés.`;
+      }
+    }
   }
 
-  paginationNumbers.replaceChildren(fragment);
-  pagination?.classList.add('is-ready');
+  if (catalogLoadSentinel) {
+    catalogLoadSentinel.hidden = !hasMoreProducts;
+    infiniteScrollObserver?.unobserve(catalogLoadSentinel);
+    if (hasMoreProducts) infiniteScrollObserver?.observe(catalogLoadSentinel);
+  }
+
+  if (catalogLoadMoreFallback) {
+    catalogLoadMoreFallback.hidden = supportsIntersectionObserver || !hasMoreProducts;
+  }
 }
 
-function renderCurrentPage({ scroll = false } = {}) {
-  const totalPages = Math.max(1, Math.ceil(filteredProductsCache.length / PAGE_SIZE));
-  currentPage = Math.min(Math.max(1, currentPage), totalPages);
+function renderInitialProductBatch() {
+  visibleProductCount = Math.min(PAGE_SIZE, filteredProductsCache.length);
+  const firstProducts = filteredProductsCache.slice(0, visibleProductCount);
 
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageProducts = filteredProductsCache.slice(start, start + PAGE_SIZE);
-
-  renderProductList(pageProducts);
+  productsContainer?.setAttribute('aria-busy', 'true');
+  const cards = renderProductList(firstProducts);
+  productsContainer?.setAttribute('aria-busy', 'false');
   updateProductCount(filteredProductsCache.length);
-  renderPagination(filteredProductsCache.length);
-  bindFavorites();
-  observeAllCards();
-
-  if (scroll) {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  bindFavorites(cards);
+  observeProductCards(cards);
+  updateCatalogProgress();
 }
 
-function refreshCatalog({ resetPage = true } = {}) {
+function refreshCatalog() {
+  infiniteScrollObserver?.takeRecords();
+  catalogRevision += 1;
+  isLoadingMore = false;
   filteredProductsCache = getFilteredAndSortedProducts();
-  if (resetPage) currentPage = 1;
-  renderCurrentPage();
+  renderInitialProductBatch();
 }
 
-function goToPage(page) {
-  const totalPages = Math.max(1, Math.ceil(filteredProductsCache.length / PAGE_SIZE));
-  const nextPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
-  if (nextPage === currentPage) return;
+function loadNextProductBatch() {
+  if (isLoadingMore || visibleProductCount >= filteredProductsCache.length) return;
 
-  currentPage = nextPage;
-  renderCurrentPage({ scroll: true });
+  const revisionAtStart = catalogRevision;
+  const startIndex = visibleProductCount;
+  const nextProducts = filteredProductsCache.slice(startIndex, startIndex + PAGE_SIZE);
+  if (!nextProducts.length) return;
+
+  isLoadingMore = true;
+  productsContainer?.setAttribute('aria-busy', 'true');
+  updateCatalogProgress();
+
+  window.requestAnimationFrame(() => {
+    if (revisionAtStart !== catalogRevision) return;
+
+    const cards = renderProductList(nextProducts, { append: true, startIndex });
+    visibleProductCount += nextProducts.length;
+    isLoadingMore = false;
+    productsContainer?.setAttribute('aria-busy', 'false');
+    bindFavorites(cards);
+    observeProductCards(cards);
+    updateCatalogProgress();
+  });
 }
 
 [categoryFilter, colorFilter, sortFilter].forEach((filter) => {
   filter?.addEventListener('change', () => {
-    refreshCatalog({ resetPage: true });
+    refreshCatalog();
   });
 });
 
@@ -517,7 +551,7 @@ function resetFilters() {
   if (categoryFilter) categoryFilter.value = 'all';
   if (colorFilter) colorFilter.value = 'all';
   if (sortFilter) sortFilter.value = 'recent';
-  refreshCatalog({ resetPage: true });
+  refreshCatalog();
 }
 
 const resetBtn = document.getElementById('reset-filters');
@@ -531,33 +565,47 @@ const observerOptions = {
   rootMargin: '0px 0px -50px 0px'
 };
 
-const productObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.style.opacity = '0';
-      entry.target.style.transform = 'translateY(30px)';
-      
-      setTimeout(() => {
-        entry.target.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        entry.target.style.opacity = '1';
-        entry.target.style.transform = 'translateY(0)';
-      }, 100);
-      
-      productObserver.unobserve(entry.target);
-    }
-  });
-}, observerOptions);
+const productObserver = supportsIntersectionObserver
+  ? new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '0';
+          entry.target.style.transform = 'translateY(30px)';
 
-// Les boutons numérotés sont recréés à chaque rendu. La délégation conserve
-// un seul listener sur leur conteneur, quelle que soit la page affichée.
-paginationNumbers?.addEventListener('click', (event) => {
-  const button = event.target.closest('.pagination-number');
-  if (!button || !paginationNumbers.contains(button)) return;
-  goToPage(button.dataset.page);
-});
+          setTimeout(() => {
+            entry.target.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+          }, 100);
 
-prevBtn?.addEventListener('click', () => goToPage(currentPage - 1));
-nextBtn?.addEventListener('click', () => goToPage(currentPage + 1));
+          productObserver.unobserve(entry.target);
+        }
+      });
+    }, observerOptions)
+  : {
+      observe: (card) => {
+        card.style.opacity = '1';
+        card.style.transform = 'none';
+      },
+      unobserve: () => {},
+    };
+
+function observeProductCards(cards) {
+  Array.from(cards).forEach((card) => productObserver.observe(card));
+}
+
+const infiniteScrollObserver = supportsIntersectionObserver && catalogLoadSentinel
+  ? new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        loadNextProductBatch();
+      }
+    }, {
+      threshold: 0,
+      rootMargin: '0px 0px 500px 0px',
+    })
+  : null;
+
+catalogLoadMoreFallback?.addEventListener('click', loadNextProductBatch);
 
 // Appliquer le filtre catégorie depuis l'URL (?cat=elegant)
 const applyCategoryFromURL = () => {
@@ -581,6 +629,6 @@ const applyCategoryFromURL = () => {
   } catch (e) { /* ignore */ }
 };
 
-// Démarrer seulement après l'initialisation des filtres, de la pagination et
-// de l'observer afin qu'aucune réponse réseau rapide ne précède ces bindings.
+// Démarrer seulement après l'initialisation des filtres et des observers afin
+// qu'aucune réponse réseau rapide ne précède ces bindings.
 fetchAndRenderProducts();
