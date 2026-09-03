@@ -559,7 +559,7 @@ const CartDrawer = {
       window.location.href = isInPages ? 'merci' : 'pages/merci';
     } catch (err) {
       console.error('Erreur envoi commande:', err);
-      alert("Erreur lors de l'envoi de la commande.\n" + err.message + "\n\nVeuillez réessayer ou nous contacter au 07 05 88 11 16.");
+      alert("Erreur lors de l'envoi de la commande.\n" + err.message + "\n\nVeuillez réessayer ou nous contacter au 07 59 40 68 42.");
       btn.disabled = false;
       btn.classList.remove('loading');
       btn.innerHTML = originalHTML;

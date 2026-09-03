@@ -210,7 +210,7 @@ document.getElementById('deliveryForm').addEventListener('submit', async functio
     alert(
       'Erreur lors de l\'envoi de la commande.\n' +
       error.message + '\n\n' +
-      'Veuillez reessayer ou nous contacter au 07 05 88 11 16.'
+      'Veuillez reessayer ou nous contacter au 07 59 40 68 42.'
     );
     submitBtn.classList.remove('loading');
     submitBtn.innerHTML = `
