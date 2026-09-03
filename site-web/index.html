@@ -12,8 +12,8 @@
     <meta name="description" content="Atelier Confection - Elegance sur mesure. Robes, ensembles et accessoires confectionnés avec soin à Abidjan.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="image" href="videos/hero-mobile-poster.webp?v=20260824-perf1" media="(max-width: 768px)" fetchpriority="high">
-    <link rel="preload" as="image" href="videos/hero-desktop-poster.webp?v=20260824-perf1" media="(min-width: 769px)" fetchpriority="high">
+    <link rel="preload" as="image" href="videos/hero-mobile-poster.webp?v=20260903-hero2" media="(max-width: 768px)" fetchpriority="high">
+    <link rel="preload" as="image" href="videos/hero-desktop-poster.webp?v=20260903-hero2" media="(min-width: 769px)" fetchpriority="high">
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=optional" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=optional" rel="stylesheet"></noscript>
     <style id="critical-home-css">
@@ -172,8 +172,8 @@
     <main>
       <section class="hero">
         <picture class="hero-poster" id="heroPoster">
-          <source media="(max-width: 768px)" srcset="videos/hero-mobile-poster.webp?v=20260824-perf1">
-          <img src="videos/hero-desktop-poster.webp?v=20260824-perf1" alt="Création élégante Nous Unique" width="1280" height="720" fetchpriority="high" decoding="async">
+          <source media="(max-width: 768px)" srcset="videos/hero-mobile-poster.webp?v=20260903-hero2">
+          <img src="videos/hero-desktop-poster.webp?v=20260903-hero2" alt="Création élégante Nous Unique" width="1280" height="720" fetchpriority="high" decoding="async">
         </picture>
         <video
           class="hero-video"
@@ -197,10 +197,10 @@
             var timer = 0;
 
             function preferredSource() {
-              if (mq.matches) return 'videos/hero-mobile.mp4?v=20260824-perf1';
+              if (mq.matches) return 'videos/hero-mobile.mp4?v=20260903-hero2';
               return v.canPlayType('video/webm')
-                ? 'videos/hero-desktop.webm?v=20260824-perf1'
-                : 'videos/hero-desktop.mp4?v=20260824-perf1';
+                ? 'videos/hero-desktop.webm?v=20260903-hero2'
+                : 'videos/hero-desktop.mp4?v=20260903-hero2';
             }
 
             function setSrc() {
