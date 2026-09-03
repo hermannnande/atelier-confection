@@ -182,7 +182,7 @@
           muted
           loop
           playsinline
-          preload="none"
+          preload="auto"
           aria-hidden="true"
         ></video>
         <script>
@@ -194,13 +194,12 @@
             // notamment sur les navigateurs mobiles plus stricts.
             v.defaultMuted = true;
             v.muted = true;
+            v.autoplay = true;
             v.loop = true;
             v.playsInline = true;
             var mq = window.matchMedia('(max-width: 768px)');
-            var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
             var current = '';
             var started = false;
-            var timer = 0;
 
             function preferredSource() {
               if (mq.matches) return 'videos/hero-mobile.mp4?v=20260903-hero2';
@@ -216,8 +215,6 @@
             }
 
             function setSrc() {
-              if (navigator.connection && navigator.connection.saveData) return;
-              if (reducedMotion.matches) return;
               var src = preferredSource();
               if (src === current) return;
               current = src;
@@ -229,7 +226,6 @@
             function start() {
               if (started) return;
               started = true;
-              if (timer) window.clearTimeout(timer);
               setSrc();
             }
 
@@ -260,18 +256,9 @@
               if (started && current && v.paused) playVideo();
             });
 
-            function schedule() {
-              if (timer || started) return;
-              // Le poster reste le LCP stable. La vidéo démarre ensuite, ou
-              // immédiatement dès que la visiteuse interagit avec la page.
-              timer = window.setTimeout(start, 10000);
-            }
-
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', schedule, { once: true });
-            } else {
-              schedule();
-            }
+            // La source est attribuée immédiatement : l'autoplay peut démarrer
+            // pendant que le reste de la page termine son chargement.
+            start();
             document.addEventListener('pointerdown', startOrResume, { passive: true });
             document.addEventListener('keydown', startOrResume);
             document.addEventListener('scroll', start, { once: true, passive: true });
