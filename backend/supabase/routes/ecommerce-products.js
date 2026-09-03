@@ -21,8 +21,9 @@ router.get('/', async (req, res) => {
     // La vue "card" évite d'envoyer descriptions, galeries et vidéos aux
     // pages qui n'affichent que des cartes produit.
     const compact = req.query.view === 'card';
+    const sortByRecent = req.query.sort === 'recent';
     const fields = compact
-      ? 'id,name,category,price,original_price,colors,thumbnail,active,updated_at'
+      ? 'id,name,category,price,original_price,colors,thumbnail,active,created_at,updated_at'
       : '*';
     const requestedLimit = Number.parseInt(req.query.limit, 10);
     const limit = Number.isFinite(requestedLimit)
@@ -33,7 +34,10 @@ router.get('/', async (req, res) => {
     let query = supabase
       .from('ecommerce_products')
       .select(fields)
-      .order('updated_at', { ascending: false });
+      .order(sortByRecent ? 'created_at' : 'updated_at', {
+        ascending: false,
+        nullsFirst: false,
+      });
     if (compact) query = query.eq('active', true);
     if (limit) query = query.limit(limit);
 
@@ -114,7 +118,7 @@ router.post('/sync', async (req, res) => {
       video: p.video || null,
       thumbnail: p.thumbnail || null,
       active: p.active !== false,
-      created_at: p.createdAt || now,
+      created_at: p.createdAt || p.created_at || now,
       updated_at: now,
     })).filter((r) => r.id && r.name);
 
