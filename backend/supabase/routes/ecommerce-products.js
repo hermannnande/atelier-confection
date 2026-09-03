@@ -38,6 +38,7 @@ router.get('/', async (req, res) => {
         ascending: false,
         nullsFirst: false,
       });
+    if (sortByRecent) query = query.order('id', { ascending: false });
     if (compact) query = query.eq('active', true);
     if (limit) query = query.limit(limit);
 

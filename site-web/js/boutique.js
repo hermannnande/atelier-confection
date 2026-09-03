@@ -388,11 +388,7 @@ function updateProductCount(total = filteredProductsCache.length) {
 
 const getProductCreationTime = (product) => {
   const createdAt = Date.parse(product.createdAt || product.created_at || '');
-  if (Number.isFinite(createdAt)) return createdAt;
-
-  // Compatibilité avec les anciens produits qui n'ont pas de date de création.
-  const updatedAt = Date.parse(product.updatedAt || product.updated_at || '');
-  return Number.isFinite(updatedAt) ? updatedAt : 0;
+  return Number.isFinite(createdAt) ? createdAt : 0;
 };
 
 function getFilteredAndSortedProducts() {
@@ -433,7 +429,13 @@ function getFilteredAndSortedProducts() {
 
   return products.sort((a, b) => {
     if (sortType === 'recent') {
-      return getProductCreationTime(b) - getProductCreationTime(a);
+      const dateDifference = getProductCreationTime(b) - getProductCreationTime(a);
+      if (dateDifference !== 0) return dateDifference;
+
+      return String(b.id || '').localeCompare(String(a.id || ''), 'fr', {
+        numeric: true,
+        sensitivity: 'base',
+      });
     }
     if (sortType === 'price-asc') return (Number(a.price) || 0) - (Number(b.price) || 0);
     if (sortType === 'price-desc') return (Number(b.price) || 0) - (Number(a.price) || 0);
