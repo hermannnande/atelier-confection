@@ -83,9 +83,9 @@
         body.home-premium .hero-scroll-indicator { display: none; }
       }
     </style>
-    <link rel="preload" as="style" href="css/style.css?v=20260824-perf1" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" as="style" href="css/style.css?v=20260903-home-selection" onload="this.onload=null;this.rel='stylesheet'">
     <link rel="preload" as="style" href="css/home-premium.css?v=20260824-perf3" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="css/style.css?v=20260824-perf1"><link rel="stylesheet" href="css/home-premium.css?v=20260824-perf3"></noscript>
+    <noscript><link rel="stylesheet" href="css/style.css?v=20260903-home-selection"><link rel="stylesheet" href="css/home-premium.css?v=20260824-perf3"></noscript>
   </head>
   <body class="home-premium">
     <div class="announcement-bar">
@@ -112,7 +112,7 @@
         <nav class="main-nav" aria-label="Navigation principale">
           <a href="./" class="nav-link active">Accueil</a>
           <a href="pages/boutique" class="nav-link">Boutique</a>
-          <a href="#categories" class="nav-link">Collections</a>
+          <a href="#selection" class="nav-link">Collections</a>
           <a href="pages/temoignages" class="nav-link">Témoignages</a>
           <a href="pages/contact" class="nav-link">Contact</a>
         </nav>
@@ -261,7 +261,7 @@
           </p>
           <div class="hero-actions">
             <a class="btn-primary" href="pages/boutique">Voir la boutique</a>
-            <a class="btn-ghost" href="#categories">Nos collections</a>
+            <a class="btn-ghost" href="#selection">Nos collections</a>
           </div>
         </div>
         <div class="hero-scroll-indicator">
@@ -269,28 +269,6 @@
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
         </div>
       </section>
-
-      <!-- Bande défilante premium : réassurance -->
-      <div class="marquee-band marquee-gold" aria-hidden="true">
-        <div class="marquee-track">
-          <div class="mq">
-            <span>Livraison rapide</span><span class="sep">&#10022;</span>
-            <span>Paiement à la livraison</span><span class="sep">&#10022;</span>
-            <span>Confection artisanale</span><span class="sep">&#10022;</span>
-            <span>Qualité premium</span><span class="sep">&#10022;</span>
-            <span>Sur mesure</span><span class="sep">&#10022;</span>
-            <span>Satisfaction garantie</span><span class="sep">&#10022;</span>
-          </div>
-          <div class="mq">
-            <span>Livraison rapide</span><span class="sep">&#10022;</span>
-            <span>Paiement à la livraison</span><span class="sep">&#10022;</span>
-            <span>Confection artisanale</span><span class="sep">&#10022;</span>
-            <span>Qualité premium</span><span class="sep">&#10022;</span>
-            <span>Sur mesure</span><span class="sep">&#10022;</span>
-            <span>Satisfaction garantie</span><span class="sep">&#10022;</span>
-          </div>
-        </div>
-      </div>
 
       <!-- Avantages / Trust badges -->
       <section class="trust-badges">
@@ -334,124 +312,40 @@
         </div>
       </section>
 
-      <section class="categories" id="categories">
-        <div class="section-header">
-          <p class="section-tag">Collections</p>
-          <h2>Explorez nos univers</h2>
-        </div>
-        <div class="category-grid">
-          <a
-            class="category-card"
-            href="pages/boutique?cat=elegant"
-            aria-label="Collection Elegant"
-          >
-            <img
-              src="images/collections/elegant-768.webp"
-              srcset="images/collections/elegant-480.webp 480w, images/collections/elegant-768.webp 768w"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              alt="Collection Elegant"
-              loading="lazy"
-              decoding="async"
-              width="768"
-              height="1152"
-            />
-            <div class="category-overlay">
-              <span>Elegant</span>
-            </div>
-          </a>
-          <a
-            class="category-card"
-            href="pages/boutique?cat=perle-rare"
-            aria-label="Collection Perle Rare"
-          >
-            <img
-              src="images/collections/perle-rare-768.webp"
-              srcset="images/collections/perle-rare-480.webp 480w, images/collections/perle-rare-768.webp 768w"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              alt="Collection Perle Rare"
-              loading="lazy"
-              decoding="async"
-              width="768"
-              height="1156"
-            />
-            <div class="category-overlay">
-              <span>Perle Rare</span>
-            </div>
-          </a>
-          <a
-            class="category-card"
-            href="pages/boutique?cat=perle-unique"
-            aria-label="Collection Perle Unique"
-          >
-            <img
-              src="images/collections/perle-unique-768.webp"
-              srcset="images/collections/perle-unique-480.webp 480w, images/collections/perle-unique-768.webp 768w"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              alt="Collection Perle Unique"
-              loading="lazy"
-              decoding="async"
-              width="768"
-              height="1152"
-            />
-            <div class="category-overlay">
-              <span>Perle Unique</span>
-            </div>
-          </a>
-          <a
-            class="category-card full-width-banner"
-            href="pages/boutique?cat=style-event"
-            aria-label="Collection Style Event"
-          >
-            <img
-              src="images/collections/style-event-1024.webp"
-              srcset="images/collections/style-event-480.webp 480w, images/collections/style-event-768.webp 768w, images/collections/style-event-1024.webp 1024w"
-              sizes="(max-width: 768px) 100vw, 100vw"
-              alt="Collection Style Event"
-              loading="lazy"
-              decoding="async"
-              width="1024"
-              height="1536"
-            />
-            <div class="category-overlay">
-              <span>Style Event</span>
-            </div>
-          </a>
-        </div>
-      </section>
-
-      <!-- Bande défilante géante typographique -->
-      <div class="marquee-band marquee-mega" aria-hidden="true">
-        <div class="marquee-track">
-          <div class="mq">
-            <span>Élégance</span><span class="star">&#10022;</span>
-            <span class="outline">Sur Mesure</span><span class="star">&#10022;</span>
-            <span class="gold">Haute Confection</span><span class="star">&#10022;</span>
-            <span>Abidjan</span><span class="star">&#10022;</span>
+      <!-- Vitrine dynamique : produits actifs de la Boutique -->
+      <section class="bestsellers home-selection" id="selection">
+        <div class="home-selection-header">
+          <div class="home-selection-heading">
+            <p class="section-tag">La boutique</p>
+            <h2 class="section-title">Nos créations du moment</h2>
+            <p class="section-subtitle">
+              Nouveautés et pièces emblématiques, choisies dans la boutique et renouvelées à chaque visite.
+            </p>
           </div>
-          <div class="mq">
-            <span>Élégance</span><span class="star">&#10022;</span>
-            <span class="outline">Sur Mesure</span><span class="star">&#10022;</span>
-            <span class="gold">Haute Confection</span><span class="star">&#10022;</span>
-            <span>Abidjan</span><span class="star">&#10022;</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Section Meilleures Ventes (peuplé dynamiquement via JS) -->
-      <section class="bestsellers" id="bestsellers">
-        <div class="section-header-center">
-          <p class="section-tag">Tendances</p>
-          <h2 class="section-title">Meilleures Ventes</h2>
-          <p class="section-subtitle">Decouvrez nos pieces les plus populaires</p>
+          <a href="pages/boutique" class="home-selection-link">
+            Découvrir toute la boutique
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </a>
         </div>
 
-        <div class="products-grid" id="homeBestsellersGrid">
-          <!-- Populated by JS from admin products or fallback -->
+        <div
+          class="products-grid home-products-grid"
+          id="homeBestsellersGrid"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div class="home-product-skeleton" aria-hidden="true"></div>
+          <div class="home-product-skeleton" aria-hidden="true"></div>
+          <div class="home-product-skeleton" aria-hidden="true"></div>
+          <div class="home-product-skeleton" aria-hidden="true"></div>
         </div>
 
-        <div class="section-cta">
-          <a href="pages/boutique" class="btn-primary-large">Voir toute la boutique</a>
-        </div>
+        <p class="home-selection-note">
+          <span aria-hidden="true"></span>
+          La sélection change automatiquement pour vous faire découvrir plus de modèles.
+        </p>
       </section>
 
       <section class="value-strip">
@@ -653,7 +547,7 @@
             <li><a href="./">Accueil</a></li>
             <li><a href="pages/boutique">Produits</a></li>
             <li><a href="pages/temoignages">Témoignages</a></li>
-            <li><a href="#categories">Collection</a></li>
+            <li><a href="#selection">Collection</a></li>
             <li><a href="pages/contact">Contact</a></li>
           </ul>
         </div>
@@ -731,6 +625,20 @@
       </div>
     </div>
 
+    <!-- Accès rapide à la Boutique sur mobile -->
+    <a
+      class="mobile-shop-cta"
+      href="pages/boutique"
+      aria-label="Voir plus de tenues dans la boutique"
+    >
+      <span class="mobile-shop-cta-label">Voir plus de tenues</span>
+      <span class="mobile-shop-cta-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </span>
+    </a>
+
     <!-- Bouton scroll to top -->
     <button class="scroll-to-top" id="scrollToTop" aria-label="Retour en haut">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -746,7 +654,8 @@
     </a>
 
     <link rel="stylesheet" href="css/cart-drawer.css?v=20260613-5">
-    <script src="js/main.js?v=20260824-perf2"></script>
+    <script src="js/main.js?v=20260903-home-selection"></script>
+    <script src="js/home-selection.js?v=20260903-home-selection"></script>
     <script src="js/cart-drawer.js?v=20260613-5"></script>
     <script src="js/enhancements.js?v=20260824-perf1"></script>
   </body>

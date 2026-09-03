@@ -410,8 +410,6 @@ const renderHomeBestsellers = async () => {
 
 const initializeSite = () => {
   updateHeader();
-  observeCategories();
-  renderHomeBestsellers();
   bindProductAddToCartFallback();
   SiteStore.updateBadges();
 };
