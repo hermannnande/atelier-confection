@@ -26,13 +26,11 @@ const phoneNumberForCall = (value) => {
   return `${phone.startsWith('+') ? '+' : ''}${phone.replace(/\D/g, '')}`;
 };
 
-const reminderDate = (commande) => {
-  const history = Array.isArray(commande?.historique) ? commande.historique : [];
-  const reminderEntry = [...history]
-    .reverse()
-    .find((entry) => entry?.statut === 'a_rappeler');
-  return reminderEntry?.date || commande?.updatedAt || commande?.updated_at || commande?.createdAt;
-};
+const orderDate = (commande) => (
+  commande?.dateCommande
+  || commande?.createdAt
+  || commande?.created_at
+);
 
 const formatDate = (value) => {
   if (!value) return 'Date non renseignée';
@@ -191,7 +189,7 @@ const Rappels = () => {
                       )}
                     </div>
                     <p className="inline-flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                      <CalendarClock size={13} /> En rappel depuis le {formatDate(reminderDate(commande))}
+                      <CalendarClock size={13} /> Commande du {formatDate(orderDate(commande))}
                     </p>
                   </div>
                   <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800">À rappeler</span>
