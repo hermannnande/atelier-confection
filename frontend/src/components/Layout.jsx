@@ -66,9 +66,9 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'], gradient: 'from-blue-500 to-cyan-500' },
-    { name: 'Appel', href: '/appel', icon: PhoneCall, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-red-500' },
-    { name: 'Commandes', href: '/commandes', icon: ShoppingBag, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-pink-500' },
-    { name: 'Rappels', href: '/rappels', icon: BellRing, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-rose-500' },
+    { name: 'Appel', href: '/appel', icon: PhoneCall, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-red-500', labelClass: 'text-orange-600 group-hover:text-orange-700' },
+    { name: 'Commandes', href: '/commandes', icon: ShoppingBag, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-pink-500', labelClass: 'text-purple-600 group-hover:text-purple-700' },
+    { name: 'Rappels', href: '/rappels', icon: BellRing, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-rose-500', labelClass: 'text-rose-600 group-hover:text-rose-700' },
     { name: 'Préparation Colis', href: '/preparation-colis', icon: Package, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-indigo-500' },
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
     { name: 'Historique Présences', href: '/historique-presences', icon: Calendar, roles: ['administrateur', 'gestionnaire'], gradient: 'from-lime-500 to-green-500' },
@@ -213,7 +213,7 @@ const Layout = () => {
                   </div>
                   <span className={`
                     relative z-10 text-sm font-bold transition-colors flex-1
-                    ${isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}
+                    ${item.labelClass || (isActive ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900')}
                   `}>
                     {item.name}
                   </span>
