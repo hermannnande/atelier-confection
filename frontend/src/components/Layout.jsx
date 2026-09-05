@@ -36,6 +36,7 @@ const Layout = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [remunerationAlerts, setRemunerationAlerts] = useState({ productions: 0, paiements: 0, total: 0 });
+  const [reminderAlertCount, setReminderAlertCount] = useState(0);
   const activeCountry = currentCountry || user?.pays_code || 'CI';
 
   useEffect(() => {
@@ -64,11 +65,37 @@ const Layout = () => {
     };
   }, [activeCountry, user?.role]);
 
+  useEffect(() => {
+    if (!['administrateur', 'gestionnaire', 'appelant'].includes(user?.role)) {
+      setReminderAlertCount(0);
+      return undefined;
+    }
+
+    let mounted = true;
+    const loadReminderAlerts = async () => {
+      try {
+        const response = await api.get('/commandes', { params: { statut: 'a_rappeler' } });
+        if (mounted) setReminderAlertCount((response.data.commandes || []).length);
+      } catch {
+        if (mounted) setReminderAlertCount(0);
+      }
+    };
+
+    loadReminderAlerts();
+    const intervalId = window.setInterval(loadReminderAlerts, 30000);
+    window.addEventListener('reminder-alerts-updated', loadReminderAlerts);
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('reminder-alerts-updated', loadReminderAlerts);
+    };
+  }, [activeCountry, user?.role]);
+
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard, roles: ['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'], gradient: 'from-blue-500 to-cyan-500' },
     { name: 'Appel', href: '/appel', icon: PhoneCall, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-red-500', labelClass: 'text-blue-600 group-hover:text-blue-700' },
     { name: 'Commandes', href: '/commandes', icon: ShoppingBag, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-pink-500', labelClass: 'text-green-600 group-hover:text-green-700' },
-    { name: 'Rappels', href: '/rappels', icon: BellRing, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-rose-500', labelClass: 'text-rose-600 group-hover:text-rose-700' },
+    { name: 'Rappels', href: '/rappels', icon: BellRing, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-orange-500 to-rose-500', labelClass: 'text-rose-600 group-hover:text-rose-700', alertCount: reminderAlertCount },
     { name: 'Préparation Colis', href: '/preparation-colis', icon: Package, roles: ['administrateur', 'gestionnaire', 'appelant'], gradient: 'from-purple-500 to-indigo-500' },
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
     { name: 'Historique Présences', href: '/historique-presences', icon: Calendar, roles: ['administrateur', 'gestionnaire'], gradient: 'from-lime-500 to-green-500' },

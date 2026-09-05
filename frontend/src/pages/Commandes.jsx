@@ -225,6 +225,7 @@ const Commandes = () => {
     try {
       await api.post(`/commandes/${commandeId}/envoyer-rappel`);
       setCommandes((current) => current.filter((item) => (item._id || item.id) !== commandeId));
+      window.dispatchEvent(new Event('reminder-alerts-updated'));
       toast.success('Commande envoyée dans la page Rappels');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de l’envoi en rappel');

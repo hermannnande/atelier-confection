@@ -106,6 +106,7 @@ const Rappels = () => {
     try {
       await api.post(`/commandes/${id}/confirmer-rappel`);
       setCommandes((current) => current.filter((item) => orderId(item) !== id));
+      window.dispatchEvent(new Event('reminder-alerts-updated'));
       toast.success('Client confirmé : la commande est revenue dans Commandes');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la confirmation');
@@ -127,6 +128,7 @@ const Rappels = () => {
         motif: 'Commande annulée depuis la page Rappels',
       });
       setCommandes((current) => current.filter((item) => orderId(item) !== id));
+      window.dispatchEvent(new Event('reminder-alerts-updated'));
       toast.success('Commande annulée et conservée dans l’historique');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de l’annulation');
