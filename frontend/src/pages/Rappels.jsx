@@ -9,7 +9,9 @@ import {
   Eye,
   MapPin,
   Package,
+  Pencil,
   Phone,
+  Save,
   Search,
   X,
 } from 'lucide-react';
@@ -50,6 +52,9 @@ const Rappels = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmingId, setConfirmingId] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [savingNoteId, setSavingNoteId] = useState(null);
 
   const fetchRappels = async (silent = false) => {
     try {
@@ -105,6 +110,34 @@ const Rappels = () => {
       console.error(error);
     } finally {
       setConfirmingId(null);
+    }
+  };
+
+  const startEditingNote = (commande) => {
+    setEditingNoteId(orderId(commande));
+    setNoteDraft(commande.noteAppelant || '');
+  };
+
+  const cancelEditingNote = () => {
+    setEditingNoteId(null);
+    setNoteDraft('');
+  };
+
+  const saveNote = async (commande) => {
+    const id = orderId(commande);
+    setSavingNoteId(id);
+    try {
+      const response = await api.patch(`/commandes/${id}/note`, { note: noteDraft });
+      setCommandes((current) => current.map((item) => (
+        orderId(item) === id ? response.data.commande : item
+      )));
+      cancelEditingNote();
+      toast.success(noteDraft.trim() ? 'Note enregistrée' : 'Note supprimée');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de la modification de la note');
+      console.error(error);
+    } finally {
+      setSavingNoteId(null);
     }
   };
 
@@ -229,9 +262,57 @@ const Rappels = () => {
                   </div>
                 </div>
 
-                {commande.noteAppelant && (
-                  <div className="mt-3 rounded-xl bg-yellow-50 border border-yellow-100 p-3 text-sm text-gray-700 break-words">
-                    <span className="font-bold">Note : </span>{commande.noteAppelant}
+                {editingNoteId === id ? (
+                  <div className="mt-3 rounded-xl bg-yellow-50 border border-yellow-200 p-3">
+                    <label htmlFor={`rappel-note-${id}`} className="block text-xs font-bold text-gray-700 mb-1.5">
+                      Note de la commande
+                    </label>
+                    <textarea
+                      id={`rappel-note-${id}`}
+                      value={noteDraft}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      maxLength={1000}
+                      rows={3}
+                      autoFocus
+                      className="input resize-y text-sm"
+                      placeholder="Ajouter une précision après l’appel..."
+                    />
+                    <div className="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span className="text-[11px] text-gray-500">{noteDraft.length}/1000 caractères</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={cancelEditingNote}
+                          disabled={savingNoteId === id}
+                          className="btn btn-secondary btn-sm flex-1 sm:flex-none inline-flex items-center justify-center gap-1"
+                        >
+                          <X size={14} /> Annuler
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveNote(commande)}
+                          disabled={savingNoteId === id}
+                          className="btn btn-primary btn-sm flex-1 sm:flex-none inline-flex items-center justify-center gap-1 disabled:opacity-60"
+                        >
+                          <Save size={14} /> {savingNoteId === id ? 'Enregistrement...' : 'Enregistrer'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl bg-yellow-50 border border-yellow-100 p-3 flex items-start justify-between gap-2">
+                    <p className="text-sm text-gray-700 break-words min-w-0">
+                      <span className="font-bold">Note : </span>
+                      {commande.noteAppelant || <span className="italic text-gray-500">Aucune note</span>}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => startEditingNote(commande)}
+                      className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-yellow-100 active:scale-95 transition-all"
+                      aria-label={`Modifier la note de ${commande.numeroCommande}`}
+                    >
+                      <Pencil size={13} /> Modifier
+                    </button>
                   </div>
                 )}
 
@@ -247,7 +328,7 @@ const Rappels = () => {
                   <button
                     type="button"
                     onClick={() => confirmerRappel(commande)}
-                    disabled={confirmingId === id}
+                    disabled={confirmingId === id || savingNoteId === id}
                     className="btn btn-success btn-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-60 sm:col-span-1"
                   >
                     <CheckCircle2 size={15} />
