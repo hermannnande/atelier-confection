@@ -538,6 +538,19 @@ const Commandes = () => {
                     : (isAgedValidated ? AGED_VALIDATED_CARD_CLASS : (isMarked ? MARKED_CARD_CLASS : ''))
                 }`}
               >
+                {peutEnvoyerEnRappel && (
+                  <button
+                    type="button"
+                    onClick={() => envoyerEnRappel(commande)}
+                    disabled={sendingToReminder === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId}
+                    className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full border-2 border-orange-300 bg-orange-100 text-orange-700 shadow-sm flex items-center justify-center transition-all hover:bg-orange-200 active:scale-90 disabled:opacity-50"
+                    title="Envoyer dans les rappels clients"
+                    aria-label={`Envoyer ${commande.numeroCommande} dans les rappels clients`}
+                  >
+                    <BellRing size={17} className={sendingToReminder === commandeId ? 'animate-pulse' : ''} />
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setCardColor(commande, isMarked ? 'none' : 'yellow')}
@@ -554,7 +567,7 @@ const Commandes = () => {
 
                 <div className="flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-4">
                 <div className="flex-1 min-w-0 w-full pr-11 lg:pr-12">
-                  <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                  <div className={`flex flex-wrap items-center gap-2 mb-2 sm:mb-3 ${peutEnvoyerEnRappel ? 'pl-11' : ''}`}>
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate flex-shrink-0">
                       {commande.numeroCommande}
                     </h3>
@@ -669,19 +682,6 @@ const Commandes = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto lg:ml-4 flex-shrink-0">
-                  {peutEnvoyerEnRappel && (
-                    <button
-                      type="button"
-                      onClick={() => envoyerEnRappel(commande)}
-                      disabled={sendingToReminder === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId}
-                      className="btn btn-sm inline-flex items-center justify-center gap-1 bg-orange-100 text-orange-800 border border-orange-200 hover:bg-orange-200 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
-                      title="Faire rappeler le client pour une nouvelle confirmation"
-                    >
-                      <BellRing size={14} className="flex-shrink-0" />
-                      <span>{sendingToReminder === commandeId ? 'Envoi...' : 'Rappel'}</span>
-                    </button>
-                  )}
-
                   {/* Boutons d'action - visibles seulement pour gestionnaire/admin et commandes validées */}
                   {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
                     <>
