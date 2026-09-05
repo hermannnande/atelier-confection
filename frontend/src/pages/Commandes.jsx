@@ -9,6 +9,7 @@ import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
 const AGED_VALIDATED_CARD_CLASS = '!bg-violet-100 !border-violet-500 ring-2 ring-violet-200 shadow-violet-200/60';
 const AGED_VALIDATED_DAYS = 5;
+const STATUTS_AVANT_ENVOI = new Set(['nouvelle', 'validee']);
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
 const normalizeSize = (value) => String(value || '').trim().toUpperCase();
@@ -52,21 +53,18 @@ const Commandes = () => {
 
   const fetchCommandes = async (silent = false) => {
     try {
-      const params = {};
-      if (filterStatut) params.statut = filterStatut;
+      const params = { statut: filterStatut || 'nouvelle,validee' };
       if (filterUrgence) params.urgence = filterUrgence;
 
       const response = await api.get('/commandes', { params });
       
-      const commandesConfirmees = response.data.commandes.filter(cmd => 
-        !['en_attente_validation', 'en_attente_paiement', 'annulee'].includes(cmd.statut)
-      );
+      const commandesNonEnvoyees = response.data.commandes.filter((cmd) => STATUTS_AVANT_ENVOI.has(cmd.statut));
       
       // Trier avec priorité : 
       // 1. Commandes "validee" URGENTES en PREMIER (pas encore envoyées à l'atelier)
       // 2. Commandes "validee" NON URGENTES
-      // 3. Autres commandes (déjà en atelier) par date, SANS priorité d'urgence
-      const commandesTriees = commandesConfirmees.sort((a, b) => {
+      // 3. Commandes "nouvelle" par date
+      const commandesTriees = commandesNonEnvoyees.sort((a, b) => {
         const estValideeA = a.statut === 'validee';
         const estValideeB = b.statut === 'validee';
         
@@ -78,7 +76,7 @@ const Commandes = () => {
           return 1; // B urgente validee avant tout
         }
         
-        // Priorité 2 : Commandes "validee" non urgentes avant celles déjà en atelier
+        // Priorité 2 : Commandes "validee" non urgentes avant les nouvelles
         if (estValideeA && !estValideeB) {
           return -1; // A validee avant B (en atelier)
         }
@@ -87,7 +85,6 @@ const Commandes = () => {
         }
         
         // Priorité 3 : Au sein du même groupe, tri par date
-        // Pour les commandes déjà en atelier, l'urgence n'a plus d'importance
         const dateA = new Date(a.updated_at || a.created_at);
         const dateB = new Date(b.updated_at || b.created_at);
         return dateB - dateA; // Plus récent en premier
@@ -414,14 +411,6 @@ const Commandes = () => {
               <option value="">Tous statuts</option>
               <option value="nouvelle">Nouvelle</option>
               <option value="validee">Validée</option>
-              <option value="en_attente_paiement">Attente Paiement</option>
-              <option value="en_decoupe">En Découpe</option>
-              <option value="en_couture">En Couture</option>
-              <option value="en_stock">En Stock</option>
-              <option value="en_livraison">En Livraison</option>
-              <option value="livree">Livrée</option>
-              <option value="refusee">Refusée</option>
-              <option value="annulee">Annulée</option>
             </select>
           </div>
           <div className="max-w-full">
