@@ -230,65 +230,64 @@ const Rappels = () => {
           <p className="text-sm text-gray-600 mt-1">Essayez une autre recherche.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filteredCommandes.map((commande) => {
             const id = orderId(commande);
             const phone = clientPhone(commande);
             return (
-              <article key={id} className="card !p-4 sm:!p-5 border-l-4 !border-l-orange-500 hover:shadow-md transition-shadow">
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
-                  <div>
+              <article key={id} className="card !p-3 border-t-4 !border-t-orange-500 hover:shadow-md transition-shadow min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-black text-gray-900">{commande.numeroCommande}</h2>
+                      <h2 className="text-sm font-black text-gray-900">{commande.numeroCommande}</h2>
                       {commande.urgence && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-[11px] font-black text-red-700">
-                          <AlertCircle size={12} /> Urgent
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700">
+                          <AlertCircle size={11} /> Urgent
                         </span>
                       )}
                     </div>
-                    <p className="inline-flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                      <CalendarClock size={13} /> Commande du {formatDate(orderDate(commande))}
+                    <p className="inline-flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                      <CalendarClock size={12} /> {formatDate(orderDate(commande))}
                     </p>
                   </div>
-                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800">À rappeler</span>
+                  <span className="flex-shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-800">À rappeler</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl bg-gray-50 p-3 min-w-0">
-                    <p className="text-xs font-semibold uppercase text-gray-500">Client</p>
-                    <p className="font-bold text-gray-900 truncate mt-1">{clientName(commande)}</p>
-                    <p className="inline-flex items-center gap-1 text-gray-600 mt-1 min-w-0">
-                      <MapPin size={13} className="flex-shrink-0" />
-                      <span className="truncate">{clientCity(commande)}</span>
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-orange-50 border border-orange-100 p-3 min-w-0">
-                    <p className="text-xs font-semibold uppercase text-orange-700">Contact à rappeler</p>
+                <div className="rounded-lg bg-gray-50 border border-gray-100 px-2.5 py-2 text-sm min-w-0">
+                  <p className="font-bold text-gray-900 truncate">{clientName(commande)}</p>
+                  <div className="mt-1 flex items-center justify-between gap-2 min-w-0">
                     {phone ? (
                       <a
                         href={`tel:${phoneNumberForCall(phone)}`}
-                        className="inline-flex items-center gap-2 mt-1 font-black text-blue-700 hover:text-blue-900 hover:underline max-w-full"
+                        className="inline-flex items-center gap-1 font-black text-blue-700 hover:text-blue-900 hover:underline min-w-0"
                         title={`Appeler ${clientName(commande)}`}
                       >
-                        <Phone size={17} className="flex-shrink-0" />
+                        <Phone size={14} className="flex-shrink-0" />
                         <span className="truncate">{phone}</span>
                       </a>
                     ) : (
-                      <p className="mt-1 font-semibold text-gray-500">Aucun contact</p>
+                      <span className="font-semibold text-gray-500">Aucun contact</span>
                     )}
-                  </div>
-                  <div className="rounded-xl bg-violet-50 p-3 sm:col-span-2">
-                    <div className="flex items-center gap-2 text-violet-700">
-                      <Package size={15} />
-                      <p className="text-xs font-semibold uppercase">Commande</p>
-                    </div>
-                    <p className="font-bold text-gray-900 mt-1">{modelName(commande)}</p>
-                    <p className="text-gray-700 mt-0.5">{commande.taille} · {commande.couleur} · <span className="font-black">{Number(commande.prix || 0).toLocaleString('fr-FR')} F</span></p>
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-600 min-w-0">
+                      <MapPin size={12} className="flex-shrink-0" />
+                      <span className="truncate">{clientCity(commande)}</span>
+                    </span>
                   </div>
                 </div>
 
+                <div className="mt-2 rounded-lg bg-violet-50 px-2.5 py-2 text-sm min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="inline-flex items-center gap-1.5 font-bold text-gray-900 min-w-0">
+                      <Package size={14} className="text-violet-700 flex-shrink-0" />
+                      <span className="truncate">{modelName(commande)}</span>
+                    </p>
+                    <span className="font-black text-emerald-700 whitespace-nowrap">{Number(commande.prix || 0).toLocaleString('fr-FR')} F</span>
+                  </div>
+                  <p className="text-xs text-gray-700 mt-1 truncate">{commande.taille} · {commande.couleur}</p>
+                </div>
+
                 {editingNoteId === id ? (
-                  <div className="mt-3 rounded-xl bg-yellow-50 border border-yellow-200 p-3">
+                  <div className="mt-2 rounded-lg bg-yellow-50 border border-yellow-200 p-2">
                     <label htmlFor={`rappel-note-${id}`} className="block text-xs font-bold text-gray-700 mb-1.5">
                       Note de la commande
                     </label>
@@ -297,12 +296,12 @@ const Rappels = () => {
                       value={noteDraft}
                       onChange={(event) => setNoteDraft(event.target.value)}
                       maxLength={1000}
-                      rows={3}
+                      rows={2}
                       autoFocus
                       className="input resize-y text-sm"
                       placeholder="Ajouter une précision après l’appel..."
                     />
-                    <div className="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="mt-1.5 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-1.5">
                       <span className="text-[11px] text-gray-500">{noteDraft.length}/1000 caractères</span>
                       <div className="flex gap-2">
                         <button
@@ -325,15 +324,15 @@ const Rappels = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-3 rounded-xl bg-yellow-50 border border-yellow-100 p-3 flex items-start justify-between gap-2">
-                    <p className="text-sm text-gray-700 break-words min-w-0">
+                  <div className="mt-2 rounded-lg bg-yellow-50 border border-yellow-100 p-2 flex items-start justify-between gap-2">
+                    <p className="text-xs text-gray-700 break-words min-w-0 line-clamp-2">
                       <span className="font-bold">Note : </span>
                       {commande.noteAppelant || <span className="italic text-gray-500">Aucune note</span>}
                     </p>
                     <button
                       type="button"
                       onClick={() => startEditingNote(commande)}
-                      className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-white px-2.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-yellow-100 active:scale-95 transition-all"
+                      className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-yellow-300 bg-white px-2 py-1 text-[11px] font-bold text-gray-700 hover:bg-yellow-100 active:scale-95 transition-all"
                       aria-label={`Modifier la note de ${commande.numeroCommande}`}
                     >
                       <Pencil size={13} /> Modifier
@@ -341,7 +340,7 @@ const Rappels = () => {
                   </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => confirmerRappel(commande)}
@@ -362,7 +361,7 @@ const Rappels = () => {
                   </button>
                   <Link
                     to={`/commandes/${id}`}
-                    className="btn btn-secondary btn-sm inline-flex items-center justify-center gap-1.5 sm:col-span-1"
+                    className="btn btn-secondary btn-sm inline-flex items-center justify-center gap-1.5 col-span-2 sm:col-span-1"
                   >
                     <Eye size={15} /> Voir
                   </Link>
