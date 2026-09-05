@@ -215,7 +215,7 @@ const Commandes = () => {
     return user?.role === 'administrateur' || user?.role === 'gestionnaire';
   };
 
-  const canEditNote = user?.role === 'administrateur' || user?.role === 'gestionnaire';
+  const canEditNote = ['administrateur', 'gestionnaire', 'appelant'].includes(user?.role);
 
   const startEditingNote = (commande) => {
     setEditingNoteId(commande._id || commande.id);

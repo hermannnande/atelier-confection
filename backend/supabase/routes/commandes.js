@@ -287,7 +287,7 @@ router.patch('/:id/couleur-organisation', authenticate, resolveCountry, authoriz
   }
 });
 
-router.patch('/:id/note', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.patch('/:id/note', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const noteValue = req.body.noteAppelant ?? req.body.note ?? '';
     if (typeof noteValue !== 'string') {
