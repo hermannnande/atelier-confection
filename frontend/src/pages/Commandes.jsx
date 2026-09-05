@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 
@@ -41,6 +41,7 @@ const Commandes = () => {
   const [filterModele, setFilterModele] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
+  const [sendingToReminder, setSendingToReminder] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
   const [savingColorId, setSavingColorId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -212,9 +213,30 @@ const Commandes = () => {
     }
   };
 
+  const envoyerEnRappel = async (commande) => {
+    const commandeId = commande._id || commande.id;
+    if (!window.confirm(`Envoyer la commande ${commande.numeroCommande} dans les rappels clients ?`)) {
+      return;
+    }
+
+    setSendingToReminder(commandeId);
+    try {
+      await api.post(`/commandes/${commandeId}/envoyer-rappel`);
+      setCommandes((current) => current.filter((item) => (item._id || item.id) !== commandeId));
+      toast.success('Commande envoyée dans la page Rappels');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l’envoi en rappel');
+      console.error(error);
+    } finally {
+      setSendingToReminder(null);
+    }
+  };
+
   const peutEnvoyerAAtelier = () => {
     return user?.role === 'administrateur' || user?.role === 'gestionnaire';
   };
+
+  const peutEnvoyerEnRappel = user?.role === 'administrateur';
 
   const canEditNote = ['administrateur', 'gestionnaire', 'appelant'].includes(user?.role);
 
@@ -298,6 +320,7 @@ const Commandes = () => {
     const badges = {
       nouvelle: 'badge-info',
       validee: 'badge-success',
+      a_rappeler: 'badge-warning',
       en_attente_paiement: 'badge-warning',
       en_decoupe: 'badge-primary',
       en_couture: 'badge-secondary',
@@ -314,6 +337,7 @@ const Commandes = () => {
     const labels = {
       nouvelle: 'Nouvelle',
       validee: 'Validée',
+      a_rappeler: 'À rappeler',
       en_attente_paiement: 'Attente Paiement',
       en_decoupe: 'En Découpe',
       en_couture: 'En Couture',
@@ -640,12 +664,25 @@ const Commandes = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto lg:ml-4 flex-shrink-0">
+                  {peutEnvoyerEnRappel && (
+                    <button
+                      type="button"
+                      onClick={() => envoyerEnRappel(commande)}
+                      disabled={sendingToReminder === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId}
+                      className="btn btn-sm inline-flex items-center justify-center gap-1 bg-orange-100 text-orange-800 border border-orange-200 hover:bg-orange-200 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
+                      title="Faire rappeler le client pour une nouvelle confirmation"
+                    >
+                      <BellRing size={14} className="flex-shrink-0" />
+                      <span>{sendingToReminder === commandeId ? 'Envoi...' : 'Rappel'}</span>
+                    </button>
+                  )}
+
                   {/* Boutons d'action - visibles seulement pour gestionnaire/admin et commandes validées */}
                   {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
                     <>
                       <button
                         onClick={() => envoyerAAtelier(commande._id)}
-                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
+                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-primary btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer à l'atelier styliste"
                       >
@@ -655,7 +692,7 @@ const Commandes = () => {
                       
                       <button
                         onClick={() => envoyerEnPreparationColis(commande._id)}
-                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id}
+                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-success btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer directement en Préparation Colis (sans passer par l'atelier)"
                       >

@@ -135,6 +135,7 @@ const GestionCommandes = () => {
     const badges = {
       nouvelle: { class: 'bg-blue-500', text: 'Nouvelle', icon: AlertTriangle },
       en_attente_validation: { class: 'bg-yellow-500', text: 'En attente', icon: Clock },
+      a_rappeler: { class: 'bg-orange-500', text: 'À rappeler', icon: Clock },
       validee: { class: 'bg-green-500', text: 'Validée', icon: CheckCircle },
       en_attente_paiement: { class: 'bg-orange-500', text: 'Attente paiement', icon: Clock },
       en_decoupe: { class: 'bg-purple-500', text: 'En découpe', icon: Scissors },
@@ -217,6 +218,7 @@ const GestionCommandes = () => {
     { value: '', label: 'Tous les statuts' },
     { value: 'nouvelle', label: 'Nouvelle' },
     { value: 'en_attente_validation', label: 'En attente validation' },
+    { value: 'a_rappeler', label: 'À rappeler' },
     { value: 'validee', label: 'Validée' },
     { value: 'en_attente_paiement', label: 'Attente paiement' },
     { value: 'en_decoupe', label: 'En découpe' },

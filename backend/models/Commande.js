@@ -39,6 +39,7 @@ const commandeSchema = new mongoose.Schema({
       'nouvelle',           // Nouvelle commande
       'confirmee',          // Confirmée (anciennement validee)
       'validee',           // Validée par l'appelant
+      'a_rappeler',        // Nouvelle confirmation client demandée
       'en_attente_paiement', // En attente de paiement
       'en_decoupe',        // Chez le styliste
       'en_couture',        // Chez le couturier
@@ -116,7 +117,6 @@ commandeSchema.pre('save', async function(next) {
 });
 
 export default mongoose.model('Commande', commandeSchema);
-
 
 
 

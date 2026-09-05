@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Appel from './pages/Appel';
 import Commandes from './pages/Commandes';
+import Rappels from './pages/Rappels';
 import HistoriqueCommandes from './pages/HistoriqueCommandes';
 import CommandeDetail from './pages/CommandeDetail';
 import NouvelleCommande from './pages/NouvelleCommande';
@@ -102,6 +103,13 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="commandes/:id" element={<CommandeDetail />} />
+
+          {/* Rappels clients - Appelants, Gestionnaires, Admins */}
+          <Route path="rappels" element={
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
+              <Rappels />
+            </ProtectedRoute>
+          } />
           
           {/* Historique Complet - Gestionnaires, Admins */}
           <Route path="historique" element={

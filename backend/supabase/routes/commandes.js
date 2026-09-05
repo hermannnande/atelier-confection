@@ -7,6 +7,10 @@ import smsService from '../../services/sms.service.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 import { parseOrderOrganizationColor } from '../../services/order-organization.service.js';
 import {
+  assertCanConfirmOrderReminder,
+  assertCanSendOrderToReminder,
+} from '../../services/order-reminder.service.js';
+import {
   buildOrderStatistics,
   resolveStatisticsDateRange,
 } from '../../services/order-statistics.service.js';
@@ -338,6 +342,131 @@ router.patch('/:id/note', authenticate, resolveCountry, authorize('appelant', 'g
     });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la modification de la note', error: error.message });
+  }
+});
+
+// Placer une commande de la page Commandes dans la file des rappels clients.
+router.post('/:id/envoyer-rappel', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('commandes')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    let nextStatus;
+    try {
+      nextStatus = assertCanSendOrderToReminder(existing.statut);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    const historique = Array.isArray(existing.historique) ? existing.historique : [];
+    historique.push({
+      action: 'Commande envoyée en rappel client',
+      statut: nextStatus,
+      utilisateur: req.userId,
+      date: new Date().toISOString(),
+      commentaire: 'Une nouvelle confirmation du client est demandée',
+    });
+
+    const { data, error } = await supabase
+      .from('commandes')
+      .update({
+        statut: nextStatus,
+        historique,
+        couleur_organisation: null,
+        couleur_organisation_statut: null,
+        couleur_organisation_par: null,
+        couleur_organisation_at: null,
+      })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Erreur lors de l’envoi en rappel', error: error.message });
+    }
+
+    const usersById = await hydrateUsersForCommandes(supabase, [data]);
+    const commande = mapCommande(attachUsers(data, usersById));
+    return res.json({ message: 'Commande envoyée dans les rappels', commande });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de l’envoi en rappel', error: error.message });
+  }
+});
+
+// Après le nouvel appel, remettre la commande confirmée dans la page Commandes.
+router.post('/:id/confirmer-rappel', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: existingError } = await supabase
+      .from('commandes')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    let nextStatus;
+    try {
+      nextStatus = assertCanConfirmOrderReminder(existing.statut);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    const historique = Array.isArray(existing.historique) ? existing.historique : [];
+    historique.push({
+      action: 'Commande confirmée après rappel client',
+      statut: nextStatus,
+      utilisateur: req.userId,
+      date: new Date().toISOString(),
+      commentaire: 'Le client a confirmé de nouveau sa commande',
+    });
+
+    const { data, error } = await supabase
+      .from('commandes')
+      .update({
+        statut: nextStatus,
+        appelant_id: req.userId,
+        historique,
+        couleur_organisation: null,
+        couleur_organisation_statut: null,
+        couleur_organisation_par: null,
+        couleur_organisation_at: null,
+      })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      return res.status(500).json({ message: 'Erreur lors de la confirmation du rappel', error: error.message });
+    }
+
+    try {
+      await customerSmsService.sendCommandeNotification(
+        CUSTOMER_SMS_EVENT_CODES.COMMANDE_VALIDEE,
+        data,
+        { userId: req.userId },
+      );
+    } catch (smsError) {
+      console.error('Erreur SMS client après rappel (non bloquant):', smsError.message);
+    }
+
+    const usersById = await hydrateUsersForCommandes(supabase, [data]);
+    const commande = mapCommande(attachUsers(data, usersById));
+    return res.json({ message: 'Client confirmé, commande renvoyée dans Commandes', commande });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la confirmation du rappel', error: error.message });
   }
 });
 

@@ -2,6 +2,10 @@ import express from 'express';
 import Commande from '../models/Commande.js';
 import Stock from '../models/Stock.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import {
+  assertCanConfirmOrderReminder,
+  assertCanSendOrderToReminder,
+} from '../services/order-reminder.service.js';
 
 const router = express.Router();
 
@@ -153,6 +157,65 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
     res.json({ message: 'Commande modifiée avec succès', commande });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la modification', error: error.message });
+  }
+});
+
+// Envoyer une commande vers la file des rappels clients (admin uniquement).
+router.post('/:id/envoyer-rappel', authenticate, authorize('administrateur'), async (req, res) => {
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+
+    try {
+      commande.statut = assertCanSendOrderToReminder(commande.statut);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    commande.historique.push({
+      action: 'Commande envoyée en rappel client',
+      statut: commande.statut,
+      utilisateur: req.userId,
+      date: new Date(),
+      commentaire: 'Une nouvelle confirmation du client est demandée',
+    });
+
+    await commande.save();
+    return res.json({ message: 'Commande envoyée dans les rappels', commande });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de l’envoi en rappel', error: error.message });
+  }
+});
+
+// Valider le nouvel accord du client et remettre la commande dans Commandes.
+router.post('/:id/confirmer-rappel', authenticate, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const commande = await Commande.findById(req.params.id);
+    if (!commande) {
+      return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+
+    try {
+      commande.statut = assertCanConfirmOrderReminder(commande.statut);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
+    commande.appelant = req.userId;
+    commande.historique.push({
+      action: 'Commande confirmée après rappel client',
+      statut: commande.statut,
+      utilisateur: req.userId,
+      date: new Date(),
+      commentaire: 'Le client a confirmé de nouveau sa commande',
+    });
+
+    await commande.save();
+    return res.json({ message: 'Client confirmé, commande renvoyée dans Commandes', commande });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la confirmation du rappel', error: error.message });
   }
 });
 

@@ -38,6 +38,7 @@ const HistoriqueCommandes = () => {
     const badges = {
       en_attente_validation: 'badge-warning',
       en_attente_paiement: 'badge-warning',
+      a_rappeler: 'badge-warning',
       validee: 'badge-success',
       en_decoupe: 'badge-primary',
       decoupee: 'badge-info',
@@ -55,6 +56,7 @@ const HistoriqueCommandes = () => {
     const labels = {
       en_attente_validation: '📞 Attente Validation',
       en_attente_paiement: '⏳ Attente Paiement',
+      a_rappeler: '🔔 À rappeler',
       validee: '✅ Validée',
       en_decoupe: '✂️ En Découpe',
       decoupee: '✂️ Découpée',
@@ -111,7 +113,7 @@ const HistoriqueCommandes = () => {
   // Statistiques rapides
   const stats = {
     total: commandes.length,
-    enAttente: commandes.filter(c => ['en_attente_validation', 'en_attente_paiement'].includes(c.statut)).length,
+    enAttente: commandes.filter(c => ['en_attente_validation', 'en_attente_paiement', 'a_rappeler'].includes(c.statut)).length,
     enCours: commandes.filter(c => ['validee', 'en_decoupe', 'decoupee', 'en_couture', 'confectionnee', 'en_livraison'].includes(c.statut)).length,
     terminees: commandes.filter(c => c.statut === 'livree').length,
     annulees: commandes.filter(c => ['annulee', 'refusee'].includes(c.statut)).length,
@@ -190,6 +192,7 @@ const HistoriqueCommandes = () => {
               <option value="">Tous statuts</option>
               <option value="en_attente_validation">📞 Attente Validation</option>
               <option value="en_attente_paiement">⏳ Attente Paiement</option>
+              <option value="a_rappeler">🔔 À rappeler</option>
               <option value="validee">✅ Validée</option>
               <option value="en_decoupe">✂️ En Découpe</option>
               <option value="decoupee">✂️ Découpée</option>
@@ -350,4 +353,3 @@ const HistoriqueCommandes = () => {
 };
 
 export default HistoriqueCommandes;
-

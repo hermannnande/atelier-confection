@@ -75,6 +75,7 @@ const CommandeDetail = () => {
     const badges = {
       nouvelle: { class: 'badge-info', icon: AlertCircle },
       validee: { class: 'badge-success', icon: CheckCircle },
+      a_rappeler: { class: 'badge-warning', icon: Clock },
       en_attente_paiement: { class: 'badge-warning', icon: Clock },
       en_decoupe: { class: 'badge-primary', icon: Package },
       en_couture: { class: 'badge-secondary', icon: Package },
@@ -91,6 +92,7 @@ const CommandeDetail = () => {
     const labels = {
       nouvelle: 'Nouvelle',
       validee: 'Validée',
+      a_rappeler: 'À rappeler',
       en_attente_paiement: 'Attente Paiement',
       en_decoupe: 'En Découpe',
       en_couture: 'En Couture',
@@ -367,7 +369,6 @@ const CommandeDetail = () => {
 };
 
 export default CommandeDetail;
-
 
 
 
