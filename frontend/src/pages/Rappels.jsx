@@ -14,6 +14,7 @@ import {
   Save,
   Search,
   X,
+  XCircle,
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -52,6 +53,7 @@ const Rappels = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmingId, setConfirmingId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [savingNoteId, setSavingNoteId] = useState(null);
@@ -110,6 +112,27 @@ const Rappels = () => {
       console.error(error);
     } finally {
       setConfirmingId(null);
+    }
+  };
+
+  const annulerCommande = async (commande) => {
+    const id = orderId(commande);
+    if (!window.confirm(`Annuler définitivement la commande ${commande.numeroCommande} ?`)) {
+      return;
+    }
+
+    setCancellingId(id);
+    try {
+      await api.post(`/commandes/${id}/annuler`, {
+        motif: 'Commande annulée depuis la page Rappels',
+      });
+      setCommandes((current) => current.filter((item) => orderId(item) !== id));
+      toast.success('Commande annulée et conservée dans l’historique');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Erreur lors de l’annulation');
+      console.error(error);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -316,15 +339,24 @@ const Rappels = () => {
                   </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => confirmerRappel(commande)}
-                    disabled={confirmingId === id || savingNoteId === id}
+                    disabled={confirmingId === id || cancellingId === id || savingNoteId === id}
                     className="btn btn-success btn-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-60 sm:col-span-1"
                   >
                     <CheckCircle2 size={15} />
                     {confirmingId === id ? 'Confirmation...' : 'Client confirme'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => annulerCommande(commande)}
+                    disabled={cancellingId === id || confirmingId === id || savingNoteId === id}
+                    className="btn btn-sm inline-flex items-center justify-center gap-1.5 bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 sm:col-span-1"
+                  >
+                    <XCircle size={15} />
+                    {cancellingId === id ? 'Annulation...' : 'Annuler'}
                   </button>
                   <Link
                     to={`/commandes/${id}`}
