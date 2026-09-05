@@ -316,15 +316,7 @@ const Rappels = () => {
                   </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {phone && (
-                    <a
-                      href={`tel:${phoneNumberForCall(phone)}`}
-                      className="btn btn-primary btn-sm inline-flex items-center justify-center gap-1.5 sm:col-span-1"
-                    >
-                      <Phone size={15} /> Appeler
-                    </a>
-                  )}
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => confirmerRappel(commande)}
