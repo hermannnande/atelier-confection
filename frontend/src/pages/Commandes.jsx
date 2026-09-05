@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 
@@ -15,6 +15,10 @@ const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL
 const normalizeSize = (value) => String(value || '').trim().toUpperCase();
 const modelLabel = (commande) => String(commande?.modele?.nom || commande?.modele || 'Modèle inconnu').trim();
 const normalizeModel = (commande) => modelLabel(commande).toLocaleLowerCase('fr');
+const phoneNumberForCall = (value) => {
+  const phone = String(value || '').trim();
+  return `${phone.startsWith('+') ? '+' : ''}${phone.replace(/\D/g, '')}`;
+};
 
 const compareSizes = (a, b) => {
   const rankA = SIZE_ORDER.indexOf(a);
@@ -540,7 +544,16 @@ const Commandes = () => {
                     <div className="min-w-0">
                       <p className="text-gray-500 text-xs">Client</p>
                       <p className="font-medium text-gray-900 truncate">{commande.client.nom}</p>
-                      <p className="text-gray-600 truncate">{commande.client.contact}</p>
+                      {commande.client.contact ? (
+                        <a
+                          href={`tel:${phoneNumberForCall(commande.client.contact)}`}
+                          className="inline-flex max-w-full items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                          title={`Appeler ${commande.client.nom}`}
+                        >
+                          <Phone size={13} className="flex-shrink-0" />
+                          <span className="truncate">{commande.client.contact}</span>
+                        </a>
+                      ) : <p className="text-gray-500">Aucun contact</p>}
                     </div>
                     <div className="min-w-0">
                       <p className="text-gray-500 text-xs">Modèle</p>
