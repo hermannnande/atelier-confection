@@ -500,25 +500,25 @@ const Appel = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="-mx-3 space-y-3 overflow-x-hidden animate-fade-in sm:mx-0 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-              <Phone className="text-white" size={32} strokeWidth={2.5} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-start gap-2 sm:items-center sm:gap-3">
+            <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 shadow-lg sm:rounded-2xl sm:p-4">
+              <Phone className="h-6 w-6 text-white sm:h-8 sm:w-8" strokeWidth={2.5} />
             </div>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-black leading-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent sm:text-4xl">
                 Appels à Traiter
               </h1>
-              <p className="text-gray-600 font-medium">Nouvelles commandes en attente de validation</p>
+              <p className="text-xs font-medium leading-snug text-gray-600 sm:text-base">Nouvelles commandes en attente de validation</p>
               
               {/* Indicateur de rafraîchissement auto */}
-              <div className="flex items-center space-x-3 mt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-3">
                 <button
                   onClick={() => setIsAutoRefreshing(!isAutoRefreshing)}
-                  className={`flex items-center space-x-2 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition-all sm:gap-2 sm:rounded-lg sm:px-3 sm:text-xs ${
                     isAutoRefreshing 
                       ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -531,13 +531,13 @@ const Appel = () => {
                   <span>{isAutoRefreshing ? 'Auto-refresh ON' : 'Auto-refresh OFF'}</span>
                 </button>
                 
-                <span className="text-xs text-gray-500">
+                <span className="order-3 basis-full text-[10px] text-gray-500 sm:order-none sm:basis-auto sm:text-xs">
                   Dernière mise à jour: {lastRefresh.toLocaleTimeString('fr-FR')}
                 </span>
                 
                 <button
                   onClick={() => fetchCommandesAppel()}
-                  className="flex items-center space-x-1 px-3 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-all"
+                  className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-[10px] font-semibold text-blue-700 transition-all hover:bg-blue-200 sm:rounded-lg sm:px-3 sm:text-xs"
                 >
                   <RefreshCw size={14} />
                   <span>Actualiser</span>
@@ -546,18 +546,18 @@ const Appel = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end space-y-4">
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-col sm:items-end sm:gap-4">
           <Link
             to="/commandes/nouvelle"
-            className="btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center space-x-2"
+            className="btn flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 !px-3 !py-2 text-xs font-bold text-white shadow-lg transition-all hover:from-emerald-600 hover:to-teal-700 hover:shadow-xl sm:gap-2 sm:rounded-xl sm:!px-6 sm:!py-3 sm:text-base"
           >
-            <Plus size={20} strokeWidth={2.5} />
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2.5} />
             <span>Nouvelle Commande</span>
           </Link>
           
-        <div className="text-right">
-          <p className="text-sm font-semibold text-gray-500 uppercase">En attente</p>
-          <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+        <div className="flex items-baseline gap-2 text-right sm:block">
+          <p className="text-[10px] font-semibold uppercase text-gray-500 sm:text-sm">En attente</p>
+          <p className="text-3xl font-black leading-none bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent sm:text-5xl">
             {commandesAppel.length}
           </p>
           </div>
@@ -566,7 +566,7 @@ const Appel = () => {
 
       {/* Barre de recherche */}
       {commandesAppel.length > 0 && (
-        <div className="stat-card !p-3 sm:!p-4">
+        <div className="stat-card !rounded-xl !p-2.5 sm:!rounded-2xl sm:!p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -574,7 +574,7 @@ const Appel = () => {
               placeholder="Rechercher par n°, client, téléphone, modèle ou ville..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10 pr-10 text-sm sm:text-base w-full"
+              className="input !py-2 pl-10 pr-10 text-sm sm:!py-3 sm:text-base w-full"
             />
             {searchTerm && (
               <button
@@ -597,20 +597,20 @@ const Appel = () => {
 
       {/* Grille des commandes */}
       {commandesAppel.length === 0 ? (
-        <div className="stat-card text-center py-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full mb-4">
-            <CheckCircle className="text-green-600" size={40} />
+        <div className="stat-card !p-8 text-center sm:!p-16">
+          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-emerald-100 sm:mb-4 sm:h-20 sm:w-20">
+            <CheckCircle className="h-7 w-7 text-green-600 sm:h-10 sm:w-10" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun appel en attente</h3>
-          <p className="text-gray-600">Toutes les commandes ont été traitées ! 🎉</p>
+          <h3 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">Aucun appel en attente</h3>
+          <p className="text-sm text-gray-600 sm:text-base">Toutes les commandes ont été traitées ! 🎉</p>
         </div>
       ) : filteredCommandes.length === 0 ? (
-        <div className="stat-card text-center py-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-full mb-4">
-            <Search className="text-gray-500" size={40} />
+        <div className="stat-card !p-8 text-center sm:!p-16">
+          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-slate-100 sm:mb-4 sm:h-20 sm:w-20">
+            <Search className="h-7 w-7 text-gray-500 sm:h-10 sm:w-10" />
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Aucun résultat</h3>
-          <p className="text-gray-600">Aucune commande ne correspond à « {searchTerm} »</p>
+          <h3 className="mb-2 text-xl font-bold text-gray-900 sm:text-2xl">Aucun résultat</h3>
+          <p className="text-sm text-gray-600 sm:text-base">Aucune commande ne correspond à « {searchTerm} »</p>
           <button
             onClick={() => setSearchTerm('')}
             className="mt-4 btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded-lg inline-flex items-center gap-1.5"
@@ -620,7 +620,7 @@ const Appel = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4 xl:gap-6">
           {filteredCommandes.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
             const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
@@ -635,7 +635,7 @@ const Appel = () => {
             
             // Déterminer le style de la carte selon le statut et la disponibilité en stock
             // (la couleur ne change PAS si la carte est epinglee : badge + icone suffisent)
-            let cardStyle = 'relative stat-card hover:scale-105 transition-all cursor-pointer group';
+            let cardStyle = 'relative stat-card !rounded-xl !p-3 sm:!rounded-2xl sm:!p-5 xl:!p-6 sm:hover:scale-[1.02] transition-all cursor-pointer group';
 
             if (estEnAttentePaiement) {
               // Commande en attente de paiement = bordure orange + fond orange clair
@@ -669,7 +669,7 @@ const Appel = () => {
                   className={`absolute top-2 right-2 p-1.5 rounded-full transition-all z-10 ${
                     pinned
                       ? 'bg-amber-500 text-white shadow-md hover:bg-amber-600'
-                      : 'bg-white/90 text-gray-400 hover:text-amber-600 hover:bg-amber-50 shadow opacity-0 group-hover:opacity-100'
+                      : 'bg-white/90 text-gray-400 hover:text-amber-600 hover:bg-amber-50 shadow opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
                   }`}
                 >
                   {pinned ? <PinOff size={14} strokeWidth={2.5} /> : <Pin size={14} strokeWidth={2.5} />}
@@ -677,8 +677,8 @@ const Appel = () => {
               )}
 
               {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
+              <div className="mb-2.5 flex items-start justify-between gap-2 sm:mb-3">
+                <div className={canPin ? 'min-w-0 pr-7' : 'min-w-0'}>
                   <h3 className="text-lg font-black text-gray-900">
                     #{commande.numeroCommande || (commande._id || commande.id).slice(-6).toUpperCase()}
                   </h3>
@@ -690,7 +690,7 @@ const Appel = () => {
                     {isValidDate ? dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}
                   </p>
                 </div>
-                <div className="flex flex-col gap-1 mt-7">
+                <div className="mt-7 flex flex-shrink-0 flex-col gap-1">
                   {estEnAttentePaiement ? (
                     <span className="badge bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs px-2 py-1 font-bold shadow-lg">
                       ⏳ Attente Paiement
@@ -709,12 +709,12 @@ const Appel = () => {
               </div>
 
               {/* Client avec image */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 mb-3 flex items-start space-x-3">
+              <div className="mb-2.5 flex items-start gap-2 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50 p-2.5 sm:mb-3 sm:gap-3 sm:p-3">
                 {/* Infos Client */}
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-2 mb-2">
                   <User className="text-blue-600" size={16} />
-                  <p className="font-bold text-gray-900 text-sm">{getClientNom(commande)}</p>
+                  <p className="break-words text-sm font-bold text-gray-900">{getClientNom(commande)}</p>
                 </div>
                 <a 
                   href={`tel:${getClientContact(commande)}`}
@@ -726,7 +726,7 @@ const Appel = () => {
                 </a>
                 <div className="flex items-center space-x-1 mt-1">
                   <MapPin className="text-emerald-600" size={14} />
-                  <p className="text-xs text-gray-700 font-medium">{getVille(commande)}</p>
+                  <p className="break-words text-xs font-medium text-gray-700">{getVille(commande)}</p>
                 </div>
                 </div>
                 
@@ -750,13 +750,13 @@ const Appel = () => {
               </div>
 
               {/* Détails */}
-              <div className="space-y-2 mb-4">
+              <div className="mb-3 space-y-1.5 sm:mb-4 sm:space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500 flex items-center space-x-1">
                     <Package size={14} />
                     <span>Modèle</span>
                   </span>
-                  <span className="font-bold text-gray-900">{getModeleNom(commande.modele)}</span>
+                  <span className="ml-3 min-w-0 break-words text-right font-bold text-gray-900">{getModeleNom(commande.modele)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Taille</span>
@@ -783,10 +783,10 @@ const Appel = () => {
               )}
 
               {/* Prix */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 mb-3">
+              <div className="mb-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 p-2.5 sm:mb-3 sm:p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-white text-xs font-semibold">Prix Total</span>
-                  <span className="text-white text-xl font-black">
+                  <span className="text-lg font-black text-white sm:text-xl">
                     {commande.prix?.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
@@ -794,7 +794,7 @@ const Appel = () => {
 
               {/* Bouton Traiter */}
               <button
-                className="w-full btn btn-primary py-3 font-bold group-hover:shadow-xl transition-shadow"
+                className="btn btn-primary w-full !py-2 text-sm font-bold transition-shadow group-hover:shadow-xl sm:!py-3 sm:text-base"
                 onClick={(e) => {
                   e.stopPropagation();
                   openCommandeModal(commande);
@@ -811,13 +811,13 @@ const Appel = () => {
       {/* Modal de traitement */}
       {selectedCommande && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-3"
           onClick={() => {
             if (!processing) closeCommandeModal();
           }}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[94vh] overflow-hidden flex flex-col"
+            className="flex max-h-[calc(100dvh-0.5rem)] w-full max-w-md flex-col overflow-hidden rounded-t-xl bg-white shadow-2xl sm:max-h-[94vh] sm:rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
@@ -827,8 +827,8 @@ const Appel = () => {
                 : 'bg-gradient-to-r from-blue-600 to-indigo-600'
             } px-3 py-2.5 rounded-t-xl text-white`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg font-bold">
+                <div className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap sm:gap-2">
+                  <h2 className="text-base font-bold sm:text-lg">
                     {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
                   </h2>
                   {selectedCommande.statut === 'en_attente_paiement' && (
@@ -844,7 +844,7 @@ const Appel = () => {
                 </div>
                 <button 
                   onClick={() => !processing && closeCommandeModal()}
-                  className="hover:bg-white/20 p-1 rounded transition-colors"
+                  className="ml-2 flex-shrink-0 hover:bg-white/20 p-1 rounded transition-colors"
                   disabled={processing}
                 >
                   <X size={18} />
@@ -853,7 +853,7 @@ const Appel = () => {
             </div>
 
             {/* Contenu compact */}
-            <div className="p-3 space-y-2 overflow-y-auto">
+            <div className="space-y-2 overflow-y-auto overscroll-contain p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -959,16 +959,16 @@ const Appel = () => {
                 <>
                   {/* Client avec Image du produit */}
                   <div className="bg-gray-50 rounded-lg p-2.5 flex items-start space-x-2">
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between mb-1.5 gap-2">
                         <span className="text-[10px] font-semibold text-gray-500 uppercase">Nom</span>
-                        <span className="font-bold text-sm text-gray-900 text-right">{getClientNom(selectedCommande)}</span>
+                        <span className="min-w-0 break-words text-right text-xs font-bold text-gray-900 sm:text-sm">{getClientNom(selectedCommande)}</span>
                       </div>
                       <div className="flex items-center justify-between mb-1.5 gap-2">
                         <span className="text-[10px] font-semibold text-gray-500 uppercase">Contact</span>
                         <a
                           href={`tel:${getClientContact(selectedCommande)}`}
-                          className="font-bold text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                          className="flex min-w-0 items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 sm:text-sm"
                         >
                           <Phone size={14} />
                           <span>{getClientContact(selectedCommande)}</span>
@@ -976,7 +976,7 @@ const Appel = () => {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-semibold text-gray-500 uppercase">Ville</span>
-                        <span className="font-bold text-sm text-gray-900 text-right">{getVille(selectedCommande)}</span>
+                        <span className="min-w-0 break-words text-right text-xs font-bold text-gray-900 sm:text-sm">{getVille(selectedCommande)}</span>
                       </div>
                     </div>
 
@@ -1003,7 +1003,7 @@ const Appel = () => {
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Modèle</span>
-                        <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
+                        <span className="ml-3 min-w-0 break-words text-right font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="px-2 py-0.5 bg-white rounded text-[11px] font-semibold">📏 {selectedCommande.taille}</span>
@@ -1024,7 +1024,7 @@ const Appel = () => {
                     </p>
                   )}
                 </div>
-                <span className="text-white text-xl font-black text-right">
+                <span className="ml-2 text-right text-lg font-black text-white sm:text-xl">
                   {getOrderTotal(orderDraft?.prixBase, orderDraft?.supplements).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
@@ -1081,7 +1081,7 @@ const Appel = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-1.5">
+                <div className="grid grid-cols-[minmax(0,1fr)_76px_32px] gap-1 sm:grid-cols-[minmax(0,1fr)_100px_32px] sm:gap-1.5">
                   <input
                     type="text"
                     value={supplementLabel}
@@ -1108,7 +1108,7 @@ const Appel = () => {
                       }
                     }}
                     className="input !py-1.5 !px-2 text-[11px] min-w-0"
-                    placeholder="Montant"
+                    placeholder="Prix"
                     disabled={processing}
                   />
                   <button
@@ -1136,11 +1136,11 @@ const Appel = () => {
               </div>
 
               {/* Actions - Compact en grille 2x2 */}
-              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <div className="grid grid-cols-2 gap-1 pt-0.5 sm:gap-1.5">
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
                   disabled={processing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1 rounded-md bg-green-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-green-700 disabled:opacity-50 sm:px-2 sm:text-xs"
                 >
                   <CheckCircle size={15} />
                   <span>CONFIRMER</span>
@@ -1149,7 +1149,7 @@ const Appel = () => {
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
                   disabled={processing}
-                  className="bg-red-600 hover:bg-red-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1 rounded-md bg-red-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-red-700 disabled:opacity-50 sm:px-2 sm:text-xs"
                 >
                   <AlertTriangle size={15} />
                   <span>URGENT</span>
@@ -1158,7 +1158,7 @@ const Appel = () => {
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
                   disabled={processing}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1 rounded-md bg-orange-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-orange-700 disabled:opacity-50 sm:px-2 sm:text-xs"
                 >
                   <Clock size={15} />
                   <span>EN ATTENTE</span>
@@ -1171,7 +1171,7 @@ const Appel = () => {
                     }
                   }}
                   disabled={processing}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1 rounded-md bg-gray-500 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-gray-600 disabled:opacity-50 sm:px-2 sm:text-xs"
                 >
                   <XCircle size={15} />
                   <span>ANNULER</span>
