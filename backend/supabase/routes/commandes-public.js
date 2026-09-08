@@ -85,6 +85,8 @@ router.post('/public', resolveCountryPublic, async (req, res) => {
       modele: modeleData,
       taille: taille.trim(),
       couleur: couleur.trim(),
+      prix_base: Number(price) || 0,
+      supplements: [],
       prix: Number(price) || 0,
       statut: 'en_attente_validation',
       urgence: false,

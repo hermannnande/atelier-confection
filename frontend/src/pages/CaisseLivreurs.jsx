@@ -7,6 +7,7 @@ import {
   buildDeliveryRouteEntries,
   getDeliveryRouteDayKey as getJourKey,
 } from '../utils/deliveryRouteHistory';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 import {
   Users,
   Package,
@@ -1101,6 +1102,7 @@ function LivraisonRow({
               {commande.couleur}
             </p>
           )}
+          <OrderSupplementTags commande={commande} compact className="mt-1" />
           {clientContact && (variant === 'en_cours' || variant === 'reportee') && (
             <a
               href={`tel:${clientContact}`}

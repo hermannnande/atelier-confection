@@ -14,6 +14,12 @@ import {
   buildOrderStatistics,
   resolveStatisticsDateRange,
 } from '../../services/order-statistics.service.js';
+import {
+  calculateOrderTotal,
+  normalizeOrderBasePrice,
+  normalizeOrderSupplements,
+  resolveStoredOrderBasePrice,
+} from '../../services/order-supplements.service.js';
 
 const router = express.Router();
 
@@ -163,6 +169,17 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
       });
     }
 
+    let prixBase;
+    let supplements;
+    try {
+      prixBase = normalizeOrderBasePrice(
+        req.body.prixBase ?? req.body.prix_base ?? req.body.prix ?? 0,
+      );
+      supplements = normalizeOrderSupplements(req.body.supplements);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
+
     const commandeData = {
       numero_commande: null, // Sera généré automatiquement par le trigger
       pays_code: req.country, // Multi-pays : la commande est creee dans le pays actif
@@ -170,7 +187,9 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
       modele,
       taille: req.body.taille,
       couleur: req.body.couleur,
-      prix: Number(req.body.prix) || 0,
+      prix_base: prixBase,
+      supplements,
+      prix: calculateOrderTotal(prixBase, supplements),
       urgence: !!urgenceFlag,
       note_appelant: noteAppelant || null,
       appelant_id: req.userId,
@@ -485,7 +504,37 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     if (req.body.modele) update.modele = { ...existing.modele, ...req.body.modele };
     if (req.body.taille) update.taille = req.body.taille;
     if (req.body.couleur) update.couleur = req.body.couleur;
-    if (req.body.prix !== undefined) update.prix = Number(req.body.prix);
+
+    const supplementsChanged = req.body.supplements !== undefined;
+    const basePriceChanged = req.body.prixBase !== undefined || req.body.prix_base !== undefined;
+    const directPriceChanged = req.body.prix !== undefined;
+    if (supplementsChanged || basePriceChanged || directPriceChanged) {
+      try {
+        const supplements = supplementsChanged
+          ? normalizeOrderSupplements(req.body.supplements)
+          : normalizeOrderSupplements(existing.supplements);
+
+        let prixBase;
+        if (basePriceChanged) {
+          prixBase = normalizeOrderBasePrice(req.body.prixBase ?? req.body.prix_base);
+        } else if (directPriceChanged) {
+          const requestedTotal = normalizeOrderBasePrice(req.body.prix);
+          const supplementTotal = supplements.reduce((sum, item) => sum + item.montant, 0);
+          prixBase = Math.max(0, requestedTotal - supplementTotal);
+        } else {
+          prixBase = resolveStoredOrderBasePrice(
+            existing,
+            normalizeOrderSupplements(existing.supplements),
+          );
+        }
+
+        update.prix_base = prixBase;
+        update.supplements = supplements;
+        update.prix = calculateOrderTotal(prixBase, supplements);
+      } catch (validationError) {
+        return res.status(400).json({ message: validationError.message });
+      }
+    }
     if (req.body.urgence !== undefined || req.body.urgent !== undefined) {
       update.urgence = !!(req.body.urgence ?? req.body.urgent);
     }
@@ -500,7 +549,10 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
       statut: req.body.statut ?? existing.statut,
       utilisateur: req.userId,
       date: new Date().toISOString(),
-      commentaire: 'Modification des détails de la commande',
+      commentaire:
+        supplementsChanged || basePriceChanged
+          ? `Modification des détails et suppléments — total ${Number(update.prix || existing.prix).toLocaleString('fr-FR')} F`
+          : 'Modification des détails de la commande',
     });
     update.historique = historique;
 

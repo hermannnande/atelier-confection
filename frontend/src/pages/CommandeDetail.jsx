@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 
 const CommandeDetail = () => {
   const { id } = useParams();
@@ -224,6 +225,8 @@ const CommandeDetail = () => {
           </div>
 
           {/* Note */}
+          <OrderSupplementTags commande={commande} />
+
           {commande.noteAppelant && (
             <div className="card bg-yellow-50 border-yellow-200 overflow-hidden max-w-full">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Note pour l'atelier</h2>
@@ -369,6 +372,5 @@ const CommandeDetail = () => {
 };
 
 export default CommandeDetail;
-
 
 

@@ -3,6 +3,12 @@ import Commande from '../models/Commande.js';
 import Stock from '../models/Stock.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import {
+  calculateOrderTotal,
+  normalizeOrderBasePrice,
+  normalizeOrderSupplements,
+  resolveStoredOrderBasePrice,
+} from '../services/order-supplements.service.js';
+import {
   assertCanConfirmOrderReminder,
   assertCanSendOrderToReminder,
 } from '../services/order-reminder.service.js';
@@ -132,13 +138,35 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
     // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
     // Ne pas restreindre par appelant_id
 
-    const { client, modele, taille, couleur, prix, urgence, urgent, noteAppelant, note, statut } = req.body;
+    const { client, modele, taille, couleur, prix, prixBase, supplements, urgence, urgent, noteAppelant, note, statut } = req.body;
     
     if (client) commande.client = { ...commande.client, ...client };
     if (modele) commande.modele = { ...commande.modele, ...modele };
     if (taille) commande.taille = taille;
     if (couleur) commande.couleur = couleur;
-    if (prix) commande.prix = prix;
+    if (prix !== undefined || prixBase !== undefined || supplements !== undefined) {
+      try {
+        const nextSupplements = supplements !== undefined
+          ? normalizeOrderSupplements(supplements)
+          : normalizeOrderSupplements(commande.supplements);
+        const nextBasePrice = prixBase !== undefined
+          ? normalizeOrderBasePrice(prixBase)
+          : prix !== undefined
+            ? Math.max(
+                0,
+                normalizeOrderBasePrice(prix) - nextSupplements.reduce((sum, item) => sum + item.montant, 0),
+              )
+            : resolveStoredOrderBasePrice(
+                { prix: commande.prix, prix_base: commande.prixBase },
+                normalizeOrderSupplements(commande.supplements),
+              );
+        commande.prixBase = nextBasePrice;
+        commande.supplements = nextSupplements;
+        commande.prix = calculateOrderTotal(nextBasePrice, nextSupplements);
+      } catch (validationError) {
+        return res.status(400).json({ message: validationError.message });
+      }
+    }
     if (urgence !== undefined || urgent !== undefined) commande.urgence = !!(urgence ?? urgent);
     if (noteAppelant !== undefined || note !== undefined) commande.noteAppelant = noteAppelant ?? note;
     if (statut !== undefined) commande.statut = statut;

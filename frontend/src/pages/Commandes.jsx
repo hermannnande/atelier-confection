@@ -6,6 +6,7 @@ import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, 
 import { useAuthStore } from '../store/authStore';
 import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 import { isConfirmedAfterReminder } from '../utils/orderReminderHighlight';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
 const REMINDER_CONFIRMED_CARD_CLASS = '!bg-orange-100 !border-orange-500 ring-2 ring-orange-200 shadow-orange-200/60';
@@ -624,6 +625,8 @@ const Commandes = () => {
                       </p>
                     </div>
                   </div>
+
+                  <OrderSupplementTags commande={commande} className="mt-3" />
 
                   {editingNoteId === commandeId ? (
                     <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl max-w-full">

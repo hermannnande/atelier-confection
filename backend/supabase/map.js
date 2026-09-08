@@ -21,6 +21,8 @@ export function mapCommande(row) {
       ...row,
       noteAppelant: row.note_appelant,
       numeroCommande: row.numero_commande,
+      prixBase: row.prix_base ?? row.prix,
+      supplements: Array.isArray(row.supplements) ? row.supplements : [],
       appelant: row.appelant ?? undefined,
       styliste: row.styliste ?? undefined,
       couturier: row.couturier ?? undefined,
@@ -81,5 +83,4 @@ export function mapLivraison(row) {
     })
   );
 }
-
 

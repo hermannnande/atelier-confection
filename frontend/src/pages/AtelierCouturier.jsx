@@ -3,6 +3,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Shirt, CheckCircle, AlertCircle, Package, RefreshCw, Eye } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 
 const AtelierCouturier = () => {
   const { user } = useAuthStore();
@@ -190,6 +191,8 @@ const AtelierCouturier = () => {
               </div>
 
               {/* Note */}
+              <OrderSupplementTags commande={commande} compact className="mb-1.5 sm:mb-2" />
+
               {commande.noteAppelant && (
                 <div className="bg-white/90 rounded-lg p-1.5 sm:p-2 mb-1.5 sm:mb-2 overflow-hidden max-w-full">
                   <p className="text-[9px] sm:text-[10px] font-bold text-gray-700 mb-0.5">📝</p>

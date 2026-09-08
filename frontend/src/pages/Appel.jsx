@@ -2,10 +2,35 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, DollarSign, X, RefreshCw, Plus, Search, Pin, PinOff } from 'lucide-react';
+import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, X, RefreshCw, Plus, Search, Pin, PinOff, Pencil, Save, Tag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import {
+  getOrderBasePrice,
+  getOrderTotal,
+  normalizeOrderSupplements,
+} from '../utils/orderSupplements';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
+
+function buildOrderDraft(commande) {
+  const client = commande?.client && typeof commande.client === 'object' ? commande.client : {};
+  const modele = commande?.modele && typeof commande.modele === 'object'
+    ? commande.modele
+    : { nom: commande?.modele || '' };
+
+  return {
+    client: {
+      nom: commande?.nomClient || client.nom || '',
+      contact: commande?.contactClient || client.contact || '',
+      ville: commande?.ville || client.ville || '',
+    },
+    modele: { ...modele, nom: modele.nom || modele.sku || '' },
+    taille: commande?.taille || '',
+    couleur: commande?.couleur || '',
+    prixBase: getOrderBasePrice(commande),
+    supplements: normalizeOrderSupplements(commande?.supplements),
+  };
+}
 
 /**
  * Stockage : objet { id: timestampMs } -> permet de comparer la date d'epinglage
@@ -48,6 +73,10 @@ const Appel = () => {
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [noteAppelant, setNoteAppelant] = useState('');
+  const [orderDraft, setOrderDraft] = useState(null);
+  const [isEditingCommande, setIsEditingCommande] = useState(false);
+  const [supplementLabel, setSupplementLabel] = useState('');
+  const [supplementAmount, setSupplementAmount] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
@@ -87,6 +116,10 @@ const Appel = () => {
       // Si la commande a une note existante, la charger
       // Sinon, laisser le champ vide
       setNoteAppelant(selectedCommande.noteAppelant || '');
+      setOrderDraft(buildOrderDraft(selectedCommande));
+      setIsEditingCommande(false);
+      setSupplementLabel('');
+      setSupplementAmount('');
     }
   }, [selectedCommande]);
 
@@ -211,6 +244,114 @@ const Appel = () => {
     }
   };
 
+  const openCommandeModal = (commande) => {
+    setSelectedCommande(commande);
+    setNoteAppelant(commande?.noteAppelant || '');
+    setOrderDraft(buildOrderDraft(commande));
+    setIsEditingCommande(false);
+    setSupplementLabel('');
+    setSupplementAmount('');
+  };
+
+  const closeCommandeModal = () => {
+    setSelectedCommande(null);
+    setNoteAppelant('');
+    setOrderDraft(null);
+    setIsEditingCommande(false);
+    setSupplementLabel('');
+    setSupplementAmount('');
+  };
+
+  const buildDraftPayload = (extra = {}) => {
+    if (!orderDraft) throw new Error('Commande indisponible');
+    if (!orderDraft.client.nom.trim()) throw new Error('Le nom du client est obligatoire');
+    if (!orderDraft.client.contact.trim()) throw new Error('Le contact du client est obligatoire');
+    if (!orderDraft.modele.nom.trim()) throw new Error('Le modèle est obligatoire');
+    if (!orderDraft.taille.trim()) throw new Error('La taille est obligatoire');
+    if (!orderDraft.couleur.trim()) throw new Error('La couleur est obligatoire');
+    if (!Number.isFinite(Number(orderDraft.prixBase)) || Number(orderDraft.prixBase) < 0) {
+      throw new Error('Le prix de base est invalide');
+    }
+
+    return {
+      client: {
+        nom: orderDraft.client.nom.trim(),
+        contact: orderDraft.client.contact.trim(),
+        ville: orderDraft.client.ville.trim(),
+      },
+      modele: { ...orderDraft.modele, nom: orderDraft.modele.nom.trim() },
+      taille: orderDraft.taille.trim(),
+      couleur: orderDraft.couleur.trim(),
+      prixBase: Number(orderDraft.prixBase),
+      supplements: normalizeOrderSupplements(orderDraft.supplements),
+      noteAppelant: noteAppelant.trim(),
+      ...extra,
+    };
+  };
+
+  const updateCommandeInList = (updatedCommande) => {
+    if (!updatedCommande) return;
+    const updatedId = updatedCommande._id || updatedCommande.id;
+    setCommandesAppel((prev) =>
+      prev.map((commande) =>
+        (commande._id || commande.id) === updatedId ? updatedCommande : commande,
+      ),
+    );
+  };
+
+  const handleSaveCommande = async () => {
+    const commandeId = selectedCommande?._id || selectedCommande?.id;
+    if (!commandeId) return;
+
+    setProcessing(true);
+    try {
+      const payload = buildDraftPayload();
+      const { data } = await api.put(`/commandes/${commandeId}`, payload);
+      const updated = data.commande;
+      updateCommandeInList(updated);
+      setSelectedCommande(updated);
+      toast.success('Commande et suppléments enregistrés');
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Erreur lors de la modification');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleAddSupplement = () => {
+    const libelle = supplementLabel.trim();
+    const montant = Math.round(Number(supplementAmount));
+    if (!libelle) {
+      toast.error("Indique le nom de l'article ou du supplément");
+      return;
+    }
+    if (!Number.isFinite(montant) || montant <= 0) {
+      toast.error('Indique un montant supérieur à 0 F');
+      return;
+    }
+
+    setOrderDraft((prev) => ({
+      ...prev,
+      supplements: [
+        ...(prev?.supplements || []),
+        {
+          id: `supplement-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          libelle,
+          montant,
+        },
+      ],
+    }));
+    setSupplementLabel('');
+    setSupplementAmount('');
+  };
+
+  const handleRemoveSupplement = (supplementId) => {
+    setOrderDraft((prev) => ({
+      ...prev,
+      supplements: (prev?.supplements || []).filter((item) => item.id !== supplementId),
+    }));
+  };
+
   const handleAction = async (commandeId, action) => {
     setProcessing(true);
     
@@ -237,35 +378,24 @@ const Appel = () => {
           break;
       }
 
-      // Pour confirmer ou urgent, utiliser la route /valider qui déclenche le SMS
+      // Enregistrer d'abord les corrections, la note et les suppléments.
+      const detailsPayload = buildDraftPayload(action === 'urgent' ? { urgence: true } : {});
+
+      // Pour confirmer ou urgent, utiliser ensuite la route /valider qui déclenche le SMS
       if (action === 'confirmer' || action === 'urgent') {
+        await api.put(`/commandes/${commandeId}`, detailsPayload);
         await api.post(`/commandes/${commandeId}/valider`);
-        
-        // Si urgent, mettre à jour le flag urgence séparément
-        if (action === 'urgent') {
-          await api.put(`/commandes/${commandeId}`, { urgence: true, noteAppelant: noteAppelant.trim() });
-        } else if (noteAppelant.trim()) {
-          // Si pas urgent mais il y a une note, la sauvegarder
-          await api.put(`/commandes/${commandeId}`, { noteAppelant: noteAppelant.trim() });
-        }
       } else if (action === 'attente') {
-        // Pour attente, utiliser la route /attente-depot qui déclenche le SMS
+        await api.put(`/commandes/${commandeId}`, detailsPayload);
         await api.post(`/commandes/${commandeId}/attente-depot`);
-        if (noteAppelant.trim()) {
-          await api.put(`/commandes/${commandeId}`, { noteAppelant: noteAppelant.trim() });
-        }
       } else {
-        // Pour les autres actions (annuler, etc.), utiliser PUT classique
-        const payload = { statut: newStatut };
-        payload.noteAppelant = noteAppelant.trim();
-        await api.put(`/commandes/${commandeId}`, payload);
+        await api.put(`/commandes/${commandeId}`, { ...detailsPayload, statut: newStatut });
       }
       
       toast.success(message);
       
       // Fermer la modal et réinitialiser la note
-      setSelectedCommande(null);
-      setNoteAppelant('');
+      closeCommandeModal();
       
       // Retirer de la liste si confirmé, urgent ou annulé
       if (['confirmer', 'urgent', 'annuler'].includes(action)) {
@@ -494,6 +624,7 @@ const Appel = () => {
           {filteredCommandes.map((commande, index) => {
             const enStock = isCommandeEnStock(commande);
             const estEnAttentePaiement = commande.statut === 'en_attente_paiement';
+            const cardSupplements = normalizeOrderSupplements(commande.supplements);
             const pinned = isPinned(commande);
             const dateSource =
               commande.dateCommande ||
@@ -519,7 +650,7 @@ const Appel = () => {
               key={commande._id || commande.id}
               className={cardStyle}
               style={{ animationDelay: `${index * 0.05}s` }}
-              onClick={() => setSelectedCommande(commande)}
+              onClick={() => openCommandeModal(commande)}
             >
               {/* Badge "epinglee" */}
               {pinned && (
@@ -637,6 +768,20 @@ const Appel = () => {
                 </div>
               </div>
 
+              {cardSupplements.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {cardSupplements.map((item) => (
+                    <span
+                      key={item.id}
+                      className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 px-2 py-1 text-[10px] font-bold"
+                    >
+                      <Tag size={10} />
+                      {item.libelle} +{item.montant.toLocaleString('fr-FR')} F
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Prix */}
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 mb-3">
                 <div className="flex items-center justify-between">
@@ -652,7 +797,7 @@ const Appel = () => {
                 className="w-full btn btn-primary py-3 font-bold group-hover:shadow-xl transition-shadow"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedCommande(commande);
+                  openCommandeModal(commande);
                 }}
               >
                 Traiter la commande
@@ -668,14 +813,11 @@ const Appel = () => {
         <div 
           className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => {
-            if (!processing) {
-              setSelectedCommande(null);
-              setNoteAppelant('');
-            }
+            if (!processing) closeCommandeModal();
           }}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full"
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
@@ -701,12 +843,7 @@ const Appel = () => {
                   )}
                 </div>
                 <button 
-                  onClick={() => {
-                    if (!processing) {
-                      setSelectedCommande(null);
-                      setNoteAppelant('');
-                    }
-                  }}
+                  onClick={() => !processing && closeCommandeModal()}
                   className="hover:bg-white/20 p-1 rounded transition-colors"
                   disabled={processing}
                 >
@@ -716,70 +853,179 @@ const Appel = () => {
             </div>
 
             {/* Contenu compact */}
-            <div className="p-4 space-y-3">
-              {/* Client avec Image du produit */}
-              <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
-                {/* Infos Client */}
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
-                    <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
-                    <a 
-                      href={`tel:${getClientContact(selectedCommande)}`}
-                      className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
-                    >
-                      <Phone size={14} />
-                      <span>{getClientContact(selectedCommande)}</span>
-                    </a>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
-                    <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
-                  </div>
-                </div>
-                
-                {/* Image du produit - À DROITE */}
-                {(typeof selectedCommande.modele === 'object' && selectedCommande.modele?.image) ? (
-                  <div className="flex-shrink-0">
-                    <img 
-                      src={selectedCommande.modele.image} 
-                      alt={getModeleNom(selectedCommande.modele)}
-                      className="w-20 h-20 object-cover rounded-lg shadow-md"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
-                    <Package className="text-white" size={32} />
-                  </div>
-                )}
+            <div className="p-4 space-y-3 overflow-y-auto">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCommande((value) => !value)}
+                  disabled={processing}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                    isEditingCommande
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  }`}
+                >
+                  <Pencil size={14} />
+                  {isEditingCommande ? 'Terminer les modifications' : 'Modifier la commande'}
+                </button>
               </div>
 
-              {/* Détails Commande - Compact */}
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <p className="text-xs text-gray-500 uppercase font-semibold mb-2">📦 Détails de la commande</p>
-                <div className="space-y-1 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Modèle</span>
-                    <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
+              {isEditingCommande && orderDraft ? (
+                <div className="rounded-xl border-2 border-blue-200 bg-blue-50/60 p-3 space-y-3">
+                  <p className="text-xs font-black uppercase text-blue-800">Informations du client</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={orderDraft.client.nom}
+                      onChange={(e) => setOrderDraft((prev) => ({
+                        ...prev,
+                        client: { ...prev.client, nom: e.target.value },
+                      }))}
+                      className="input !py-2 text-sm"
+                      placeholder="Nom du client"
+                      disabled={processing}
+                    />
+                    <input
+                      type="tel"
+                      value={orderDraft.client.contact}
+                      onChange={(e) => setOrderDraft((prev) => ({
+                        ...prev,
+                        client: { ...prev.client, contact: e.target.value },
+                      }))}
+                      className="input !py-2 text-sm"
+                      placeholder="Contact"
+                      disabled={processing}
+                    />
+                    <input
+                      type="text"
+                      value={orderDraft.client.ville}
+                      onChange={(e) => setOrderDraft((prev) => ({
+                        ...prev,
+                        client: { ...prev.client, ville: e.target.value },
+                      }))}
+                      className="input !py-2 text-sm sm:col-span-2"
+                      placeholder="Ville / quartier"
+                      disabled={processing}
+                    />
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">📏 {selectedCommande.taille}</span>
-                    <span className="px-2 py-1 bg-white rounded text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
+
+                  <p className="text-xs font-black uppercase text-blue-800 pt-1">Tenue principale</p>
+                  <input
+                    type="text"
+                    value={orderDraft.modele.nom}
+                    onChange={(e) => setOrderDraft((prev) => ({
+                      ...prev,
+                      modele: { ...prev.modele, nom: e.target.value },
+                    }))}
+                    className="input !py-2 text-sm"
+                    placeholder="Modèle"
+                    disabled={processing}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={orderDraft.taille}
+                      onChange={(e) => setOrderDraft((prev) => ({ ...prev, taille: e.target.value }))}
+                      className="input !py-2 text-sm"
+                      placeholder="Taille"
+                      disabled={processing}
+                    />
+                    <input
+                      type="text"
+                      value={orderDraft.couleur}
+                      onChange={(e) => setOrderDraft((prev) => ({ ...prev, couleur: e.target.value }))}
+                      className="input !py-2 text-sm"
+                      placeholder="Couleur"
+                      disabled={processing}
+                    />
                   </div>
+                  <label className="block text-xs font-bold text-gray-700">
+                    Prix de la tenue principale
+                    <div className="relative mt-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={orderDraft.prixBase}
+                        onChange={(e) => setOrderDraft((prev) => ({ ...prev, prixBase: e.target.value }))}
+                        className="input !py-2 pr-14 text-sm font-black"
+                        placeholder="13500"
+                        disabled={processing}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">F</span>
+                    </div>
+                  </label>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Client avec Image du produit */}
+                  <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
+                        <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
+                        <a
+                          href={`tel:${getClientContact(selectedCommande)}`}
+                          className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                        >
+                          <Phone size={14} />
+                          <span>{getClientContact(selectedCommande)}</span>
+                        </a>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
+                        <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
+                      </div>
+                    </div>
+
+                    {(typeof selectedCommande.modele === 'object' && selectedCommande.modele?.image) ? (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={selectedCommande.modele.image}
+                          alt={getModeleNom(selectedCommande.modele)}
+                          className="w-20 h-20 object-cover rounded-lg shadow-md"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
+                        <Package className="text-white" size={32} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-xs text-gray-500 uppercase font-semibold mb-2">📦 Détails de la commande</p>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Modèle</span>
+                        <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <span className="px-2 py-1 bg-white rounded text-xs font-semibold">📏 {selectedCommande.taille}</span>
+                        <span className="px-2 py-1 bg-white rounded text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Prix - Compact */}
               <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 flex justify-between items-center">
-                <span className="text-white text-sm font-semibold">Prix Total</span>
-                <span className="text-white text-2xl font-black">
-                  {selectedCommande.prix?.toLocaleString('fr-FR')} FCFA
+                <div>
+                  <span className="text-white text-sm font-semibold">Prix Total</span>
+                  {(orderDraft?.supplements?.length || 0) > 0 && (
+                    <p className="text-[10px] text-emerald-50">
+                      Base {Number(orderDraft?.prixBase || 0).toLocaleString('fr-FR')} F + suppléments
+                    </p>
+                  )}
+                </div>
+                <span className="text-white text-2xl font-black text-right">
+                  {getOrderTotal(orderDraft?.prixBase, orderDraft?.supplements).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
 
@@ -799,7 +1045,93 @@ const Appel = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Cette note sera visible par toute l'équipe de production
                 </p>
+              </div>
+
+              {/* Articles et suppléments sous forme d'étiquettes */}
+              <div className="rounded-xl border-2 border-violet-200 bg-violet-50/60 p-3 space-y-2">
+                <div>
+                  <p className="text-xs font-black text-violet-900 flex items-center gap-1.5">
+                    <Tag size={14} />
+                    Articles / suppléments ajoutés
+                  </p>
+                  <p className="text-[10px] text-violet-700 mt-0.5">
+                    Chaque ajout augmente immédiatement le prix total.
+                  </p>
                 </div>
+
+                {(orderDraft?.supplements?.length || 0) > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {orderDraft.supplements.map((item) => (
+                      <span
+                        key={item.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-violet-600 text-white pl-2.5 pr-1 py-1 text-[11px] font-bold"
+                      >
+                        {item.libelle} +{item.montant.toLocaleString('fr-FR')} F
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSupplement(item.id)}
+                          disabled={processing}
+                          className="p-1 rounded-full hover:bg-white/20 disabled:opacity-50"
+                          title="Retirer ce supplément"
+                        >
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-[minmax(0,1fr)_100px_auto] gap-1.5">
+                  <input
+                    type="text"
+                    value={supplementLabel}
+                    onChange={(e) => setSupplementLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSupplement();
+                      }
+                    }}
+                    className="input !py-2 !px-2 text-xs min-w-0"
+                    placeholder="Ex. 2e robe, ceinture..."
+                    disabled={processing}
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    value={supplementAmount}
+                    onChange={(e) => setSupplementAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSupplement();
+                      }
+                    }}
+                    className="input !py-2 !px-2 text-xs min-w-0"
+                    placeholder="Montant"
+                    disabled={processing}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSupplement}
+                    disabled={processing}
+                    className="w-9 h-9 rounded-lg bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
+                    title="Ajouter au total"
+                  >
+                    <Plus size={17} />
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveCommande}
+                disabled={processing}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Save size={16} />
+                {processing ? 'ENREGISTREMENT...' : 'ENREGISTRER LES MODIFICATIONS'}
+              </button>
 
               {/* Actions - Compact en grille 2x2 */}
               <div className="grid grid-cols-2 gap-2 pt-2">

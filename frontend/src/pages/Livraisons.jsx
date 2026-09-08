@@ -3,6 +3,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { Truck, CheckCircle, XCircle, AlertCircle, Package, Phone, Calendar, RotateCcw } from 'lucide-react';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 
 const Livraisons = () => {
   const { user } = useAuthStore();
@@ -488,6 +489,8 @@ const Livraisons = () => {
                     💰 {livraison.commande?.prix.toLocaleString('fr-FR')} F
                   </p>
                 </div>
+
+                <OrderSupplementTags commande={livraison.commande} compact className="mb-3" />
 
                 {/* Motif de refus si applicable */}
                 {livraison.motifRefus && (

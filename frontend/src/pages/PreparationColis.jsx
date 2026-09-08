@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import OrderSupplementTags from '../components/OrderSupplementTags';
 
 const STATUTS_PREPARATION = ['en_decoupe', 'en_couture', 'en_stock'];
 
@@ -866,6 +867,8 @@ function CardsView({
                   {commande.prix?.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
+
+              <OrderSupplementTags commande={commande} compact className="mb-3" />
 
               {commande.noteAppelant && (
                 <div className="bg-yellow-50 rounded-lg p-2 mb-3 overflow-hidden">
