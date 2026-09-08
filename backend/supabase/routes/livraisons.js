@@ -431,6 +431,10 @@ router.post('/:id/reportee', authenticate, resolveCountry, authorize('livreur', 
         statut: 'reportee',
         utilisateur: req.userId,
         date: new Date().toISOString(),
+        // Conserver la tournée d'origine avant que "Reprendre" ne déplace
+        // la livraison vers une nouvelle date de tournée.
+        dateTourneeOrigine: livraison.date_tournee || livraison.date_assignation,
+        livraisonId: livraison.id,
         commentaire: motifReport || null,
       });
       await supabase.from('commandes').update({ historique }).eq('id', livraison.commande_id);

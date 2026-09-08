@@ -4,6 +4,10 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import {
+  buildDeliveryRouteEntries,
+  getDeliveryRouteDayKey as getJourKey,
+} from '../utils/deliveryRouteHistory';
+import {
   Users,
   Package,
   CheckCircle,
@@ -23,17 +27,6 @@ import {
   CalendarDays,
   Undo2,
 } from 'lucide-react';
-
-// ─── helpers date ────────────────────────────────────────────────────────────
-function getJourKey(dateString) {
-  if (!dateString) return null;
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return null;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
 
 function todayKey() {
   return getJourKey(new Date().toISOString());
@@ -128,7 +121,9 @@ const Livreurs = () => {
   // ─── construction des tournées (livreur × jour) ────────────────────────────
   const tournees = useMemo(() => {
     const map = new Map(); // key = `${livreurId}|${jourKey}`
-    for (const liv of livraisons) {
+    // Une livraison reprise reste unique dans les données réelles. Des lignes
+    // visuelles sont ajoutées à ses anciennes tournées pour conserver la trace.
+    for (const liv of buildDeliveryRouteEntries(livraisons)) {
       const lid = liv.livreur?._id || liv.livreur?.id || liv.livreur_id;
       if (!lid) continue;
       const jourKey = getJourKey(liv.dateTournee || liv.dateAssignation || liv.date_tournee || liv.date_assignation);
@@ -152,7 +147,8 @@ const Livreurs = () => {
   // ─── statistiques d'une tournée ────────────────────────────────────────────
   const getStatsTournee = (livs) => {
     const enCours = livs.filter((l) => l.statut === 'en_cours');
-    const reportees = livs.filter((l) => l.statut === 'reportee');
+    const reporteesActives = livs.filter((l) => l.statut === 'reportee');
+    const reporteesHistorique = livs.filter((l) => l.statut === 'reportee_historique');
     const livreesNonPayees = livs.filter((l) => l.statut === 'livree' && !l.paiementRecu);
     const livreesPayees = livs.filter((l) => l.statut === 'livree' && l.paiementRecu);
     const refusees = livs.filter((l) => l.statut === 'refusee' || l.statut === 'retournee');
@@ -161,7 +157,9 @@ const Livreurs = () => {
     return {
       total: livs.length,
       enCours: enCours.length,
-      reportees: reportees.length,
+      reportees: reporteesActives.length + reporteesHistorique.length,
+      reporteesActives: reporteesActives.length,
+      reporteesHistorique: reporteesHistorique.length,
       livreesNonPayees: livreesNonPayees.length,
       livreesPayees: livreesPayees.length,
       refusees: refusees.length,
@@ -169,7 +167,7 @@ const Livreurs = () => {
       argentDepose,
       soldee:
         enCours.length === 0 &&
-        reportees.length === 0 &&
+        reporteesActives.length === 0 &&
         livreesNonPayees.length === 0 &&
         livs.filter((l) => l.statut === 'refusee' && !l.verifieParGestionnaire).length === 0,
     };
@@ -230,17 +228,26 @@ const Livreurs = () => {
   const groupedSelected = useMemo(() => {
     const enCours = [];
     const reportees = [];
+    const reporteesHistorique = [];
     const livreesNonPayees = [];
     const refuseesNonRetournees = [];
     const refuseesHistorique = [];
     for (const l of livraisonsTourneeSelectionnee) {
       if (l.statut === 'en_cours') enCours.push(l);
       else if (l.statut === 'reportee') reportees.push(l);
+      else if (l.statut === 'reportee_historique') reporteesHistorique.push(l);
       else if (l.statut === 'livree' && !l.paiementRecu) livreesNonPayees.push(l);
       else if (l.statut === 'refusee' && !l.verifieParGestionnaire) refuseesNonRetournees.push(l);
       else if (l.statut === 'retournee' || (l.statut === 'refusee' && l.verifieParGestionnaire)) refuseesHistorique.push(l);
     }
-    return { enCours, reportees, livreesNonPayees, refuseesNonRetournees, refuseesHistorique };
+    return {
+      enCours,
+      reportees,
+      reporteesHistorique,
+      livreesNonPayees,
+      refuseesNonRetournees,
+      refuseesHistorique,
+    };
   }, [livraisonsTourneeSelectionnee]);
 
   const montantSelectionne = useMemo(() => {
@@ -785,6 +792,30 @@ function TourneeDetailModal({
             </section>
           )}
 
+          {/* REPORTÉES — TRACE DE LA TOURNÉE D'ORIGINE */}
+          {grouped.reporteesHistorique.length > 0 && (
+            <section>
+              <h3 className="text-sm font-black text-orange-700 uppercase mb-2 flex items-center gap-2">
+                <Calendar size={16} />
+                REPORTÉES — HISTORIQUE ({grouped.reporteesHistorique.length})
+              </h3>
+              <p className="text-[11px] text-orange-700 mb-2 italic">
+                Ces colis ont été reportés depuis cette tournée, puis repris dans une autre journée. Cette trace reste ici sans modifier l’argent dû.
+              </p>
+              <div className="space-y-2">
+                {grouped.reporteesHistorique.map((l) => (
+                  <LivraisonRow
+                    key={l.historiqueRouteKey || l._id || l.id}
+                    livraison={l}
+                    variant="reportee_historique"
+                    processing={processing}
+                    userRole={userRole}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* LIVRÉES — ARGENT DÛ */}
           <section>
             <div className="flex items-center justify-between mb-2">
@@ -920,8 +951,8 @@ function TourneeDetailModal({
             <ul className="list-disc list-inside space-y-1">
               <li>Cette carte = 1 tournée d'1 livreur 1 jour donné</li>
               <li>Les colis assignés un autre jour apparaissent dans une autre carte</li>
-              <li>Les colis "Reportés" restent dans leur tournée d'origine avec étiquette orange</li>
-              <li>Quand le livreur "Reprend" un colis reporté, il bascule dans la tournée du jour</li>
+              <li>Les colis "Reportés" restent dans leur tournée d'origine avec une étiquette orange</li>
+              <li>Après une reprise, le colis apparaît dans la tournée du jour et sa trace reste au jour précédent</li>
               <li>Les colis refusés restent visibles dans l’historique après leur retour au stock</li>
             </ul>
           </div>
@@ -1011,6 +1042,7 @@ function LivraisonRow({
   const borderColor = {
     en_cours: 'border-blue-200 bg-blue-50/40',
     reportee: 'border-orange-300 bg-orange-50',
+    reportee_historique: 'border-orange-300 bg-orange-50/70',
     livree: checked
       ? 'border-emerald-400 bg-emerald-50 shadow-sm'
       : 'border-gray-200 bg-white hover:border-emerald-300',
@@ -1039,6 +1071,11 @@ function LivraisonRow({
           {variant === 'reportee' && (
             <span className="inline-block bg-orange-200 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
               🔄 À REPRENDRE
+            </span>
+          )}
+          {variant === 'reportee_historique' && (
+            <span className="inline-block bg-orange-200 text-orange-800 text-[10px] font-black px-2 py-0.5 rounded-full mb-1">
+              ↪ REPORTÉ · REPRIS ENSUITE
             </span>
           )}
           {variant === 'retournee' && (
