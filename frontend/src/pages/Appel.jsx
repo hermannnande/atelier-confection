@@ -67,6 +67,8 @@ const Appel = () => {
 
   const [commandesAppel, setCommandesAppel] = useState([]);
   const [stock, setStock] = useState([]);
+  const [catalogueModeles, setCatalogueModeles] = useState([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedCommande, setSelectedCommande] = useState(null);
@@ -75,8 +77,7 @@ const Appel = () => {
   const [noteAppelant, setNoteAppelant] = useState('');
   const [orderDraft, setOrderDraft] = useState(null);
   const [isEditingCommande, setIsEditingCommande] = useState(false);
-  const [supplementLabel, setSupplementLabel] = useState('');
-  const [supplementAmount, setSupplementAmount] = useState('');
+  const [supplementModeleId, setSupplementModeleId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
@@ -108,6 +109,7 @@ const Appel = () => {
   useEffect(() => {
     fetchCommandesAppel();
     fetchStock();
+    fetchCatalogueModeles();
   }, []);
 
   // Charger la note existante quand la modal s'ouvre
@@ -118,8 +120,7 @@ const Appel = () => {
       setNoteAppelant(selectedCommande.noteAppelant || '');
       setOrderDraft(buildOrderDraft(selectedCommande));
       setIsEditingCommande(false);
-      setSupplementLabel('');
-      setSupplementAmount('');
+      setSupplementModeleId('');
     }
   }, [selectedCommande]);
 
@@ -154,6 +155,21 @@ const Appel = () => {
       setStock(stockData);
     } catch (error) {
       console.error('❌ Erreur lors du chargement du stock:', error);
+    }
+  };
+
+  const fetchCatalogueModeles = async () => {
+    try {
+      const response = await api.get('/modeles', { params: { actif: 'true' } });
+      const modeles = response.data.modeles || [];
+      setCatalogueModeles(
+        [...modeles].sort((a, b) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr')),
+      );
+    } catch (error) {
+      console.error('Erreur lors du chargement du catalogue:', error);
+      toast.error('Impossible de charger le catalogue des modèles');
+    } finally {
+      setCatalogueLoading(false);
     }
   };
 
@@ -249,8 +265,7 @@ const Appel = () => {
     setNoteAppelant(commande?.noteAppelant || '');
     setOrderDraft(buildOrderDraft(commande));
     setIsEditingCommande(false);
-    setSupplementLabel('');
-    setSupplementAmount('');
+    setSupplementModeleId('');
   };
 
   const closeCommandeModal = () => {
@@ -258,8 +273,7 @@ const Appel = () => {
     setNoteAppelant('');
     setOrderDraft(null);
     setIsEditingCommande(false);
-    setSupplementLabel('');
-    setSupplementAmount('');
+    setSupplementModeleId('');
   };
 
   const buildDraftPayload = (extra = {}) => {
@@ -319,14 +333,17 @@ const Appel = () => {
   };
 
   const handleAddSupplement = () => {
-    const libelle = supplementLabel.trim();
-    const montant = Math.round(Number(supplementAmount));
-    if (!libelle) {
-      toast.error("Indique le nom de l'article ou du supplément");
+    const modele = catalogueModeles.find(
+      (item) => String(item.id || item._id) === String(supplementModeleId),
+    );
+    if (!modele) {
+      toast.error('Choisis un modèle dans le catalogue');
       return;
     }
+
+    const montant = Math.round(Number(modele.prixBase ?? modele.prix_base));
     if (!Number.isFinite(montant) || montant <= 0) {
-      toast.error('Indique un montant supérieur à 0 F');
+      toast.error(`Aucun tarif valide n’est défini pour ${modele.nom}`);
       return;
     }
 
@@ -335,14 +352,13 @@ const Appel = () => {
       supplements: [
         ...(prev?.supplements || []),
         {
-          id: `supplement-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          libelle,
+          id: `modele-${modele.id || modele._id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          libelle: modele.nom,
           montant,
         },
       ],
     }));
-    setSupplementLabel('');
-    setSupplementAmount('');
+    setSupplementModeleId('');
   };
 
   const handleRemoveSupplement = (supplementId) => {
@@ -1055,7 +1071,7 @@ const Appel = () => {
                     Articles / suppléments ajoutés
                   </p>
                   <p className="text-[10px] text-violet-700 mt-0.5">
-                    Chaque ajout augmente immédiatement le prix total.
+                    Choisis un modèle : son prix catalogue est ajouté automatiquement au total.
                   </p>
                 </div>
 
@@ -1081,46 +1097,44 @@ const Appel = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-[minmax(0,1fr)_76px_32px] gap-1 sm:grid-cols-[minmax(0,1fr)_100px_32px] sm:gap-1.5">
-                  <input
-                    type="text"
-                    value={supplementLabel}
-                    onChange={(e) => setSupplementLabel(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddSupplement();
-                      }
-                    }}
-                    className="input !py-1.5 !px-2 text-[11px] min-w-0"
-                    placeholder="Ex. 2e robe, ceinture..."
-                    disabled={processing}
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    value={supplementAmount}
-                    onChange={(e) => setSupplementAmount(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddSupplement();
-                      }
-                    }}
-                    className="input !py-1.5 !px-2 text-[11px] min-w-0"
-                    placeholder="Prix"
-                    disabled={processing}
-                  />
+                <div className="grid grid-cols-[minmax(0,1fr)_32px] gap-1.5">
+                  <select
+                    value={supplementModeleId}
+                    onChange={(e) => setSupplementModeleId(e.target.value)}
+                    className="input min-w-0 !px-2 !py-1.5 text-[11px] font-semibold"
+                    disabled={processing || catalogueLoading || catalogueModeles.length === 0}
+                    aria-label="Modèle supplémentaire"
+                  >
+                    <option value="">
+                      {catalogueLoading ? 'Chargement du catalogue…' : 'Choisir un modèle…'}
+                    </option>
+                    {catalogueModeles.map((modele) => {
+                      const modeleId = modele.id || modele._id;
+                      const prixCatalogue = Math.round(Number(modele.prixBase ?? modele.prix_base));
+                      const tarifValide = Number.isFinite(prixCatalogue) && prixCatalogue > 0;
+                      return (
+                        <option key={modeleId} value={modeleId} disabled={!tarifValide}>
+                          {modele.nom} — {tarifValide ? `${prixCatalogue.toLocaleString('fr-FR')} F` : 'tarif non défini'}
+                        </option>
+                      );
+                    })}
+                  </select>
                   <button
                     type="button"
                     onClick={handleAddSupplement}
-                    disabled={processing}
+                    disabled={processing || !supplementModeleId}
                     className="w-8 h-8 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
-                    title="Ajouter au total"
+                    title="Ajouter ce modèle au total"
+                    aria-label="Ajouter le modèle sélectionné"
                   >
                     <Plus size={15} />
                   </button>
                 </div>
+                {!catalogueLoading && catalogueModeles.length === 0 && (
+                  <p className="text-[10px] font-semibold text-red-600">
+                    Aucun modèle actif n’est disponible dans le catalogue.
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end">
