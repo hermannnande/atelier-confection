@@ -4,6 +4,7 @@ export function normalizeOrderSupplements(value) {
     .map((item, index) => ({
       id: String(item?.id || `supplement-${index + 1}`),
       libelle: String(item?.libelle ?? item?.label ?? '').trim(),
+      taille: String(item?.taille ?? '').trim(),
       montant: Math.max(0, Math.round(Number(item?.montant ?? item?.prix) || 0)),
     }))
     .filter((item) => item.libelle && item.montant > 0);

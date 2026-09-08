@@ -38,6 +38,7 @@ const commandeSchema = new mongoose.Schema({
   supplements: [{
     id: String,
     libelle: { type: String, trim: true },
+    taille: { type: String, trim: true },
     montant: { type: Number, min: 0 }
   }],
   // Statut de la commande
@@ -126,5 +127,4 @@ commandeSchema.pre('save', async function(next) {
 });
 
 export default mongoose.model('Commande', commandeSchema);
-
 

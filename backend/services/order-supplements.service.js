@@ -1,5 +1,6 @@
 const MAX_SUPPLEMENTS = 20;
 const MAX_LABEL_LENGTH = 100;
+const MAX_SIZE_LENGTH = 30;
 const MAX_AMOUNT = 10_000_000;
 
 export function normalizeOrderBasePrice(value) {
@@ -28,6 +29,11 @@ export function normalizeOrderSupplements(value) {
       throw new Error(`Le libellé du supplément ${index + 1} est trop long`);
     }
 
+    const taille = String(item?.taille ?? '').trim();
+    if (taille.length > MAX_SIZE_LENGTH) {
+      throw new Error(`La taille du supplément ${index + 1} est trop longue`);
+    }
+
     const montant = Number(item?.montant ?? item?.prix);
     if (!Number.isFinite(montant) || montant <= 0 || montant > MAX_AMOUNT) {
       throw new Error(`Le montant du supplément ${index + 1} doit être supérieur à 0 F`);
@@ -36,6 +42,7 @@ export function normalizeOrderSupplements(value) {
     return {
       id: String(item?.id || `supplement-${index + 1}`).slice(0, 120),
       libelle,
+      taille,
       montant: Math.round(montant),
     };
   });

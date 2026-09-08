@@ -11,6 +11,7 @@ import {
 } from '../utils/orderSupplements';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
+const TAILLES_SUPPLEMENTAIRES = ['Standard', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 function buildOrderDraft(commande) {
   const client = commande?.client && typeof commande.client === 'object' ? commande.client : {};
@@ -78,6 +79,7 @@ const Appel = () => {
   const [orderDraft, setOrderDraft] = useState(null);
   const [isEditingCommande, setIsEditingCommande] = useState(false);
   const [supplementModeleId, setSupplementModeleId] = useState('');
+  const [supplementTaille, setSupplementTaille] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
@@ -121,6 +123,7 @@ const Appel = () => {
       setOrderDraft(buildOrderDraft(selectedCommande));
       setIsEditingCommande(false);
       setSupplementModeleId('');
+      setSupplementTaille('');
     }
   }, [selectedCommande]);
 
@@ -266,6 +269,7 @@ const Appel = () => {
     setOrderDraft(buildOrderDraft(commande));
     setIsEditingCommande(false);
     setSupplementModeleId('');
+    setSupplementTaille('');
   };
 
   const closeCommandeModal = () => {
@@ -274,6 +278,7 @@ const Appel = () => {
     setOrderDraft(null);
     setIsEditingCommande(false);
     setSupplementModeleId('');
+    setSupplementTaille('');
   };
 
   const buildDraftPayload = (extra = {}) => {
@@ -340,6 +345,10 @@ const Appel = () => {
       toast.error('Choisis un modèle dans le catalogue');
       return;
     }
+    if (!supplementTaille) {
+      toast.error('Choisis la taille de l’article supplémentaire');
+      return;
+    }
 
     const montant = Math.round(Number(modele.prixBase ?? modele.prix_base));
     if (!Number.isFinite(montant) || montant <= 0) {
@@ -354,11 +363,13 @@ const Appel = () => {
         {
           id: `modele-${modele.id || modele._id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           libelle: modele.nom,
+          taille: supplementTaille,
           montant,
         },
       ],
     }));
     setSupplementModeleId('');
+    setSupplementTaille('');
   };
 
   const handleRemoveSupplement = (supplementId) => {
@@ -792,7 +803,7 @@ const Appel = () => {
                       className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 px-2 py-1 text-[10px] font-bold"
                     >
                       <Tag size={10} />
-                      {item.libelle} +{item.montant.toLocaleString('fr-FR')} F
+                      {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''} +{item.montant.toLocaleString('fr-FR')} F
                     </span>
                   ))}
                 </div>
@@ -1082,7 +1093,7 @@ const Appel = () => {
                         key={item.id}
                         className="inline-flex items-center gap-1 rounded-full bg-violet-600 text-white pl-2.5 pr-1 py-1 text-[11px] font-bold"
                       >
-                        {item.libelle} +{item.montant.toLocaleString('fr-FR')} F
+                        {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''} +{item.montant.toLocaleString('fr-FR')} F
                         <button
                           type="button"
                           onClick={() => handleRemoveSupplement(item.id)}
@@ -1097,11 +1108,14 @@ const Appel = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-[minmax(0,1fr)_32px] gap-1.5">
+                <div className="grid grid-cols-[minmax(0,1fr)_32px] gap-1.5 sm:grid-cols-[minmax(0,1fr)_80px_32px]">
                   <select
                     value={supplementModeleId}
-                    onChange={(e) => setSupplementModeleId(e.target.value)}
-                    className="input min-w-0 !px-2 !py-1.5 text-[11px] font-semibold"
+                    onChange={(e) => {
+                      setSupplementModeleId(e.target.value);
+                      setSupplementTaille('');
+                    }}
+                    className="input col-span-2 min-w-0 !px-2 !py-1.5 text-[11px] font-semibold sm:col-span-1"
                     disabled={processing || catalogueLoading || catalogueModeles.length === 0}
                     aria-label="Modèle supplémentaire"
                   >
@@ -1119,10 +1133,22 @@ const Appel = () => {
                       );
                     })}
                   </select>
+                  <select
+                    value={supplementTaille}
+                    onChange={(e) => setSupplementTaille(e.target.value)}
+                    className="input min-w-0 !px-2 !py-1.5 text-[11px] font-semibold"
+                    disabled={processing || !supplementModeleId}
+                    aria-label="Taille de l’article supplémentaire"
+                  >
+                    <option value="">Taille…</option>
+                    {TAILLES_SUPPLEMENTAIRES.map((taille) => (
+                      <option key={taille} value={taille}>{taille}</option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     onClick={handleAddSupplement}
-                    disabled={processing || !supplementModeleId}
+                    disabled={processing || !supplementModeleId || !supplementTaille}
                     className="w-8 h-8 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
                     title="Ajouter ce modèle au total"
                     aria-label="Ajouter le modèle sélectionné"

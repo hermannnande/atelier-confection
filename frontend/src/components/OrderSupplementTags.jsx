@@ -19,7 +19,7 @@ const OrderSupplementTags = ({ commande, compact = false, className = '' }) => {
               compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-1 text-[10px]'
             }`}
           >
-            {item.libelle} +{item.montant.toLocaleString('fr-FR')} F
+            {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''} +{item.montant.toLocaleString('fr-FR')} F
           </span>
         ))}
       </div>

@@ -8,11 +8,12 @@ import {
 
 test('additionne les articles supplémentaires au prix de base', () => {
   const supplements = normalizeOrderSupplements([
-    { id: 's1', libelle: 'Deuxième tenue', montant: 13_500 },
+    { id: 's1', libelle: 'Deuxième tenue', taille: 'XL', montant: 13_500 },
     { id: 's2', libelle: 'Livraison express', montant: 2_000 },
   ]);
 
   assert.equal(calculateOrderTotal(13_500, supplements), 29_000);
+  assert.equal(supplements[0].taille, 'XL');
 });
 
 test('retrouve le prix de base des anciennes commandes', () => {
