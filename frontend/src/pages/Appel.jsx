@@ -811,13 +811,13 @@ const Appel = () => {
       {/* Modal de traitement */}
       {selectedCommande && (
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3"
           onClick={() => {
             if (!processing) closeCommandeModal();
           }}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[92vh] overflow-hidden flex flex-col"
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[94vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header compact */}
@@ -825,19 +825,19 @@ const Appel = () => {
               selectedCommande.statut === 'en_attente_paiement'
                 ? 'bg-gradient-to-r from-orange-600 to-amber-600'
                 : 'bg-gradient-to-r from-blue-600 to-indigo-600'
-            } p-4 rounded-t-xl text-white`}>
+            } px-3 py-2.5 rounded-t-xl text-white`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="text-xl font-bold">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg font-bold">
                     {selectedCommande.numeroCommande || (selectedCommande._id || selectedCommande.id).slice(-6).toUpperCase()}
                   </h2>
                   {selectedCommande.statut === 'en_attente_paiement' && (
-                    <span className="bg-white text-orange-700 text-xs px-3 py-1 rounded-full font-bold shadow-lg">
+                    <span className="bg-white text-orange-700 text-[10px] px-2 py-0.5 rounded-full font-bold shadow">
                       ⏳ En Attente de Paiement
                     </span>
                   )}
                   {isCommandeEnStock(selectedCommande) && (
-                    <span className="bg-white text-blue-700 text-xs px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
+                    <span className="bg-white text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold shadow animate-pulse">
                       📦 Disponible en Stock
                     </span>
                   )}
@@ -847,33 +847,33 @@ const Appel = () => {
                   className="hover:bg-white/20 p-1 rounded transition-colors"
                   disabled={processing}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
             </div>
 
             {/* Contenu compact */}
-            <div className="p-4 space-y-3 overflow-y-auto">
+            <div className="p-3 space-y-2 overflow-y-auto">
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => setIsEditingCommande((value) => !value)}
                   disabled={processing}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                  className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-colors ${
                     isEditingCommande
                       ? 'bg-blue-600 text-white'
                       : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                   }`}
                 >
-                  <Pencil size={14} />
+                  <Pencil size={12} />
                   {isEditingCommande ? 'Terminer les modifications' : 'Modifier la commande'}
                 </button>
               </div>
 
               {isEditingCommande && orderDraft ? (
-                <div className="rounded-xl border-2 border-blue-200 bg-blue-50/60 p-3 space-y-3">
+                <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-2.5 space-y-2">
                   <p className="text-xs font-black uppercase text-blue-800">Informations du client</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     <input
                       type="text"
                       value={orderDraft.client.nom}
@@ -881,7 +881,7 @@ const Appel = () => {
                         ...prev,
                         client: { ...prev.client, nom: e.target.value },
                       }))}
-                      className="input !py-2 text-sm"
+                      className="input !py-1.5 text-xs"
                       placeholder="Nom du client"
                       disabled={processing}
                     />
@@ -892,7 +892,7 @@ const Appel = () => {
                         ...prev,
                         client: { ...prev.client, contact: e.target.value },
                       }))}
-                      className="input !py-2 text-sm"
+                      className="input !py-1.5 text-xs"
                       placeholder="Contact"
                       disabled={processing}
                     />
@@ -903,13 +903,13 @@ const Appel = () => {
                         ...prev,
                         client: { ...prev.client, ville: e.target.value },
                       }))}
-                      className="input !py-2 text-sm sm:col-span-2"
+                      className="input !py-1.5 text-xs sm:col-span-2"
                       placeholder="Ville / quartier"
                       disabled={processing}
                     />
                   </div>
 
-                  <p className="text-xs font-black uppercase text-blue-800 pt-1">Tenue principale</p>
+                  <p className="text-xs font-black uppercase text-blue-800">Tenue principale</p>
                   <input
                     type="text"
                     value={orderDraft.modele.nom}
@@ -917,16 +917,16 @@ const Appel = () => {
                       ...prev,
                       modele: { ...prev.modele, nom: e.target.value },
                     }))}
-                    className="input !py-2 text-sm"
+                    className="input !py-1.5 text-xs"
                     placeholder="Modèle"
                     disabled={processing}
                   />
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <input
                       type="text"
                       value={orderDraft.taille}
                       onChange={(e) => setOrderDraft((prev) => ({ ...prev, taille: e.target.value }))}
-                      className="input !py-2 text-sm"
+                      className="input !py-1.5 text-xs"
                       placeholder="Taille"
                       disabled={processing}
                     />
@@ -934,7 +934,7 @@ const Appel = () => {
                       type="text"
                       value={orderDraft.couleur}
                       onChange={(e) => setOrderDraft((prev) => ({ ...prev, couleur: e.target.value }))}
-                      className="input !py-2 text-sm"
+                      className="input !py-1.5 text-xs"
                       placeholder="Couleur"
                       disabled={processing}
                     />
@@ -947,7 +947,7 @@ const Appel = () => {
                         min="0"
                         value={orderDraft.prixBase}
                         onChange={(e) => setOrderDraft((prev) => ({ ...prev, prixBase: e.target.value }))}
-                        className="input !py-2 pr-14 text-sm font-black"
+                        className="input !py-1.5 pr-12 text-xs font-black"
                         placeholder="13500"
                         disabled={processing}
                       />
@@ -958,25 +958,25 @@ const Appel = () => {
               ) : (
                 <>
                   {/* Client avec Image du produit */}
-                  <div className="bg-gray-50 rounded-lg p-3 flex items-start space-x-3">
+                  <div className="bg-gray-50 rounded-lg p-2.5 flex items-start space-x-2">
                     <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Nom</span>
-                        <span className="font-bold text-gray-900">{getClientNom(selectedCommande)}</span>
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase">Nom</span>
+                        <span className="font-bold text-sm text-gray-900 text-right">{getClientNom(selectedCommande)}</span>
                       </div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Contact</span>
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase">Contact</span>
                         <a
                           href={`tel:${getClientContact(selectedCommande)}`}
-                          className="font-bold text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                          className="font-bold text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
                         >
                           <Phone size={14} />
                           <span>{getClientContact(selectedCommande)}</span>
                         </a>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Ville</span>
-                        <span className="font-bold text-gray-900">{getVille(selectedCommande)}</span>
+                        <span className="text-[10px] font-semibold text-gray-500 uppercase">Ville</span>
+                        <span className="font-bold text-sm text-gray-900 text-right">{getVille(selectedCommande)}</span>
                       </div>
                     </div>
 
@@ -985,29 +985,29 @@ const Appel = () => {
                         <img
                           src={selectedCommande.modele.image}
                           alt={getModeleNom(selectedCommande.modele)}
-                          className="w-20 h-20 object-cover rounded-lg shadow-md"
+                          className="w-16 h-16 object-cover rounded-lg shadow"
                           onError={(e) => {
                             e.target.style.display = 'none';
                           }}
                         />
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow-md flex items-center justify-center">
-                        <Package className="text-white" size={32} />
+                      <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg shadow flex items-center justify-center">
+                        <Package className="text-white" size={26} />
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-xs text-gray-500 uppercase font-semibold mb-2">📦 Détails de la commande</p>
-                    <div className="space-y-1 text-sm">
+                  <div className="bg-blue-50 rounded-lg p-2.5 border border-blue-200">
+                    <p className="text-[10px] text-gray-500 uppercase font-semibold mb-1">📦 Détails de la commande</p>
+                    <div className="space-y-1 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Modèle</span>
                         <span className="font-bold text-gray-900">{getModeleNom(selectedCommande.modele)}</span>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <span className="px-2 py-1 bg-white rounded text-xs font-semibold">📏 {selectedCommande.taille}</span>
-                        <span className="px-2 py-1 bg-white rounded text-xs font-semibold">🎨 {selectedCommande.couleur}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-0.5 bg-white rounded text-[11px] font-semibold">📏 {selectedCommande.taille}</span>
+                        <span className="px-2 py-0.5 bg-white rounded text-[11px] font-semibold">🎨 {selectedCommande.couleur}</span>
                       </div>
                     </div>
                   </div>
@@ -1015,16 +1015,16 @@ const Appel = () => {
               )}
 
               {/* Prix - Compact */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-3 flex justify-between items-center">
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg px-2.5 py-2 flex justify-between items-center">
                 <div>
-                  <span className="text-white text-sm font-semibold">Prix Total</span>
+                  <span className="text-white text-xs font-semibold">Prix Total</span>
                   {(orderDraft?.supplements?.length || 0) > 0 && (
                     <p className="text-[10px] text-emerald-50">
                       Base {Number(orderDraft?.prixBase || 0).toLocaleString('fr-FR')} F + suppléments
                     </p>
                   )}
                 </div>
-                <span className="text-white text-2xl font-black text-right">
+                <span className="text-white text-xl font-black text-right">
                   {getOrderTotal(orderDraft?.prixBase, orderDraft?.supplements).toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
@@ -1038,20 +1038,20 @@ const Appel = () => {
                   value={noteAppelant}
                   onChange={(e) => setNoteAppelant(e.target.value)}
                   placeholder="Ajouter des précisions pour l'atelier (optionnel)..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows="2"
+                  className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows="1"
                   disabled={processing}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] text-gray-500 mt-0.5">
                   Cette note sera visible par toute l'équipe de production
                 </p>
               </div>
 
               {/* Articles et suppléments sous forme d'étiquettes */}
-              <div className="rounded-xl border-2 border-violet-200 bg-violet-50/60 p-3 space-y-2">
+              <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-2 space-y-1.5">
                 <div>
                   <p className="text-xs font-black text-violet-900 flex items-center gap-1.5">
-                    <Tag size={14} />
+                    <Tag size={12} />
                     Articles / suppléments ajoutés
                   </p>
                   <p className="text-[10px] text-violet-700 mt-0.5">
@@ -1092,7 +1092,7 @@ const Appel = () => {
                         handleAddSupplement();
                       }
                     }}
-                    className="input !py-2 !px-2 text-xs min-w-0"
+                    className="input !py-1.5 !px-2 text-[11px] min-w-0"
                     placeholder="Ex. 2e robe, ceinture..."
                     disabled={processing}
                   />
@@ -1107,7 +1107,7 @@ const Appel = () => {
                         handleAddSupplement();
                       }
                     }}
-                    className="input !py-2 !px-2 text-xs min-w-0"
+                    className="input !py-1.5 !px-2 text-[11px] min-w-0"
                     placeholder="Montant"
                     disabled={processing}
                   />
@@ -1115,50 +1115,52 @@ const Appel = () => {
                     type="button"
                     onClick={handleAddSupplement}
                     disabled={processing}
-                    className="w-9 h-9 rounded-lg bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
+                    className="w-8 h-8 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
                     title="Ajouter au total"
                   >
-                    <Plus size={17} />
+                    <Plus size={15} />
                   </button>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleSaveCommande}
-                disabled={processing}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Save size={16} />
-                {processing ? 'ENREGISTREMENT...' : 'ENREGISTRER LES MODIFICATIONS'}
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveCommande}
+                  disabled={processing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <Save size={13} />
+                  {processing ? 'ENREGISTREMENT...' : 'ENREGISTRER'}
+                </button>
+              </div>
 
               {/* Actions - Compact en grille 2x2 */}
-              <div className="grid grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
                   disabled={processing}
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-green-600 hover:bg-green-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <CheckCircle size={18} />
+                  <CheckCircle size={15} />
                   <span>CONFIRMER</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
                   disabled={processing}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-red-600 hover:bg-red-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <AlertTriangle size={18} />
+                  <AlertTriangle size={15} />
                   <span>URGENT</span>
                 </button>
 
                 <button
                   onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
                   disabled={processing}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <Clock size={18} />
+                  <Clock size={15} />
                   <span>EN ATTENTE</span>
                 </button>
 
@@ -1169,9 +1171,9 @@ const Appel = () => {
                     }
                   }}
                   disabled={processing}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-2 rounded-md font-bold text-xs transition-all flex items-center justify-center space-x-1 disabled:opacity-50"
                 >
-                  <XCircle size={18} />
+                  <XCircle size={15} />
                   <span>ANNULER</span>
                 </button>
               </div>
