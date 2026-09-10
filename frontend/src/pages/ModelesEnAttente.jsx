@@ -18,6 +18,7 @@ const ModelesEnAttente = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const markingSeenRef = useRef(false);
 
@@ -66,17 +67,34 @@ const ModelesEnAttente = () => {
     return () => clearTimeout(timeoutId);
   }, [hasNewItems, isAdmin, loading]);
 
+  const totalUrgences = useMemo(
+    () => groupes.reduce((total, groupe) => total + (groupe.urgentes || 0), 0),
+    [groupes],
+  );
+
   const filteredGroupes = useMemo(() => {
     const term = searchTerm.trim().toLocaleLowerCase('fr');
-    if (!term) return groupes;
-    return groupes.filter((groupe) => (
-      groupe.nom.toLocaleLowerCase('fr').includes(term) ||
-      groupe.variations.some((variation) => (
-        variation.couleur.toLocaleLowerCase('fr').includes(term) ||
-        variation.taille.toLocaleLowerCase('fr').includes(term)
-      ))
-    ));
-  }, [groupes, searchTerm]);
+    return groupes
+      .filter((groupe) => !urgentOnly || groupe.urgentes > 0)
+      .map((groupe) => {
+        if (!urgentOnly) return groupe;
+        return {
+          ...groupe,
+          total: groupe.urgentes,
+          variations: groupe.variations
+            .filter((variation) => variation.urgentes > 0)
+            .map((variation) => ({ ...variation, quantite: variation.urgentes })),
+        };
+      })
+      .filter((groupe) => (
+        !term ||
+        groupe.nom.toLocaleLowerCase('fr').includes(term) ||
+        groupe.variations.some((variation) => (
+          variation.couleur.toLocaleLowerCase('fr').includes(term) ||
+          variation.taille.toLocaleLowerCase('fr').includes(term)
+        ))
+      ));
+  }, [groupes, searchTerm, urgentOnly]);
 
   if (loading) {
     return (
@@ -127,6 +145,30 @@ const ModelesEnAttente = () => {
 
       {groupes.length > 0 && (
         <div className="card !rounded-xl !p-2.5 sm:!rounded-2xl sm:!p-4">
+          <div className="mb-2.5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setUrgentOnly(false)}
+              className={`rounded-lg px-3 py-2 text-xs font-black transition-colors sm:text-sm ${
+                !urgentOnly
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Toutes ({totalCommandes})
+            </button>
+            <button
+              type="button"
+              onClick={() => setUrgentOnly(true)}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition-colors sm:text-sm ${
+                urgentOnly
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+              }`}
+            >
+              <AlertCircle size={15} /> Urgences ({totalUrgences})
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
             <input
@@ -147,12 +189,18 @@ const ModelesEnAttente = () => {
         <div className="card !p-8 text-center sm:!p-12">
           <Package className="mx-auto mb-3 text-emerald-500" size={42} />
           <h3 className="mb-1 text-lg font-bold text-gray-900 sm:text-xl">
-            {groupes.length === 0 ? 'Aucun modèle en attente' : 'Aucun résultat'}
+            {groupes.length === 0
+              ? 'Aucun modèle en attente'
+              : urgentOnly && totalUrgences === 0
+                ? 'Aucune urgence en attente'
+                : 'Aucun résultat'}
           </h3>
           <p className="text-sm text-gray-600">
             {groupes.length === 0
               ? 'Aucune commande ne nécessite actuellement de préparation.'
-              : 'Modifiez votre recherche pour retrouver un modèle.'}
+              : urgentOnly && totalUrgences === 0
+                ? 'Toutes les commandes à préparer sont actuellement normales.'
+                : 'Modifiez votre recherche pour retrouver un modèle.'}
           </p>
         </div>
       ) : (
@@ -177,7 +225,7 @@ const ModelesEnAttente = () => {
                 <div className="min-w-0 flex-1">
                   <h2 className="break-words text-base font-black leading-tight text-gray-900 sm:text-lg">{groupe.nom}</h2>
                   <p className="mt-1 text-xs font-bold text-purple-700">
-                    {groupe.total} pièce{groupe.total > 1 ? 's' : ''} à préparer
+                    {groupe.total} pièce{groupe.total > 1 ? 's' : ''} {urgentOnly ? 'urgente' : 'à préparer'}{urgentOnly && groupe.total > 1 ? 's' : ''}
                   </p>
                 </div>
                 {groupe.urgentes > 0 && (
