@@ -12,8 +12,10 @@ import {
   assertCanConfirmOrderReminder,
   assertCanSendOrderToReminder,
 } from '../services/order-reminder.service.js';
+import { adminRecentThreshold, groupPendingModels } from '../services/pending-models.service.js';
 
 const router = express.Router();
+let pendingModelsViewedAt = null;
 
 // Obtenir toutes les commandes (avec filtres selon le rôle)
 router.get('/', authenticate, async (req, res) => {
@@ -105,6 +107,44 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
     res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
   }
 });
+
+router.get(
+  '/modeles-en-attente/suivi',
+  authenticate,
+  authorize('styliste', 'gestionnaire', 'administrateur'),
+  async (req, res) => {
+    try {
+      const now = new Date();
+      const orders = await Commande.find({ statut: { $in: ['nouvelle', 'validee'] } }).lean();
+      const recentAfter = req.user.role === 'administrateur'
+        ? adminRecentThreshold(now)
+        : (pendingModelsViewedAt || new Date(0));
+      const groupes = groupPendingModels(orders, { recentAfter });
+      return res.json({
+        groupes,
+        totalCommandes: orders.length,
+        totalModeles: groupes.length,
+        vuGlobalAt: pendingModelsViewedAt?.toISOString() || null,
+        serverNow: now.toISOString(),
+      });
+    } catch (error) {
+      return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: error.message });
+    }
+  },
+);
+
+router.post(
+  '/modeles-en-attente/voir',
+  authenticate,
+  authorize('styliste', 'gestionnaire', 'administrateur'),
+  (req, res) => {
+    if (req.user.role === 'administrateur') {
+      return res.json({ updated: false, message: 'La vue administrateur conserve les nouveautés pendant 24 heures' });
+    }
+    pendingModelsViewedAt = new Date();
+    return res.json({ updated: true, vuGlobalAt: pendingModelsViewedAt.toISOString() });
+  },
+);
 
 // Obtenir une commande spécifique
 router.get('/:id', authenticate, async (req, res) => {
