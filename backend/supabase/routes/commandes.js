@@ -242,7 +242,7 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
   }
 });
 
-// Vue agrégée synchronisée avec les commandes qui ne sont pas encore envoyées ailleurs.
+// Vue agrégée synchronisée avec les commandes validées qui ne sont pas encore envoyées ailleurs.
 router.get(
   '/modeles-en-attente/suivi',
   authenticate,
@@ -258,7 +258,7 @@ router.get(
           .from('commandes')
           .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at')
           .eq('pays_code', req.country)
-          .in('statut', ['nouvelle', 'validee'])
+          .eq('statut', 'validee')
           .order('created_at', { ascending: false }),
         supabase
           .from('modeles_attente_vues')

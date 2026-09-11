@@ -1,4 +1,7 @@
-const TRACKED_STATUSES = new Set(['nouvelle', 'validee']);
+// Seules les commandes confirmées doivent déclencher une préparation.
+// Les commandes "nouvelle" restent dans Commandes pour être traitées, mais ne
+// deviennent un besoin atelier qu'après leur validation.
+const TRACKED_STATUSES = new Set(['validee']);
 const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
 
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
@@ -99,4 +102,3 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
       a.nom.localeCompare(b.nom, 'fr', { numeric: true })
     ));
 }
-

@@ -116,7 +116,7 @@ const ModelesEnAttente = () => {
               Modèles en attente
             </h1>
             <p className="text-xs font-medium text-gray-600 sm:text-sm lg:text-base">
-              Besoins regroupés et synchronisés avec Commandes
+              Commandes validées à préparer, regroupées par modèle
             </p>
           </div>
         </div>

@@ -115,7 +115,7 @@ router.get(
   async (req, res) => {
     try {
       const now = new Date();
-      const orders = await Commande.find({ statut: { $in: ['nouvelle', 'validee'] } }).lean();
+      const orders = await Commande.find({ statut: 'validee' }).lean();
       const recentAfter = req.user.role === 'administrateur'
         ? adminRecentThreshold(now)
         : (pendingModelsViewedAt || new Date(0));

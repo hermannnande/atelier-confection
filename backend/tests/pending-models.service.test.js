@@ -5,21 +5,22 @@ import { adminRecentThreshold, groupPendingModels } from '../services/pending-mo
 test('regroupe les commandes par modèle, couleur et taille', () => {
   const orders = [
     { id: '1', statut: 'validee', modele: { nom: 'DAVICHI', image: 'davichi.jpg' }, couleur: 'Blanc', taille: 'L' },
-    { id: '2', statut: 'nouvelle', modele: { nom: 'DAVICHI' }, couleur: 'Blanc', taille: 'L' },
+    { id: '2', statut: 'nouvelle', modele: { nom: 'KAYLA' }, couleur: 'Blanc', taille: 'L' },
     { id: '3', statut: 'validee', modele: { nom: 'DAVICHI' }, couleur: 'Bleu ciel', taille: '2XL' },
     { id: '4', statut: 'en_decoupe', modele: { nom: 'DAVICHI' }, couleur: 'Blanc', taille: 'L' },
   ];
 
   const [davichi] = groupPendingModels(orders);
-  assert.equal(davichi.total, 3);
+  assert.equal(davichi.total, 2);
   assert.equal(davichi.image, 'davichi.jpg');
   assert.deepEqual(
     davichi.variations.map(({ couleur, taille, quantite }) => ({ couleur, taille, quantite })),
     [
-      { couleur: 'Blanc', taille: 'L', quantite: 2 },
+      { couleur: 'Blanc', taille: 'L', quantite: 1 },
       { couleur: 'Bleu ciel', taille: '2XL', quantite: 1 },
     ],
   );
+  assert.equal(groupPendingModels(orders).some((groupe) => groupe.nom === 'KAYLA'), false);
 });
 
 test('signale seulement les commandes postérieures à la dernière vue globale', () => {
@@ -39,4 +40,3 @@ test('la fenêtre récente de l’administrateur dure 24 heures', () => {
     new Date('2026-09-09T12:00:00Z').getTime(),
   );
 });
-
