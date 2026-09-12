@@ -12,10 +12,9 @@ import {
   assertCanConfirmOrderReminder,
   assertCanSendOrderToReminder,
 } from '../services/order-reminder.service.js';
-import { adminRecentThreshold, groupPendingModels } from '../services/pending-models.service.js';
+import { groupPendingModels, recentVisibilityThreshold } from '../services/pending-models.service.js';
 
 const router = express.Router();
-let pendingModelsViewedAt = null;
 
 // Obtenir toutes les commandes (avec filtres selon le rôle)
 router.get('/', authenticate, async (req, res) => {
@@ -116,15 +115,12 @@ router.get(
     try {
       const now = new Date();
       const orders = await Commande.find({ statut: 'validee' }).lean();
-      const recentAfter = req.user.role === 'administrateur'
-        ? adminRecentThreshold(now)
-        : (pendingModelsViewedAt || new Date(0));
-      const groupes = groupPendingModels(orders, { recentAfter });
+      const groupes = groupPendingModels(orders, { recentAfter: recentVisibilityThreshold(now) });
       return res.json({
         groupes,
         totalCommandes: orders.length,
         totalModeles: groupes.length,
-        vuGlobalAt: pendingModelsViewedAt?.toISOString() || null,
+        recentWindowMinutes: 60,
         serverNow: now.toISOString(),
       });
     } catch (error) {
@@ -138,11 +134,7 @@ router.post(
   authenticate,
   authorize('styliste', 'gestionnaire', 'administrateur'),
   (req, res) => {
-    if (req.user.role === 'administrateur') {
-      return res.json({ updated: false, message: 'La vue administrateur conserve les nouveautés pendant 24 heures' });
-    }
-    pendingModelsViewedAt = new Date();
-    return res.json({ updated: true, vuGlobalAt: pendingModelsViewedAt.toISOString() });
+    return res.json({ updated: false, recentWindowMinutes: 60 });
   },
 );
 

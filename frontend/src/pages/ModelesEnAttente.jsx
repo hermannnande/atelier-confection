@@ -1,26 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { AlertCircle, Package, RefreshCw, Scissors, Search } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { AlertCircle, Package, RefreshCw, Scissors, Search, Sparkles } from 'lucide-react';
 
-const clearNewIndicators = (groupes) => groupes.map((groupe) => ({
-  ...groupe,
-  nouveau: 0,
-  variations: groupe.variations.map((variation) => ({ ...variation, nouveau: 0 })),
-}));
+const relativeArrival = (value, now) => {
+  if (!value) return '';
+  const elapsedMinutes = Math.max(0, Math.floor((now.getTime() - new Date(value).getTime()) / 60000));
+  if (elapsedMinutes < 1) return "à l'instant";
+  if (elapsedMinutes < 60) return `il y a ${elapsedMinutes} min`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `il y a ${elapsedHours} h`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return `il y a ${elapsedDays} j`;
+};
 
 const ModelesEnAttente = () => {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === 'administrateur';
   const [groupes, setGroupes] = useState([]);
   const [totalCommandes, setTotalCommandes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [filterMode, setFilterMode] = useState('all');
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const markingSeenRef = useRef(false);
 
   const fetchSuivi = async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -44,47 +45,40 @@ const ModelesEnAttente = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  const hasNewItems = useMemo(
-    () => groupes.some((groupe) => groupe.nouveau > 0),
-    [groupes],
-  );
-
-  useEffect(() => {
-    if (isAdmin || loading || !hasNewItems || markingSeenRef.current) return undefined;
-
-    const timeoutId = setTimeout(async () => {
-      markingSeenRef.current = true;
-      try {
-        await api.post('/commandes/modeles-en-attente/voir');
-        setGroupes((current) => clearNewIndicators(current));
-      } catch (error) {
-        console.error('Erreur lors du marquage de la vue globale:', error);
-      } finally {
-        markingSeenRef.current = false;
-      }
-    }, 3000);
-
-    return () => clearTimeout(timeoutId);
-  }, [hasNewItems, isAdmin, loading]);
-
   const totalUrgences = useMemo(
     () => groupes.reduce((total, groupe) => total + (groupe.urgentes || 0), 0),
+    [groupes],
+  );
+  const totalNouveautes = useMemo(
+    () => groupes.reduce((total, groupe) => total + (groupe.nouveau || 0), 0),
     [groupes],
   );
 
   const filteredGroupes = useMemo(() => {
     const term = searchTerm.trim().toLocaleLowerCase('fr');
     return groupes
-      .filter((groupe) => !urgentOnly || groupe.urgentes > 0)
+      .filter((groupe) => (
+        filterMode === 'all' ||
+        (filterMode === 'recent' && groupe.nouveau > 0) ||
+        (filterMode === 'urgent' && groupe.urgentes > 0)
+      ))
       .map((groupe) => {
-        if (!urgentOnly) return groupe;
-        return {
-          ...groupe,
-          total: groupe.urgentes,
-          variations: groupe.variations
-            .filter((variation) => variation.urgentes > 0)
-            .map((variation) => ({ ...variation, quantite: variation.urgentes })),
-        };
+        if (filterMode === 'urgent') {
+          return {
+            ...groupe,
+            total: groupe.urgentes,
+            variations: groupe.variations
+              .filter((variation) => variation.urgentes > 0)
+              .map((variation) => ({ ...variation, quantite: variation.urgentes })),
+          };
+        }
+        if (filterMode === 'recent') {
+          return {
+            ...groupe,
+            variations: groupe.variations.filter((variation) => variation.nouveau > 0),
+          };
+        }
+        return groupe;
       })
       .filter((groupe) => (
         !term ||
@@ -94,7 +88,7 @@ const ModelesEnAttente = () => {
           variation.taille.toLocaleLowerCase('fr').includes(term)
         ))
       ));
-  }, [groupes, searchTerm, urgentOnly]);
+  }, [filterMode, groupes, searchTerm]);
 
   if (loading) {
     return (
@@ -145,12 +139,12 @@ const ModelesEnAttente = () => {
 
       {groupes.length > 0 && (
         <div className="card !rounded-xl !p-2.5 sm:!rounded-2xl sm:!p-4">
-          <div className="mb-2.5 grid grid-cols-2 gap-2">
+          <div className="mb-2.5 grid grid-cols-3 gap-1.5 sm:gap-2">
             <button
               type="button"
-              onClick={() => setUrgentOnly(false)}
-              className={`rounded-lg px-3 py-2 text-xs font-black transition-colors sm:text-sm ${
-                !urgentOnly
+              onClick={() => setFilterMode('all')}
+              className={`rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:px-3 sm:text-sm ${
+                filterMode === 'all'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
@@ -159,9 +153,20 @@ const ModelesEnAttente = () => {
             </button>
             <button
               type="button"
-              onClick={() => setUrgentOnly(true)}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition-colors sm:text-sm ${
-                urgentOnly
+              onClick={() => setFilterMode('recent')}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:gap-1.5 sm:px-3 sm:text-sm ${
+                filterMode === 'recent'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }`}
+            >
+              <Sparkles size={14} /> Récents ({totalNouveautes})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('urgent')}
+              className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:gap-1.5 sm:px-3 sm:text-sm ${
+                filterMode === 'urgent'
                   ? 'bg-red-600 text-white shadow-sm'
                   : 'bg-red-50 text-red-700 hover:bg-red-100'
               }`}
@@ -180,7 +185,7 @@ const ModelesEnAttente = () => {
             />
           </div>
           <p className="mt-1.5 text-[10px] text-gray-400 sm:text-xs">
-            Mise à jour automatique · {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            Nouveautés visibles 1 h · Mise à jour automatique · {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
       )}
@@ -191,14 +196,18 @@ const ModelesEnAttente = () => {
           <h3 className="mb-1 text-lg font-bold text-gray-900 sm:text-xl">
             {groupes.length === 0
               ? 'Aucun modèle en attente'
-              : urgentOnly && totalUrgences === 0
+              : filterMode === 'recent' && totalNouveautes === 0
+                ? 'Aucune arrivée récente'
+                : filterMode === 'urgent' && totalUrgences === 0
                 ? 'Aucune urgence en attente'
                 : 'Aucun résultat'}
           </h3>
           <p className="text-sm text-gray-600">
             {groupes.length === 0
               ? 'Aucune commande ne nécessite actuellement de préparation.'
-              : urgentOnly && totalUrgences === 0
+              : filterMode === 'recent' && totalNouveautes === 0
+                ? 'Aucune nouvelle commande validée au cours de la dernière heure.'
+                : filterMode === 'urgent' && totalUrgences === 0
                 ? 'Toutes les commandes à préparer sont actuellement normales.'
                 : 'Modifiez votre recherche pour retrouver un modèle.'}
           </p>
@@ -209,7 +218,11 @@ const ModelesEnAttente = () => {
             <article
               key={groupe.id}
               className={`overflow-hidden rounded-xl border bg-white shadow-md transition-shadow hover:shadow-lg ${
-                groupe.urgentes > 0 ? 'border-red-300' : 'border-gray-200'
+                groupe.nouveau > 0
+                  ? 'border-emerald-400 ring-2 ring-emerald-100'
+                  : groupe.urgentes > 0
+                    ? 'border-red-300'
+                    : 'border-gray-200'
               }`}
             >
               <div className="flex items-center gap-3 border-b border-gray-100 p-3">
@@ -225,14 +238,26 @@ const ModelesEnAttente = () => {
                 <div className="min-w-0 flex-1">
                   <h2 className="break-words text-base font-black leading-tight text-gray-900 sm:text-lg">{groupe.nom}</h2>
                   <p className="mt-1 text-xs font-bold text-purple-700">
-                    {groupe.total} pièce{groupe.total > 1 ? 's' : ''} {urgentOnly ? 'urgente' : 'à préparer'}{urgentOnly && groupe.total > 1 ? 's' : ''}
+                    {groupe.total} pièce{groupe.total > 1 ? 's' : ''} {filterMode === 'urgent' ? 'urgente' : 'à préparer'}{filterMode === 'urgent' && groupe.total > 1 ? 's' : ''}
                   </p>
+                  {groupe.nouveau > 0 && groupe.derniereArrivee && (
+                    <p className="mt-0.5 text-[10px] font-semibold text-emerald-700 sm:text-xs">
+                      Dernière arrivée {relativeArrival(groupe.derniereArrivee, lastRefresh)}
+                    </p>
+                  )}
                 </div>
-                {groupe.urgentes > 0 && (
-                  <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[10px] font-black text-red-700" title="Commandes urgentes">
-                    <AlertCircle size={11} /> {groupe.urgentes}
-                  </span>
-                )}
+                <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                  {groupe.nouveau > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">
+                      +{groupe.nouveau} récente{groupe.nouveau > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {groupe.urgentes > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[10px] font-black text-red-700" title="Commandes urgentes">
+                      <AlertCircle size={11} /> {groupe.urgentes}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="divide-y divide-gray-100 px-3">
@@ -244,11 +269,11 @@ const ModelesEnAttente = () => {
                     </div>
                     {variation.nouveau > 0 && (
                       <span
-                        className="text-base font-black leading-none text-emerald-500"
+                        className="flex-shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[11px] font-black leading-none text-emerald-700"
                         title={`${variation.nouveau} arrivée${variation.nouveau > 1 ? 's' : ''} récente${variation.nouveau > 1 ? 's' : ''}`}
                         aria-label="Ajout récent"
                       >
-                        +
+                        +{variation.nouveau}
                       </span>
                     )}
                     {variation.urgentes > 0 && (

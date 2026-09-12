@@ -17,10 +17,23 @@ function modelDetails(order) {
   return { nom: asText(modele, 'Modèle inconnu'), image: '' };
 }
 
-function orderCreatedAt(order) {
-  const value = order?.created_at ?? order?.createdAt;
+function asTimestamp(value) {
   const timestamp = value ? new Date(value).getTime() : Number.NaN;
   return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+// Une commande devient réellement un besoin atelier au moment de sa validation,
+// qui peut être bien postérieure à sa création.
+function orderPendingAt(order) {
+  const validationDates = Array.isArray(order?.historique)
+    ? order.historique
+      .filter((entry) => entry?.statut === 'validee')
+      .map((entry) => asTimestamp(entry?.date))
+      .filter(Boolean)
+    : [];
+
+  if (validationDates.length > 0) return Math.max(...validationDates);
+  return asTimestamp(order?.created_at ?? order?.createdAt);
 }
 
 function compareSizes(a, b) {
@@ -36,8 +49,8 @@ function compareSizes(a, b) {
   return normalizedA.localeCompare(normalizedB, 'fr', { numeric: true });
 }
 
-export function adminRecentThreshold(now = new Date()) {
-  return new Date(now).getTime() - (24 * 60 * 60 * 1000);
+export function recentVisibilityThreshold(now = new Date()) {
+  return new Date(now).getTime() - (60 * 60 * 1000);
 }
 
 export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
@@ -52,7 +65,8 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
     const taille = asText(order?.taille, 'Non précisée');
     const couleur = asText(order?.couleur, 'Non précisée');
     const variationKey = `${couleur.toLocaleLowerCase('fr')}::${taille.toLocaleLowerCase('fr')}`;
-    const isNew = orderCreatedAt(order) > recentThreshold;
+    const pendingAt = orderPendingAt(order);
+    const isNew = pendingAt > recentThreshold;
 
     if (!groups.has(modelKey)) {
       groups.set(modelKey, {
@@ -62,6 +76,7 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
         total: 0,
         urgentes: 0,
         nouveau: 0,
+        derniereArrivee: null,
         variations: new Map(),
       });
     }
@@ -71,6 +86,9 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
     group.total += 1;
     if (order.urgence) group.urgentes += 1;
     if (isNew) group.nouveau += 1;
+    if (pendingAt && (!group.derniereArrivee || pendingAt > asTimestamp(group.derniereArrivee))) {
+      group.derniereArrivee = new Date(pendingAt).toISOString();
+    }
 
     if (!group.variations.has(variationKey)) {
       group.variations.set(variationKey, {

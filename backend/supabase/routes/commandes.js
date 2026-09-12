@@ -20,7 +20,7 @@ import {
   normalizeOrderSupplements,
   resolveStoredOrderBasePrice,
 } from '../../services/order-supplements.service.js';
-import { adminRecentThreshold, groupPendingModels } from '../../services/pending-models.service.js';
+import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
 
 const router = express.Router();
 
@@ -253,38 +253,23 @@ router.get(
       const supabase = getSupabaseAdmin();
       const now = new Date();
 
-      const [{ data: orders, error: ordersError }, { data: viewState, error: viewError }] = await Promise.all([
-        supabase
-          .from('commandes')
-          .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at')
-          .eq('pays_code', req.country)
-          .eq('statut', 'validee')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('modeles_attente_vues')
-          .select('vu_global_at')
-          .eq('pays_code', req.country)
-          .maybeSingle(),
-      ]);
+      const { data: orders, error: ordersError } = await supabase
+        .from('commandes')
+        .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at, updated_at, historique')
+        .eq('pays_code', req.country)
+        .eq('statut', 'validee')
+        .order('created_at', { ascending: false });
 
       if (ordersError) {
         return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: ordersError.message });
       }
-      if (viewError) {
-        return res.status(500).json({ message: 'Le suivi des nouvelles commandes doit être initialisé', error: viewError.message });
-      }
-
-      const isAdmin = req.user.role === 'administrateur';
-      const recentAfter = isAdmin
-        ? adminRecentThreshold(now)
-        : (viewState?.vu_global_at || new Date(0).toISOString());
-      const groupes = groupPendingModels(orders || [], { recentAfter });
+      const groupes = groupPendingModels(orders || [], { recentAfter: recentVisibilityThreshold(now) });
 
       return res.json({
         groupes,
         totalCommandes: (orders || []).length,
         totalModeles: groupes.length,
-        vuGlobalAt: viewState?.vu_global_at || null,
+        recentWindowMinutes: 60,
         serverNow: now.toISOString(),
       });
     } catch (error) {
@@ -293,7 +278,7 @@ router.get(
   },
 );
 
-// Une consultation non-admin efface le petit "+" pour tous les utilisateurs ordinaires.
+// Conservé pour les anciennes versions du frontend : une consultation ne masque plus les nouveautés.
 router.post(
   '/modeles-en-attente/voir',
   authenticate,
@@ -301,31 +286,7 @@ router.post(
   authorize('styliste', 'gestionnaire', 'administrateur'),
   async (req, res) => {
     try {
-      if (req.user.role === 'administrateur') {
-        return res.json({ updated: false, message: 'La vue administrateur conserve les nouveautés pendant 24 heures' });
-      }
-
-      const supabase = getSupabaseAdmin();
-      const now = new Date().toISOString();
-      const { data, error } = await supabase
-        .from('modeles_attente_vues')
-        .upsert(
-          {
-            pays_code: req.country,
-            vu_global_at: now,
-            updated_by: req.userId,
-            updated_at: now,
-          },
-          { onConflict: 'pays_code' },
-        )
-        .select('vu_global_at')
-        .single();
-
-      if (error) {
-        return res.status(500).json({ message: 'Erreur lors de l’enregistrement de la consultation', error: error.message });
-      }
-
-      return res.json({ updated: true, vuGlobalAt: data.vu_global_at });
+      return res.json({ updated: false, recentWindowMinutes: 60 });
     } catch (error) {
       return res.status(500).json({ message: 'Erreur lors de l’enregistrement de la consultation', error: error.message });
     }

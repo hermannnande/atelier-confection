@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { adminRecentThreshold, groupPendingModels } from '../services/pending-models.service.js';
+import { groupPendingModels, recentVisibilityThreshold } from '../services/pending-models.service.js';
 
 test('regroupe les commandes par modèle, couleur et taille', () => {
   const orders = [
@@ -23,7 +23,7 @@ test('regroupe les commandes par modèle, couleur et taille', () => {
   assert.equal(groupPendingModels(orders).some((groupe) => groupe.nom === 'KAYLA'), false);
 });
 
-test('signale seulement les commandes postérieures à la dernière vue globale', () => {
+test('signale seulement les commandes postérieures au seuil de récence', () => {
   const orders = [
     { statut: 'validee', modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', created_at: '2026-09-10T08:00:00Z' },
     { statut: 'validee', modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', created_at: '2026-09-10T10:00:00Z' },
@@ -34,9 +34,28 @@ test('signale seulement les commandes postérieures à la dernière vue globale'
   assert.equal(davichi.variations[0].nouveau, 1);
 });
 
-test('la fenêtre récente de l’administrateur dure 24 heures', () => {
+test('utilise la date de validation comme date d’arrivée à préparer', () => {
+  const [davichi] = groupPendingModels([
+    {
+      statut: 'validee',
+      modele: 'DAVICHI',
+      couleur: 'Blanc',
+      taille: 'M',
+      created_at: '2026-09-01T08:00:00Z',
+      historique: [
+        { statut: 'nouvelle', date: '2026-09-01T08:00:00Z' },
+        { statut: 'validee', date: '2026-09-12T09:30:00Z' },
+      ],
+    },
+  ], { recentAfter: '2026-09-12T09:00:00Z' });
+
+  assert.equal(davichi.nouveau, 1);
+  assert.equal(davichi.derniereArrivee, '2026-09-12T09:30:00.000Z');
+});
+
+test('la fenêtre récente dure une heure pour chaque utilisateur', () => {
   assert.equal(
-    adminRecentThreshold(new Date('2026-09-10T12:00:00Z')),
-    new Date('2026-09-09T12:00:00Z').getTime(),
+    recentVisibilityThreshold(new Date('2026-09-10T12:00:00Z')),
+    new Date('2026-09-10T11:00:00Z').getTime(),
   );
 });
