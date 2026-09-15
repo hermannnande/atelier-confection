@@ -50,16 +50,16 @@ test('seules les commandes qui dépassent le stock deviennent des besoins de con
   assert.deepEqual(result.uncoveredOrders.map((order) => order.id), ['3']);
 });
 
-test('les articles déjà en préparation colis restent réservés jusqu’à leur envoi', () => {
+test('les articles déjà en préparation colis ne comptent plus dans les réservations', () => {
   const result = buildStockSynchronization({
     orders: [davichi('1', 'en_stock'), davichi('2', 'validee')],
     stock: [stockDavichi(2)],
   });
 
-  assert.equal(result.totals.reservePreparation, 1);
+  assert.equal(result.totals.reservePreparation, 0);
   assert.equal(result.totals.reserveCommandes, 1);
-  assert.equal(result.totals.quantiteReservee, 2);
-  assert.equal(result.totals.quantiteDisponible, 0);
+  assert.equal(result.totals.quantiteReservee, 1);
+  assert.equal(result.totals.quantiteDisponible, 1);
   assert.equal(result.uncoveredOrders.length, 0);
 });
 
@@ -88,3 +88,4 @@ test('la synchronisation enrichit les lignes du stock avec réservé et disponib
   assert.equal(item.quantiteReservee, 1);
   assert.equal(item.quantiteDisponible, 1);
 });
+
