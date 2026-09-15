@@ -1,5 +1,4 @@
 const PENDING_STATUS = 'validee';
-const PREPARED_STATUS = 'en_stock';
 
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
@@ -101,9 +100,10 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   }
 
   for (const order of orders) {
-    if (order?.statut === PREPARED_STATUS) {
-      ensureVariation(order).reservePreparation += 1;
-    } else if (order?.statut === PENDING_STATUS) {
+    // Une commande déjà envoyée en Préparation colis n'est plus une
+    // réservation du stock. Seules les commandes encore validées et visibles
+    // dans « Commandes » participent au calcul des réservations.
+    if (order?.statut === PENDING_STATUS) {
       ensureVariation(order).commandesValidees.push(order);
     }
   }
@@ -242,3 +242,4 @@ export function enrichStockWithSynchronization(stock = [], synchronization) {
     };
   });
 }
+
