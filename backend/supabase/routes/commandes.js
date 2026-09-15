@@ -248,7 +248,7 @@ router.get(
   '/modeles-en-attente/suivi',
   authenticate,
   resolveCountry,
-  authorize('styliste', 'gestionnaire', 'administrateur'),
+  authorize('styliste', 'gestionnaire', 'gestionnaire_stock', 'administrateur'),
   async (req, res) => {
     try {
       const supabase = getSupabaseAdmin();
@@ -303,7 +303,7 @@ router.post(
   '/modeles-en-attente/voir',
   authenticate,
   resolveCountry,
-  authorize('styliste', 'gestionnaire', 'administrateur'),
+  authorize('styliste', 'gestionnaire', 'gestionnaire_stock', 'administrateur'),
   async (req, res) => {
     try {
       return res.json({ updated: false, recentWindowMinutes: 60 });
@@ -568,7 +568,12 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
     if (!ensureCountryAccess(existing, req, res)) return;
 
-    if (existing.statut === 'validee' && req.body.statut === 'en_stock') {
+    // Un envoi direct depuis « Commandes » peut forcer l'accès à la préparation
+    // même si la variation n'est pas encore disponible physiquement. Sans ce
+    // signal explicite, on conserve le garde-fou de réservation du stock.
+    const directPreparation = req.body.directPreparation === true
+      && ['gestionnaire', 'administrateur'].includes(req.user.role);
+    if (existing.statut === 'validee' && req.body.statut === 'en_stock' && !directPreparation) {
       const [stockResult, ordersResult] = await Promise.all([
         supabase.from('stock').select('*').eq('pays_code', req.country),
         supabase
@@ -647,6 +652,8 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
       commentaire:
         supplementsChanged || basePriceChanged
           ? `Modification des détails et suppléments — total ${Number(update.prix || existing.prix).toLocaleString('fr-FR')} F`
+          : directPreparation
+            ? 'Envoi direct en Préparation Colis (stock disponible ou non)'
           : 'Modification des détails de la commande',
     });
     update.historique = historique;
@@ -667,7 +674,9 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
         };
 
         const templateCode = statutToTemplate[statutApres];
-        if (templateCode) {
+        // Un envoi direct sans stock n'est pas une fin de confection : ne pas
+        // envoyer au client le SMS « confection terminée » dans ce cas.
+        if (templateCode && !(directPreparation && statutApres === 'en_stock')) {
           const autoSendEnabled = await smsService.isAutoSendEnabled(templateCode);
           if (autoSendEnabled) {
             const alreadySent = await smsService.hasAlreadySent(data.id, templateCode);
