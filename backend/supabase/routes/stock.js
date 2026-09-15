@@ -40,7 +40,7 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
   }
 });
 
-// Vue du stock physique avec les pièces déjà réservées par les commandes.
+// Vue du stock physique avec les pièces réservées par les commandes encore validées.
 // La réservation est calculée : elle ne retire pas physiquement l'article avant son envoi.
 router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) => {
   try {
@@ -55,7 +55,7 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
         .from('commandes')
         .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
         .eq('pays_code', req.country)
-        .in('statut', ['validee', 'en_stock']),
+        .eq('statut', 'validee'),
     ]);
 
     if (stockResult.error) {
@@ -367,5 +367,4 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
 });
 
 export default router;
-
 
