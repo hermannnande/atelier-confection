@@ -29,7 +29,7 @@ const Login = () => {
             color: '#fff',
           },
         });
-        navigate('/dashboard');
+        navigate(result.user?.role === 'gestionnaire_stock' ? '/stock' : '/dashboard');
       } else {
         toast.error(result.message || 'Erreur de connexion', {
           style: {
@@ -215,3 +215,4 @@ const Login = () => {
 };
 
 export default Login;
+
