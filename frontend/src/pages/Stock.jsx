@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 import {
   AlertTriangle,
   Boxes,
@@ -8,6 +9,7 @@ import {
   ChevronRight,
   Edit2,
   Eye,
+  History,
   LockKeyhole,
   Package,
   PackageOpen,
@@ -19,6 +21,8 @@ import {
 } from 'lucide-react';
 
 const Stock = () => {
+  const { user } = useAuthStore();
+  const canEditPrices = ['administrateur', 'gestionnaire'].includes(user?.role);
   const [stock, setStock] = useState([]);
   const [stockTotals, setStockTotals] = useState({});
   const [modeles, setModeles] = useState([]);
@@ -29,21 +33,18 @@ const Stock = () => {
   const [modelSearchTerm, setModelSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
   const [selectedModeleDetails, setSelectedModeleDetails] = useState(null);
   const [selectedModele, setSelectedModele] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [editedVariations, setEditedVariations] = useState([]);
   
-  // État pour les tailles/couleurs personnalisées
-  const [customTailles, setCustomTailles] = useState([]);
-  const [customCouleurs, setCustomCouleurs] = useState([]);
-  const [newTaille, setNewTaille] = useState('');
-  const [newCouleur, setNewCouleur] = useState('');
-
-  // Mode bicolore (2 tons)
-  const [modeBicolore, setModeBicolore] = useState(false);
-  const [bicolore1, setBicolore1] = useState('');
-  const [bicolore2, setBicolore2] = useState('');
+  const [selectedTaille, setSelectedTaille] = useState('');
+  const [selectedCouleur, setSelectedCouleur] = useState('');
+  const [stockQuantity, setStockQuantity] = useState(1);
   
   // Suggestions
   const taillesSuggestions = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
@@ -72,17 +73,6 @@ const Stock = () => {
     'Multicolore'
   ];
 
-  const addBicolore = () => {
-    if (bicolore1 && bicolore2 && bicolore1 !== bicolore2) {
-      const combined = `${bicolore1} / ${bicolore2}`;
-      addCouleur(combined);
-      setBicolore1('');
-      setBicolore2('');
-    }
-  };
-
-  const [variations, setVariations] = useState([]);
-
   useEffect(() => {
     fetchStock();
     fetchModeles();
@@ -108,6 +98,25 @@ const Stock = () => {
     } catch (error) {
       console.error('Erreur chargement modèles:', error);
     }
+  };
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await api.get('/stock/historique');
+      setHistory(response.data.mouvements || []);
+    } catch (error) {
+      toast.error("Erreur lors du chargement de l'historique");
+      console.error(error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openHistory = () => {
+    setHistorySearch('');
+    setShowHistoryModal(true);
+    fetchHistory();
   };
 
   // Grouper le stock par modèle
@@ -191,9 +200,9 @@ const Stock = () => {
 
   const handleModeleSelect = (modele) => {
     setSelectedModele(modele);
-    setCustomTailles([]);
-    setCustomCouleurs([]);
-    setVariations([]);
+    setSelectedTaille('');
+    setSelectedCouleur('');
+    setStockQuantity(1);
   };
 
   const handleViewDetails = (modeleGroup) => {
@@ -221,23 +230,26 @@ const Stock = () => {
       let successCount = 0;
       
       for (const variation of editedVariations) {
+        const original = selectedModeleDetails.variations.find((item) => (
+          (item._id || item.id) === (variation._id || variation.id)
+        ));
+        const quantityChanged = Number(variation.quantitePrincipale) !== Number(original?.quantitePrincipale ?? original?.quantite ?? 0);
+        const priceChanged = canEditPrices && Number(variation.prix) !== Number(original?.prix || 0);
+        if (!quantityChanged && !priceChanged) continue;
+
         try {
-          // Conserver TOUTES les données importantes, y compris l'image
-          await api.put(`/stock/${variation._id || variation.id}`, {
+          const payload = {
             quantite: variation.quantitePrincipale,
-            prix: variation.prix,
-            modele: variation.modele,
-            taille: variation.taille,
-            couleur: variation.couleur,
-            image: variation.image || selectedModeleDetails.image // Conserver l'image
-          });
+          };
+          if (canEditPrices) payload.prix = variation.prix;
+          await api.put(`/stock/${variation._id || variation.id}`, payload);
           successCount++;
         } catch (error) {
           console.error(`Erreur pour ${variation.taille} × ${variation.couleur}:`, error);
         }
       }
       
-      toast.success(`${successCount} variation(s) mise(s) à jour !`);
+      toast.success(successCount > 0 ? `${successCount} variation(s) mise(s) à jour !` : 'Aucune modification à enregistrer');
       setEditMode(false);
       fetchStock();
       
@@ -268,87 +280,28 @@ const Stock = () => {
     }
   };
 
-  const addTaille = (taille) => {
-    if (taille && !customTailles.includes(taille)) {
-      setCustomTailles([...customTailles, taille]);
-      generateVariations([...customTailles, taille], customCouleurs);
-    }
-  };
-
-  const addCouleur = (couleur) => {
-    if (couleur && !customCouleurs.includes(couleur)) {
-      setCustomCouleurs([...customCouleurs, couleur]);
-      generateVariations(customTailles, [...customCouleurs, couleur]);
-    }
-  };
-
-  const removeTaille = (taille) => {
-    const newTailles = customTailles.filter(t => t !== taille);
-    setCustomTailles(newTailles);
-    generateVariations(newTailles, customCouleurs);
-  };
-
-  const removeCouleur = (couleur) => {
-    const newCouleurs = customCouleurs.filter(c => c !== couleur);
-    setCustomCouleurs(newCouleurs);
-    generateVariations(customTailles, newCouleurs);
-  };
-
-  const generateVariations = (tailles, couleurs) => {
-    const newVariations = [];
-    tailles.forEach(taille => {
-      couleurs.forEach(couleur => {
-        const existing = variations.find(v => v.taille === taille && v.couleur === couleur);
-        newVariations.push({
-          taille,
-          couleur,
-          quantite: existing?.quantite || 0,
-          prix: existing?.prix || selectedModele?.prixBase || selectedModele?.prix_base || 0
-        });
-      });
-    });
-    setVariations(newVariations);
-  };
-
-  const updateVariation = (index, field, value) => {
-    setVariations(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  };
-
   const handleSubmitVariations = async () => {
     try {
-      if (customTailles.length === 0 || customCouleurs.length === 0) {
-        toast.error('Ajoutez au moins 1 taille et 1 couleur');
+      if (!selectedModele || !selectedTaille || !selectedCouleur || stockQuantity < 1) {
+        toast.error('Choisissez une taille, une couleur et une quantité');
         return;
       }
 
-      const validVariations = variations.filter(v => v.quantite > 0);
-      
-      if (validVariations.length === 0) {
-        toast.error('Ajoutez au moins une variation avec une quantité');
-        return;
-      }
+      await api.post('/stock', {
+        modele: selectedModele.nom,
+        taille: selectedTaille,
+        couleur: selectedCouleur,
+        quantite: stockQuantity,
+        prix: selectedModele?.prixBase || selectedModele?.prix_base || 0,
+        image: selectedModele.image
+      });
 
-      for (const variation of validVariations) {
-        await api.post('/stock', {
-          modele: selectedModele.nom,
-          taille: variation.taille,
-          couleur: variation.couleur,
-          quantite: variation.quantite,
-          prix: variation.prix,
-          image: selectedModele.image
-        });
-      }
-
-      toast.success(`${validVariations.length} variation(s) ajoutée(s) au stock !`);
+      toast.success(`${stockQuantity} article(s) ajouté(s) au stock !`);
       setShowModal(false);
       setSelectedModele(null);
-      setCustomTailles([]);
-      setCustomCouleurs([]);
-      setVariations([]);
+      setSelectedTaille('');
+      setSelectedCouleur('');
+      setStockQuantity(1);
       fetchStock();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
@@ -366,6 +319,40 @@ const Stock = () => {
       || String(variation.taille || '').toLocaleLowerCase('fr').includes(normalizedDetailSearch)
       || String(variation.couleur || '').toLocaleLowerCase('fr').includes(normalizedDetailSearch)
     ));
+  const normalizedHistorySearch = historySearch.trim().toLocaleLowerCase('fr');
+  const filteredHistory = history.filter((movement) => (
+    !normalizedHistorySearch
+    || [movement.modele, movement.taille, movement.couleur, movement.utilisateurNom, movement.commentaire]
+      .some((value) => String(value || '').toLocaleLowerCase('fr').includes(normalizedHistorySearch))
+  ));
+
+  const movementPresentation = (movement) => {
+    const labels = {
+      entree: 'Entrée',
+      sortie: 'Sortie',
+      ajustement: 'Ajustement',
+      retour: 'Retour',
+      transfert: 'Transfert',
+    };
+    const tones = {
+      entree: 'bg-emerald-100 text-emerald-800',
+      retour: 'bg-cyan-100 text-cyan-800',
+      sortie: 'bg-red-100 text-red-800',
+      ajustement: 'bg-amber-100 text-amber-800',
+      transfert: 'bg-violet-100 text-violet-800',
+    };
+    let quantity = `${Number(movement.quantite || 0)}`;
+    if (movement.type === 'entree' || movement.type === 'retour') quantity = `+${quantity}`;
+    if (movement.type === 'sortie') quantity = `-${quantity}`;
+    if (movement.type === 'ajustement' && movement.ancienneQuantite !== undefined) {
+      quantity = `${movement.ancienneQuantite} → ${movement.nouvelleQuantite ?? movement.quantite}`;
+    }
+    return {
+      label: labels[movement.type] || movement.type || 'Mouvement',
+      tone: tones[movement.type] || 'bg-gray-100 text-gray-700',
+      quantity,
+    };
+  };
 
   if (loading) {
     return (
@@ -396,14 +383,24 @@ const Stock = () => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800 shadow-lg transition hover:bg-emerald-50 active:scale-[0.98] sm:w-auto"
-          >
-            <Plus size={18} strokeWidth={3} />
-            Ajouter des pièces
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button
+              type="button"
+              onClick={openHistory}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-black text-white ring-1 ring-white/25 transition hover:bg-white/25 active:scale-[0.98] sm:w-auto"
+            >
+              <History size={18} strokeWidth={2.5} />
+              Historique
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800 shadow-lg transition hover:bg-emerald-50 active:scale-[0.98] sm:w-auto"
+            >
+              <Plus size={18} strokeWidth={3} />
+              Ajouter des pièces
+            </button>
+          </div>
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2 text-[10px] font-bold text-white/90 sm:text-xs">
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Physique = pièces présentes</span>
@@ -736,7 +733,7 @@ const Stock = () => {
                         <span className="text-xs font-black text-violet-700">{Number(variation.prix || 0).toLocaleString('fr-FR')} F</span>
                       </div>
                       {editMode ? (
-                        <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className={`mt-3 grid gap-2 ${canEditPrices ? 'grid-cols-2' : 'grid-cols-1'}`}>
                           <label className="text-[10px] font-black uppercase text-gray-500">
                             Quantité physique
                             <input
@@ -747,17 +744,19 @@ const Stock = () => {
                               className="input mt-1 !py-2 text-sm font-black"
                             />
                           </label>
-                          <label className="text-[10px] font-black uppercase text-gray-500">
-                            Prix unitaire
-                            <input
-                              type="number"
-                              value={variation.prix}
-                              onChange={(event) => handleEditVariation(index, 'prix', parseInt(event.target.value) || 0)}
-                              min="0"
-                              step="100"
-                              className="input mt-1 !py-2 text-sm font-black"
-                            />
-                          </label>
+                          {canEditPrices && (
+                            <label className="text-[10px] font-black uppercase text-gray-500">
+                              Prix unitaire
+                              <input
+                                type="number"
+                                value={variation.prix}
+                                onChange={(event) => handleEditVariation(index, 'prix', parseInt(event.target.value) || 0)}
+                                min="0"
+                                step="100"
+                                className="input mt-1 !py-2 text-sm font-black"
+                              />
+                            </label>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
@@ -835,7 +834,7 @@ const Stock = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {editMode ? (
+                            {editMode && canEditPrices ? (
                               <input
                                 type="number"
                                 value={variation.prix}
@@ -861,30 +860,108 @@ const Stock = () => {
         </div>
       )}
 
-      {/* Modal Ajouter au Stock (reste identique) */}
+      {/* Historique de tous les mouvements de stock */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-2 backdrop-blur-sm animate-fade-in sm:p-4">
+          <div className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-gray-50 shadow-2xl animate-scale-in sm:rounded-3xl">
+            <div className="flex items-center justify-between bg-gradient-to-r from-slate-800 to-emerald-800 p-4 text-white sm:p-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="rounded-xl bg-white/15 p-2.5 ring-1 ring-white/20">
+                  <History size={22} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-black sm:text-2xl">Historique du stock</h2>
+                  <p className="text-xs text-white/75">Chaque entrée, sortie et correction reste enregistrée</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                className="rounded-xl p-2 text-white transition hover:bg-white/20"
+                aria-label="Fermer"
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="border-b border-gray-200 bg-white p-3 sm:p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={17} />
+                <input
+                  type="text"
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  className="input !rounded-xl !py-2.5 pl-10 text-sm"
+                  placeholder="Rechercher un modèle, une couleur, une taille ou un utilisateur…"
+                />
+              </div>
+              <p className="mt-2 text-[11px] font-bold text-gray-500">{filteredHistory.length} mouvement(s)</p>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:p-4">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-700" />
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div className="rounded-2xl bg-white px-4 py-12 text-center shadow-sm ring-1 ring-gray-200">
+                  <History className="mx-auto text-gray-300" size={40} />
+                  <p className="mt-3 font-black text-gray-800">Aucun mouvement trouvé</p>
+                </div>
+              ) : filteredHistory.map((movement) => {
+                const presentation = movementPresentation(movement);
+                return (
+                  <article key={movement.id} className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200 sm:p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${presentation.tone}`}>
+                            {presentation.label}
+                          </span>
+                          <h3 className="truncate text-sm font-black text-gray-950 sm:text-base">{movement.modele}</h3>
+                        </div>
+                        <p className="mt-1 text-xs font-bold text-gray-600">{movement.couleur} · Taille {movement.taille}</p>
+                      </div>
+                      <span className="whitespace-nowrap text-base font-black text-gray-950 sm:text-lg">{presentation.quantity}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gray-100 pt-2 text-[11px] text-gray-500 sm:text-xs">
+                      <span>Par <b className="text-gray-700">{movement.utilisateurNom || 'Système'}</b></span>
+                      <time>{movement.date ? new Date(movement.date).toLocaleString('fr-FR') : 'Date non renseignée'}</time>
+                    </div>
+                    {movement.commentaire && <p className="mt-1.5 text-[11px] italic text-gray-500 sm:text-xs">{movement.commentaire}</p>}
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ajouter au Stock */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-2 backdrop-blur-sm animate-fade-in sm:p-4">
-          <div className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-gray-50 shadow-2xl animate-scale-in sm:rounded-3xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-emerald-700 to-teal-700 p-4 sm:p-5">
-              <h2 className="text-xl font-black text-white sm:text-2xl">
+          <div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-gray-50 shadow-2xl animate-scale-in">
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-emerald-700 to-teal-700 px-4 py-3 sm:px-5 sm:py-4">
+              <h2 className="text-lg font-black text-white sm:text-xl">
                 Ajouter au Stock
               </h2>
               <button
                 onClick={() => {
                   setShowModal(false);
                   setSelectedModele(null);
-                  setCustomTailles([]);
-                  setCustomCouleurs([]);
-                  setVariations([]);
+                  setSelectedTaille('');
+                  setSelectedCouleur('');
+                  setStockQuantity(1);
                   setModelSearchTerm('');
                 }}
-                className="p-2 text-white hover:bg-white/20 rounded-xl transition-all"
+                className="rounded-lg p-1.5 text-white transition hover:bg-white/20"
+                aria-label="Fermer"
               >
-                <X size={24} />
+                <X size={21} />
               </button>
             </div>
 
-            <div className="space-y-4 p-3 sm:space-y-6 sm:p-5">
+            <div className="space-y-3 p-3 sm:p-4">
               {!selectedModele ? (
                 <>
                   <div>
@@ -901,7 +978,7 @@ const Stock = () => {
                       placeholder="Rechercher dans le catalogue…"
                     />
                   </div>
-                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {modeles
                       .filter(m => m.actif !== false)
                       .filter(m => !modelSearchTerm.trim() || m.nom?.toLocaleLowerCase('fr').includes(modelSearchTerm.trim().toLocaleLowerCase('fr')))
@@ -910,9 +987,9 @@ const Stock = () => {
                         key={modele.id || modele._id}
                         type="button"
                         onClick={() => handleModeleSelect(modele)}
-                        className="group flex items-center gap-3 rounded-xl bg-white p-2.5 text-left shadow-sm ring-1 ring-gray-200 transition hover:ring-emerald-400 hover:shadow-md"
+                        className="group flex items-center gap-3 rounded-xl bg-white p-2 text-left shadow-sm ring-1 ring-gray-200 transition hover:ring-emerald-400 hover:shadow-md"
                       >
-                        <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-emerald-50">
+                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-emerald-50 sm:h-14 sm:w-14">
                           {modele.image ? (
                             <img src={modele.image} alt={modele.nom} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                           ) : (
@@ -922,9 +999,6 @@ const Stock = () => {
                         <div className="min-w-0 flex-1">
                           <h3 className="truncate text-sm font-black text-gray-900">{modele.nom}</h3>
                           <p className="truncate text-xs text-gray-500">{modele.categorie || 'Catalogue'}</p>
-                          <p className="mt-1 text-sm font-black text-emerald-700">
-                            {Number(modele.prixBase || modele.prix_base || 0).toLocaleString('fr-FR')} F
-                          </p>
                         </div>
                         <ChevronRight size={17} className="flex-shrink-0 text-gray-300 group-hover:text-emerald-600" />
                       </button>
@@ -934,304 +1008,117 @@ const Stock = () => {
               ) : (
                 <>
                   {/* Modèle sélectionné */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-gray-500 uppercase">Modèle sélectionné</p>
-                        <h3 className="text-2xl font-black text-gray-900">{selectedModele.nom}</h3>
-                        <p className="text-gray-600">Prix de base: {(selectedModele.prixBase || selectedModele.prix_base)?.toLocaleString('fr-FR')} FCFA</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedModele(null);
-                          setCustomTailles([]);
-                          setCustomCouleurs([]);
-                          setVariations([]);
-                        }}
-                        className="btn btn-secondary"
-                      >
-                        Changer
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Ajouter Tailles */}
-                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      ✂️ Tailles disponibles *
-                    </h3>
-                    
-                    {customTailles.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {customTailles.map(taille => (
-                          <span key={taille} className="badge badge-primary px-4 py-2 flex items-center space-x-2">
-                            <span className="font-bold">{taille}</span>
-                            <button onClick={() => removeTaille(taille)} className="hover:text-red-600">
-                              <X size={16} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <p className="text-sm text-gray-600 mb-2">Suggestions rapides:</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {taillesSuggestions.map(taille => (
-                        <button
-                          key={taille}
-                          type="button"
-                          onClick={() => addTaille(taille)}
-                          disabled={customTailles.includes(taille)}
-                          className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                            customTailles.includes(taille)
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'bg-gray-100 text-gray-700 hover:bg-blue-500 hover:text-white'
-                          }`}
-                        >
-                          {taille}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={newTaille}
-                        onChange={(e) => setNewTaille(e.target.value.toUpperCase())}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            addTaille(newTaille);
-                            setNewTaille('');
-                          }
-                        }}
-                        placeholder="Taille personnalisée..."
-                        className="input flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          addTaille(newTaille);
-                          setNewTaille('');
-                        }}
-                        className="btn btn-primary"
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Ajouter Couleurs */}
-                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-bold text-gray-900">
-                        🎨 Couleurs disponibles *
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setModeBicolore(!modeBicolore)}
-                        className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${
-                          modeBicolore
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        <span>🎨🎨</span>
-                        <span>Bicolore / 2 tons</span>
-                      </button>
-                    </div>
-                    
-                    {customCouleurs.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {customCouleurs.map(couleur => (
-                          <span key={couleur} className={`px-4 py-2 flex items-center space-x-2 rounded-full font-bold text-sm ${
-                            couleur.includes(' / ')
-                              ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 border-2 border-purple-300'
-                              : 'badge badge-info'
-                          }`}>
-                            <span className="font-bold">{couleur}</span>
-                            <button onClick={() => removeCouleur(couleur)} className="hover:text-red-600 ml-1">
-                              <X size={16} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Mode bicolore */}
-                    {modeBicolore && (
-                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-4 border-2 border-purple-200">
-                        <p className="text-sm font-bold text-purple-800 mb-3">
-                          Combiner 2 couleurs en une seule variation :
-                        </p>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                          <select
-                            value={bicolore1}
-                            onChange={(e) => setBicolore1(e.target.value)}
-                            className="input flex-1 font-semibold"
-                          >
-                            <option value="">Couleur 1...</option>
-                            {couleursSuggestions.map(c => (
-                              <option key={c} value={c} disabled={c === bicolore2}>{c}</option>
-                            ))}
-                          </select>
-                          <span className="text-center font-black text-purple-600 text-lg">/</span>
-                          <select
-                            value={bicolore2}
-                            onChange={(e) => setBicolore2(e.target.value)}
-                            className="input flex-1 font-semibold"
-                          >
-                            <option value="">Couleur 2...</option>
-                            {couleursSuggestions.map(c => (
-                              <option key={c} value={c} disabled={c === bicolore1}>{c}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={addBicolore}
-                            disabled={!bicolore1 || !bicolore2 || bicolore1 === bicolore2}
-                            className="btn btn-primary whitespace-nowrap disabled:opacity-50"
-                          >
-                            <Plus size={18} className="inline mr-1" />
-                            Ajouter
-                          </button>
-                        </div>
-                        {bicolore1 && bicolore2 && bicolore1 !== bicolore2 && (
-                          <p className="text-sm text-purple-700 mt-2 font-semibold">
-                            Sera enregistre comme : <span className="font-black">{bicolore1} / {bicolore2}</span>
-                          </p>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 p-2.5 sm:p-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-emerald-100">
+                        {selectedModele.image ? (
+                          <img src={selectedModele.image} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center"><Package size={19} className="text-emerald-600" /></div>
                         )}
                       </div>
-                    )}
-
-                    <p className="text-sm text-gray-600 mb-2">Suggestions rapides (couleur unie) :</p>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {couleursSuggestions.map(couleur => (
-                        <button
-                          key={couleur}
-                          type="button"
-                          onClick={() => addCouleur(couleur)}
-                          disabled={customCouleurs.includes(couleur)}
-                          className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                            customCouleurs.includes(couleur)
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'bg-gray-100 text-gray-700 hover:bg-purple-500 hover:text-white'
-                          }`}
-                        >
-                          {couleur}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={newCouleur}
-                        onChange={(e) => setNewCouleur(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            addCouleur(newCouleur);
-                            setNewCouleur('');
-                          }
-                        }}
-                        placeholder="Couleur personnalisee..."
-                        className="input flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          addCouleur(newCouleur);
-                          setNewCouleur('');
-                        }}
-                        className="btn btn-primary"
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Matrice des variations */}
-                  {customTailles.length > 0 && customCouleurs.length > 0 && (
-                    <div className="bg-white rounded-2xl border-2 border-emerald-200 p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-4">
-                        📦 Ajouter les quantités par taille et couleur
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr>
-                              <th className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-left font-bold text-gray-700 border-b-2 border-gray-200">
-                                Taille
-                              </th>
-                              <th className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-left font-bold text-gray-700 border-b-2 border-gray-200">
-                                Couleur
-                              </th>
-                              <th className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-left font-bold text-gray-700 border-b-2 border-gray-200">
-                                Quantité
-                              </th>
-                              <th className="bg-gradient-to-r from-slate-50 to-blue-50 px-4 py-3 text-left font-bold text-gray-700 border-b-2 border-gray-200">
-                                Prix (FCFA)
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {variations.map((variation, index) => (
-                              <tr key={index} className="border-b border-gray-100 hover:bg-blue-50/30">
-                                <td className="px-4 py-3">
-                                  <span className="badge badge-secondary">{variation.taille}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="badge badge-info">{variation.couleur}</span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    value={variation.quantite}
-                                    onChange={(e) => updateVariation(index, 'quantite', parseInt(e.target.value) || 0)}
-                                    min="0"
-                                    className="input w-24"
-                                    placeholder="0"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    value={variation.prix}
-                                    onChange={(e) => updateVariation(index, 'prix', parseInt(e.target.value) || 0)}
-                                    min="0"
-                                    step="100"
-                                    className="input w-32"
-                                    placeholder="0"
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black uppercase tracking-wide text-emerald-700">Modèle sélectionné</p>
+                        <h3 className="truncate text-base font-black text-gray-950 sm:text-lg">{selectedModele.nom}</h3>
                       </div>
                     </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-end space-x-4 pt-6 border-t">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedModele(null);
-                        setCustomTailles([]);
-                        setCustomCouleurs([]);
-                        setVariations([]);
+                        setSelectedTaille('');
+                        setSelectedCouleur('');
+                        setStockQuantity(1);
                       }}
-                      className="btn btn-secondary"
+                      className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-xs font-black text-gray-700 shadow-sm ring-1 ring-gray-200 transition hover:bg-gray-50"
+                    >
+                      Changer
+                    </button>
+                  </div>
+
+                  {/* Sélection compacte : taille, couleur, quantité */}
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+                    <p className="mb-3 text-xs font-bold text-gray-500">Choisissez les caractéristiques de l'article</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-black text-gray-700">Taille</span>
+                      <select
+                        value={selectedTaille}
+                        onChange={(event) => setSelectedTaille(event.target.value)}
+                          className="input w-full !rounded-xl !py-2.5 text-sm font-bold"
+                      >
+                          <option value="">Choisir…</option>
+                        {taillesSuggestions.map((taille) => <option key={taille} value={taille}>{taille}</option>)}
+                      </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-black text-gray-700">Couleur</span>
+                      <select
+                        value={selectedCouleur}
+                        onChange={(event) => setSelectedCouleur(event.target.value)}
+                          className="input w-full !rounded-xl !py-2.5 text-sm font-bold"
+                      >
+                          <option value="">Choisir…</option>
+                        {couleursSuggestions.map((couleur) => <option key={couleur} value={couleur}>{couleur}</option>)}
+                      </select>
+                      </label>
+
+                      <div>
+                        <span className="mb-1.5 block text-xs font-black text-gray-700">Quantité</span>
+                        <div className="grid h-[42px] grid-cols-[42px_1fr_42px] overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => setStockQuantity((value) => Math.max(1, value - 1))}
+                            disabled={stockQuantity <= 1}
+                            className="text-xl font-black text-gray-600 transition hover:bg-gray-100 disabled:opacity-30"
+                            aria-label="Diminuer la quantité"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            inputMode="numeric"
+                            value={stockQuantity}
+                            onChange={(event) => setStockQuantity(Math.max(1, parseInt(event.target.value, 10) || 1))}
+                            className="w-full border-x border-gray-200 bg-white text-center text-base font-black text-gray-950 outline-none"
+                            aria-label="Quantité à ajouter"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setStockQuantity((value) => value + 1)}
+                            className="text-xl font-black text-emerald-700 transition hover:bg-emerald-50"
+                            aria-label="Augmenter la quantité"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="grid grid-cols-[auto_1fr] gap-2 border-t pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedModele(null);
+                        setSelectedTaille('');
+                        setSelectedCouleur('');
+                        setStockQuantity(1);
+                      }}
+                      className="btn btn-secondary !px-3 !py-2.5 text-sm"
                     >
                       Retour
                     </button>
                     <button
                       onClick={handleSubmitVariations}
-                      disabled={customTailles.length === 0 || customCouleurs.length === 0 || variations.filter(v => v.quantite > 0).length === 0}
-                      className="btn btn-success flex items-center space-x-2"
+                      disabled={!selectedTaille || !selectedCouleur || stockQuantity < 1}
+                      className="btn btn-success flex items-center justify-center gap-2 !px-3 !py-2.5 text-sm"
                     >
-                      <Save size={20} />
-                      <span>Ajouter au Stock</span>
+                      <Save size={17} />
+                      <span>Ajouter {stockQuantity} au stock</span>
                     </button>
                   </div>
                 </>
@@ -1245,3 +1132,4 @@ const Stock = () => {
 };
 
 export default Stock;
+
