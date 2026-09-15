@@ -65,6 +65,40 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// PATCH /api/modeles/:id/epingle-stock - Épingler un modèle en haut du stock pour tous
+router.patch('/:id/epingle-stock', async (req, res) => {
+  try {
+    if (!['administrateur', 'gestionnaire', 'gestionnaire_stock'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+
+    const { epingle } = req.body;
+    if (typeof epingle !== 'boolean') {
+      return res.status(400).json({ message: "L'état de l'épingle est invalide" });
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('modeles')
+      .update({ epingle_stock: epingle })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ message: 'Modèle non trouvé', error: error?.message });
+    }
+
+    return res.json({
+      message: epingle ? 'Modèle épinglé pour tous' : 'Modèle désépinglé',
+      modele: data,
+    });
+  } catch (error) {
+    console.error("Erreur modification de l'épingle:", error);
+    return res.status(500).json({ message: 'Erreur serveur', error: error.message });
+  }
+});
+
 // POST /api/modeles - Créer un modèle (Admin/Gestionnaire)
 router.post('/', async (req, res) => {
   try {
@@ -203,3 +237,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 export default router;
+
