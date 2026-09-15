@@ -260,6 +260,9 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    if (['retournee', 'livree'].includes(livraison.statut)) {
+      return res.status(400).json({ message: 'Cette livraison a déjà été traitée' });
+    }
     const livraisonCountry = livraison.pays_code || 'CI';
 
     await supabase.from('livraisons').update({ statut: 'livree', date_livraison: new Date().toISOString() }).eq('id', req.params.id);
@@ -322,10 +325,13 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    if (['retournee', 'livree'].includes(livraison.statut)) {
+      return res.status(400).json({ message: 'Cette livraison a déjà été traitée' });
+    }
     const livraisonCountry = livraison.pays_code || 'CI';
 
     // Marquer la livraison comme retournée directement (retour stock automatique)
-    await supabase
+    const { data: updatedLivraison, error: updateLivraisonError } = await supabase
       .from('livraisons')
       .update({
         statut: 'retournee',
@@ -336,7 +342,12 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         gestionnaire_id: req.userId,
         commentaire_gestionnaire: 'Retour automatique au stock après refus',
       })
-      .eq('id', req.params.id);
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (updateLivraisonError) {
+      return res.status(500).json({ message: 'Impossible d’enregistrer le refus', error: updateLivraisonError.message });
+    }
 
     const { data: commande } = await supabase.from('commandes').select('*').eq('id', livraison.commande_id).single();
     if (commande) {
@@ -364,18 +375,21 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         .eq('couleur', commande.couleur)
         .maybeSingle();
 
+      const nowIso = new Date().toISOString();
+      const mouvement = {
+        type: 'retour',
+        quantite: 1,
+        source: 'Stock en livraison',
+        destination: 'Stock principal',
+        commande: commande.id,
+        utilisateur: req.userId,
+        date: nowIso,
+        commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
+      };
+
       if (stockItem) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
-        mouvements.push({
-          type: 'retour',
-          quantite: 1,
-          source: 'Stock en livraison',
-          destination: 'Stock principal',
-          commande: commande.id,
-          utilisateur: req.userId,
-          date: new Date().toISOString(),
-          commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
-        });
+        mouvements.push(mouvement);
 
         await supabase
           .from('stock')
@@ -385,10 +399,46 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
             mouvements,
           })
           .eq('id', stockItem.id);
+      } else {
+        // Un envoi direct peut partir sans aucune ligne de stock. Le refus
+        // doit tout de même créer la variation pour conserver la tenue reçue.
+        const { error: insertStockError } = await supabase.from('stock').insert({
+          pays_code: livraisonCountry,
+          modele: commande.modele?.nom || commande.modele || 'Modèle inconnu',
+          taille: commande.taille,
+          couleur: commande.couleur,
+          quantite_principale: 1,
+          quantite_en_livraison: 0,
+          prix: Number(commande.prix_base ?? commande.prix ?? 0),
+          image: commande.modele?.image || null,
+          mouvements: [mouvement],
+        });
+
+        // Une ligne a pu être créée entre la lecture et l'insertion : dans ce
+        // cas on la recharge et on applique le retour sur la ligne existante.
+        if (insertStockError?.code === '23505') {
+          const { data: concurrentStock } = await supabase
+            .from('stock')
+            .select('*')
+            .eq('pays_code', livraisonCountry)
+            .eq('modele', commande.modele?.nom || commande.modele || 'Modèle inconnu')
+            .eq('taille', commande.taille)
+            .eq('couleur', commande.couleur)
+            .maybeSingle();
+          if (concurrentStock) {
+            const mouvements = Array.isArray(concurrentStock.mouvements) ? concurrentStock.mouvements : [];
+            mouvements.push(mouvement);
+            await supabase.from('stock').update({
+              quantite_en_livraison: Math.max((concurrentStock.quantite_en_livraison || 0) - 1, 0),
+              quantite_principale: (concurrentStock.quantite_principale || 0) + 1,
+              mouvements,
+            }).eq('id', concurrentStock.id);
+          }
+        }
       }
     }
 
-    return res.json({ message: 'Refus enregistré et stock mis à jour', livraison: mapLivraison(livraison) });
+    return res.json({ message: 'Refus enregistré et stock mis à jour', livraison: mapLivraison(updatedLivraison || livraison) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
   }
@@ -806,6 +856,7 @@ router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, resolveCo
 });
 
 export default router;
+
 
 
 
