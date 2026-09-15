@@ -5,6 +5,7 @@ export function normalizeOrderSupplements(value) {
       id: String(item?.id || `supplement-${index + 1}`),
       libelle: String(item?.libelle ?? item?.label ?? '').trim(),
       taille: String(item?.taille ?? '').trim(),
+      couleur: String(item?.couleur ?? '').trim(),
       montant: Math.max(0, Math.round(Number(item?.montant ?? item?.prix) || 0)),
     }))
     .filter((item) => item.libelle && item.montant > 0);
@@ -27,3 +28,4 @@ export function getOrderTotal(prixBase, supplements = []) {
     normalizeOrderSupplements(supplements).reduce((sum, item) => sum + item.montant, 0)
   );
 }
+
