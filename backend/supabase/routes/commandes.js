@@ -259,7 +259,7 @@ router.get(
           .from('commandes')
           .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at, updated_at, historique')
           .eq('pays_code', req.country)
-          .in('statut', ['validee', 'en_stock'])
+          .eq('statut', 'validee')
           .order('created_at', { ascending: false }),
         supabase
           .from('stock')
@@ -580,7 +580,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
           .from('commandes')
           .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
           .eq('pays_code', req.country)
-          .in('statut', ['validee', 'en_stock']),
+          .eq('statut', 'validee'),
       ]);
       if (stockResult.error || ordersResult.error) {
         return res.status(500).json({ message: 'Impossible de vérifier la réservation du stock' });
@@ -1141,5 +1141,6 @@ router.get('/statistiques/analyse', authenticate, resolveCountry, authorize('ges
 });
 
 export default router;
+
 
 
