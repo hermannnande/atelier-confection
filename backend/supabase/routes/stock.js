@@ -86,7 +86,58 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
   }
 });
 
-router.get('/stats/resume', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.get('/historique', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data: rows, error } = await supabase
+      .from('stock')
+      .select('id, modele, taille, couleur, mouvements')
+      .eq('pays_code', req.country);
+
+    if (error) return res.status(500).json({ message: "Erreur lors du chargement de l'historique", error: error.message });
+
+    const rawMovements = (rows || []).flatMap((item) => (
+      (Array.isArray(item.mouvements) ? item.mouvements : []).map((movement, index) => ({
+        ...movement,
+        id: `${item.id}-${index}`,
+        stockId: item.id,
+        modele: item.modele,
+        taille: item.taille,
+        couleur: item.couleur,
+      }))
+    ));
+    const userIds = [...new Set(rawMovements
+      .map((movement) => (typeof movement.utilisateur === 'object' ? movement.utilisateur?.id : movement.utilisateur))
+      .filter(Boolean))];
+    let usersById = new Map();
+
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, nom, role')
+        .in('id', userIds);
+      if (usersError) return res.status(500).json({ message: "Erreur lors du chargement des utilisateurs", error: usersError.message });
+      usersById = new Map((users || []).map((user) => [user.id, user]));
+    }
+
+    const mouvements = rawMovements
+      .map((movement) => {
+        const userId = typeof movement.utilisateur === 'object' ? movement.utilisateur?.id : movement.utilisateur;
+        return {
+          ...movement,
+          utilisateur: usersById.get(userId) || movement.utilisateur || null,
+          utilisateurNom: usersById.get(userId)?.nom || 'Système',
+        };
+      })
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    return res.json({ mouvements });
+  } catch (error) {
+    return res.status(500).json({ message: "Erreur lors du chargement de l'historique", error: error.message });
+  }
+});
+
+router.get('/stats/resume', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.from('stock').select('*').eq('pays_code', req.country);
@@ -121,10 +172,19 @@ router.get('/:id', authenticate, resolveCountry, async (req, res) => {
   }
 });
 
-router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { modele, taille, couleur, quantite, prix, image } = req.body;
     const supabase = getSupabaseAdmin();
+    const quantity = Number(quantite);
+    const unitPrice = Number(prix);
+
+    if (!modele || !taille || !couleur || !Number.isFinite(quantity) || quantity <= 0) {
+      return res.status(400).json({ message: 'Modèle, taille, couleur et quantité positive sont requis' });
+    }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      return res.status(400).json({ message: 'Le prix du catalogue est invalide' });
+    }
 
     const { data: existing } = await supabase
       .from('stock')
@@ -139,7 +199,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'admini
       const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];
       mouvements.push({
         type: 'entree',
-        quantite: Number(quantite),
+        quantite: quantity,
         source: 'Ajout manuel',
         destination: 'Stock principal',
         utilisateur: req.userId,
@@ -150,8 +210,8 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'admini
       const { data, error } = await supabase
         .from('stock')
         .update({
-          quantite_principale: (existing.quantite_principale || 0) + Number(quantite),
-          prix: Number(prix),
+          quantite_principale: (existing.quantite_principale || 0) + quantity,
+          prix: req.user.role === 'gestionnaire_stock' ? existing.prix : unitPrice,
           image: image ?? existing.image,
           mouvements,
         })
@@ -166,7 +226,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'admini
     const mouvements = [
       {
         type: 'entree',
-        quantite: Number(quantite),
+        quantite: quantity,
         source: 'Création',
         destination: 'Stock principal',
         utilisateur: req.userId,
@@ -182,9 +242,9 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'admini
         modele,
         taille,
         couleur,
-        quantite_principale: Number(quantite),
+        quantite_principale: quantity,
         quantite_en_livraison: 0,
-        prix: Number(prix),
+        prix: unitPrice,
         image,
         mouvements,
       })
@@ -199,10 +259,14 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire', 'admini
 });
 
 // PUT /api/stock/:id - Modifier quantité et prix directement (Admin/Gestionnaire)
-router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { quantite, prix } = req.body;
     const supabase = getSupabaseAdmin();
+
+    if (req.user.role === 'gestionnaire_stock' && prix !== undefined) {
+      return res.status(403).json({ message: 'Ce rôle peut modifier les quantités, mais pas les prix' });
+    }
 
     const { data: existing, error: e1 } = await supabase.from('stock').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Article non trouvé' });
@@ -210,23 +274,38 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'admi
 
     const updates = {};
     if (quantite !== undefined) {
-      updates.quantite_principale = Number(quantite);
+      const newQuantity = Number(quantite);
+      if (!Number.isFinite(newQuantity) || newQuantity < 0) {
+        return res.status(400).json({ message: 'La quantité doit être un nombre positif ou nul' });
+      }
+      updates.quantite_principale = newQuantity;
       
       // Ajouter mouvement
       const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];
-      mouvements.push({
-        type: 'ajustement',
-        quantite: Number(quantite),
-        ancienneQuantite: existing.quantite_principale || 0,
-        source: 'Modification manuelle',
-        destination: 'Stock principal',
-        utilisateur: req.userId,
-        date: new Date().toISOString(),
-        commentaire: 'Modification directe du stock'
-      });
+      const oldQuantity = existing.quantite_principale || 0;
+      if (newQuantity !== oldQuantity) {
+        mouvements.push({
+          type: 'ajustement',
+          quantite: Math.abs(newQuantity - oldQuantity),
+          ancienneQuantite: oldQuantity,
+          nouvelleQuantite: newQuantity,
+          variation: newQuantity - oldQuantity,
+          source: 'Modification manuelle',
+          destination: 'Stock principal',
+          utilisateur: req.userId,
+          date: new Date().toISOString(),
+          commentaire: 'Modification directe du stock'
+        });
+      }
       updates.mouvements = mouvements;
     }
-    if (prix !== undefined) updates.prix = Number(prix);
+    if (prix !== undefined) {
+      const unitPrice = Number(prix);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        return res.status(400).json({ message: 'Le prix doit être un nombre positif ou nul' });
+      }
+      updates.prix = unitPrice;
+    }
 
     const { data, error } = await supabase
       .from('stock')
@@ -242,7 +321,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'admi
   }
 });
 
-router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const { quantite, type, commentaire } = req.body;
     const supabase = getSupabaseAdmin();
@@ -252,6 +331,9 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
     if (!ensureCountryAccess(existing, req, res)) return;
 
     const q = Number(quantite);
+    if (!['entree', 'sortie'].includes(type) || !Number.isFinite(q) || q <= 0) {
+      return res.status(400).json({ message: "Choisissez une entrée ou une sortie avec une quantité positive" });
+    }
     let quantitePrincipale = existing.quantite_principale || 0;
     if (type === 'entree') quantitePrincipale += q;
     if (type === 'sortie') {
