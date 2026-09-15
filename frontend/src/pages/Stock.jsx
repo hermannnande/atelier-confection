@@ -170,6 +170,7 @@ const Stock = () => {
     low: allStockGroups.filter(item => item.quantiteTotal > 0 && item.quantiteDisponible <= 2).length,
     empty: allStockGroups.filter(item => item.quantiteTotal === 0).length,
   };
+  const modelesEnStock = allStockGroups.filter(item => item.quantiteTotal > 0).length;
 
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('fr');
   const stockGroupe = allStockGroups.filter((item) => {
@@ -417,7 +418,7 @@ const Stock = () => {
           { name: 'Réservé', value: stockTotals.quantiteReservee || 0, icon: LockKeyhole, tone: 'bg-indigo-50 text-indigo-700 ring-indigo-100' },
           { name: 'Disponible', value: stockTotals.quantiteDisponible || 0, icon: CheckCircle2, tone: 'bg-cyan-50 text-cyan-700 ring-cyan-100' },
           { name: 'En livraison', value: stockTotals.enLivraison || 0, icon: Truck, tone: 'bg-amber-50 text-amber-700 ring-amber-100' },
-          { name: 'Valeur physique', value: `${Number(stockTotals.valeurTotale || 0).toLocaleString('fr-FR')} F`, icon: Boxes, tone: 'bg-violet-50 text-violet-700 ring-violet-100', wide: true },
+          { name: 'Modèles en stock', value: modelesEnStock, icon: Boxes, tone: 'bg-violet-50 text-violet-700 ring-violet-100', wide: true },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -589,7 +590,9 @@ const Stock = () => {
                 </div>
 
                 <div className="flex items-center justify-between border-t border-gray-100 px-3.5 py-2.5">
-                  <span className="text-[11px] font-bold text-gray-500">Valeur : {item.valeurTotal.toLocaleString('fr-FR')} F</span>
+                  <span className="text-[11px] font-bold text-gray-500">
+                    Nombre en stock : <b className="text-emerald-700">{item.quantiteTotal}</b>
+                  </span>
                   <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700"><Eye size={14} /> Détails</span>
                 </div>
               </button>
@@ -657,10 +660,10 @@ const Stock = () => {
 
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2.5 text-xs font-bold text-gray-600 ring-1 ring-gray-200">
                 <span className="inline-flex items-center gap-1.5"><Truck size={14} className="text-amber-600" /> En livraison : <b className="text-gray-950">{selectedModeleDetails.quantiteLivraison}</b></span>
-                <span>Valeur : <b className="text-violet-700">{(editMode
-                  ? editedVariations.reduce((sum, v) => sum + (v.quantitePrincipale * v.prix), 0)
-                  : selectedModeleDetails.valeurTotal
-                ).toLocaleString('fr-FR')} F</b></span>
+                <span>Nombre en stock : <b className="text-emerald-700">{editMode
+                  ? editedVariations.reduce((sum, v) => sum + v.quantitePrincipale, 0)
+                  : selectedModeleDetails.quantiteTotal
+                }</b></span>
               </div>
 
               {/* Boutons action */}
@@ -783,12 +786,11 @@ const Stock = () => {
                     <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b-2 border-gray-200">
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Taille</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Couleur</th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700">Stock Principal</th>
+                      <th className="px-4 py-3 text-left font-bold text-gray-700">Nombre en stock</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Réservé</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Disponible</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">En Livraison</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Prix Unitaire</th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-700">Valeur</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -796,7 +798,6 @@ const Stock = () => {
                       const qty = variation.quantitePrincipale || variation.quantite || 0;
                       const reserved = variation.quantiteReservee || 0;
                       const available = Math.max(qty - reserved, 0);
-                      const valeur = qty * variation.prix;
                       return (
                         <tr key={variation._id || variation.id || index} className="border-b border-gray-100 hover:bg-emerald-50/40 transition-colors">
                           <td className="px-4 py-3">
@@ -848,9 +849,6 @@ const Stock = () => {
                                 {variation.prix?.toLocaleString('fr-FR')} F
                               </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 font-black text-purple-600">
-                            {valeur.toLocaleString('fr-FR')} F
                           </td>
                         </tr>
                       );
