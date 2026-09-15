@@ -14,7 +14,7 @@ const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
 const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', 'Taille Standard'];
 const COULEURS_COMMANDES = [
   'Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Rouge Sang', 'Bleu', 'Bleu ciel',
-  'Bleu bic', 'Bleu marine', 'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde',
+  'Bleu bic', 'Bleu marine', 'Bleu Turquoise', 'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde',
   'Rose', 'Saumon', 'Violet', 'Violet clair', 'Orange', 'Grise', 'Beige', 'Marron',
   'Terracotta', 'Kaki', 'Multicolore',
 ];
