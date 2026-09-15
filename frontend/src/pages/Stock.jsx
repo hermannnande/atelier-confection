@@ -59,6 +59,7 @@ const Stock = () => {
     'Bleu',
     'Bleu ciel',
     'Bleu bic',
+    'Bleu marine',
     'Vert',
     'Vert Treillis',
     'Jaune',
