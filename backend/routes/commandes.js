@@ -111,12 +111,12 @@ router.post('/', authenticate, authorize('appelant', 'gestionnaire', 'administra
 router.get(
   '/modeles-en-attente/suivi',
   authenticate,
-  authorize('styliste', 'gestionnaire', 'administrateur'),
+  authorize('styliste', 'gestionnaire', 'gestionnaire_stock', 'administrateur'),
   async (req, res) => {
     try {
       const now = new Date();
       const [orders, stock] = await Promise.all([
-        Commande.find({ statut: { $in: ['validee', 'en_stock'] } }).lean(),
+        Commande.find({ statut: 'validee' }).lean(),
         Stock.find().lean(),
       ]);
       const synchronization = buildStockSynchronization({ orders, stock });
@@ -142,7 +142,7 @@ router.get(
 router.post(
   '/modeles-en-attente/voir',
   authenticate,
-  authorize('styliste', 'gestionnaire', 'administrateur'),
+  authorize('styliste', 'gestionnaire', 'gestionnaire_stock', 'administrateur'),
   (req, res) => {
     return res.json({ updated: false, recentWindowMinutes: 60 });
   },
@@ -177,10 +177,14 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
       return res.status(404).json({ message: 'Commande non trouvée' });
     }
 
-    if (commande.statut === 'validee' && req.body.statut === 'en_stock') {
+    // L'envoi direct vers la préparation peut être forcé par le gestionnaire
+    // même si la variation n'est pas encore disponible physiquement.
+    const directPreparation = req.body.directPreparation === true
+      && ['gestionnaire', 'administrateur'].includes(req.user.role);
+    if (commande.statut === 'validee' && req.body.statut === 'en_stock' && !directPreparation) {
       const [stock, orders] = await Promise.all([
         Stock.find().lean(),
-        Commande.find({ statut: { $in: ['validee', 'en_stock'] } }).lean(),
+        Commande.find({ statut: 'validee' }).lean(),
       ]);
       const synchronization = buildStockSynchronization({ orders, stock });
       if (!synchronization.couvertureCommandes[String(commande._id)]?.couvertParStock) {
@@ -231,7 +235,9 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
       statut: commande.statut,
       utilisateur: req.userId,
       date: new Date(),
-      commentaire: 'Modification des détails de la commande'
+      commentaire: directPreparation
+        ? 'Envoi direct en Préparation Colis (stock disponible ou non)'
+        : 'Modification des détails de la commande'
     });
 
     await commande.save();
@@ -568,6 +574,7 @@ router.get('/statistiques/analyse', authenticate, authorize('gestionnaire', 'adm
 });
 
 export default router;
+
 
 
 
