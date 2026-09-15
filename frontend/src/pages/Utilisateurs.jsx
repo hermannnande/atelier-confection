@@ -165,6 +165,7 @@ const Utilisateurs = () => {
     const colors = {
       administrateur: 'badge-primary',
       gestionnaire: 'badge-info',
+      gestionnaire_stock: 'badge-success',
       appelant: 'badge-success',
       styliste: 'badge-warning',
       couturier: 'badge-secondary',
@@ -177,6 +178,7 @@ const Utilisateurs = () => {
     const labels = {
       administrateur: 'Administrateur',
       gestionnaire: 'Gestionnaire',
+      gestionnaire_stock: 'Gestionnaire de stock',
       appelant: 'Appelant',
       styliste: 'Styliste',
       couturier: 'Couturier',
@@ -211,8 +213,8 @@ const Utilisateurs = () => {
       </div>
 
       {/* Statistiques */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 max-w-full">
-        {['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur'].map((role) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 sm:gap-3 lg:gap-4 max-w-full">
+        {['administrateur', 'gestionnaire', 'gestionnaire_stock', 'appelant', 'styliste', 'couturier', 'livreur'].map((role) => (
           <div key={role} className="card text-center max-w-full overflow-hidden">
             <p className="text-gray-600 text-[10px] sm:text-xs lg:text-sm mb-0.5 sm:mb-1 truncate">{getRoleLabel(role)}</p>
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-primary-600">
@@ -396,6 +398,7 @@ const Utilisateurs = () => {
                     <>
                       <option value="administrateur">Administrateur</option>
                       <option value="gestionnaire">Gestionnaire</option>
+                      <option value="gestionnaire_stock">Gestionnaire de stock</option>
                       <option value="appelant">Appelant</option>
                       <option value="styliste">Styliste</option>
                       <option value="couturier">Couturier</option>
