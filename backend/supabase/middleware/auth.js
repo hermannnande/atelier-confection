@@ -2,6 +2,17 @@ import jwt from 'jsonwebtoken';
 import { getSupabaseAdmin } from '../client.js';
 import { mapUser } from '../map.js';
 
+const STOCK_MANAGER_ROLE = 'gestionnaire_stock';
+
+const isStockManagerRouteAllowed = (originalUrl = '') => {
+  const path = String(originalUrl).split('?')[0];
+  return path === '/api/auth/me'
+    || path.startsWith('/api/pays')
+    || path.startsWith('/api/stock')
+    || path.startsWith('/api/modeles')
+    || path.startsWith('/api/commandes/modeles-en-attente');
+};
+
 export const authenticate = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -25,6 +36,13 @@ export const authenticate = async (req, res, next) => {
 
     req.user = mapUser(data);
     req.userId = data.id;
+
+    // Le gestionnaire de stock est volontairement limité à son espace métier,
+    // même s'il tente d'appeler directement une autre route de l'API.
+    if (req.user.role === STOCK_MANAGER_ROLE && !isStockManagerRouteAllowed(req.originalUrl)) {
+      return res.status(403).json({ message: 'Ce compte a accès uniquement au stock et aux modèles en attente' });
+    }
+
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Token invalide' });
