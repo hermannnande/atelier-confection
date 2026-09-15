@@ -100,8 +100,8 @@ const Layout = () => {
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
     { name: 'Historique Présences', href: '/historique-presences', icon: Calendar, roles: ['administrateur', 'gestionnaire'], gradient: 'from-lime-500 to-green-500' },
     { name: 'Bibliothèque Modèles', href: '/modeles', icon: Palette, roles: ['administrateur'], gradient: 'from-fuchsia-500 to-pink-500' },
-    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
-    { name: 'Modèles en attente', href: '/modeles-en-attente', icon: Package, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-purple-500 to-pink-500' },
+    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur', 'gestionnaire', 'gestionnaire_stock'], gradient: 'from-emerald-500 to-teal-500' },
+    { name: 'Modèles en attente', href: '/modeles-en-attente', icon: Package, roles: ['administrateur', 'gestionnaire', 'gestionnaire_stock', 'styliste'], gradient: 'from-purple-500 to-pink-500' },
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier', 'styliste'], gradient: 'from-rose-500 to-red-500' },
     { name: 'Mes gains', href: '/mes-gains', icon: Coins, roles: ['couturier'], countries: ['CI'], gradient: 'from-orange-500 to-amber-500' },
@@ -124,6 +124,7 @@ const Layout = () => {
     const gradients = {
       administrateur: 'from-purple-500 to-pink-600',
       gestionnaire: 'from-blue-500 to-indigo-600',
+      gestionnaire_stock: 'from-emerald-500 to-teal-600',
       appelant: 'from-green-500 to-emerald-600',
       styliste: 'from-amber-500 to-orange-600',
       couturier: 'from-orange-500 to-red-600',
@@ -131,6 +132,16 @@ const Layout = () => {
     };
     return gradients[role] || 'from-gray-500 to-gray-600';
   };
+
+  const getRoleLabel = (role) => ({
+    administrateur: 'Administrateur',
+    gestionnaire: 'Gestionnaire',
+    gestionnaire_stock: 'Gestionnaire de stock',
+    appelant: 'Appelant',
+    styliste: 'Styliste',
+    couturier: 'Couturier',
+    livreur: 'Livreur',
+  }[role] || role);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30">
@@ -196,7 +207,7 @@ const Layout = () => {
                   {user?.nom}
                 </p>
                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r ${getRoleGradient(user?.role)} text-white shadow-sm`}>
-                  {user?.role}
+                  {getRoleLabel(user?.role)}
                 </span>
               </div>
             </div>
@@ -336,3 +347,4 @@ const Layout = () => {
 };
 
 export default Layout;
+
