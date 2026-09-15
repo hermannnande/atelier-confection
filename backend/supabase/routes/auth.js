@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import { mapUser } from '../map.js';
 
 const router = express.Router();
+const VALID_USER_ROLES = ['administrateur', 'gestionnaire', 'gestionnaire_stock', 'appelant', 'styliste', 'couturier', 'livreur'];
 
 router.post('/register', authenticate, async (req, res) => {
   try {
@@ -15,6 +16,13 @@ router.post('/register', authenticate, async (req, res) => {
 
     const { nom, email, password, role, telephone, pays_code, pays_autorises } = req.body;
     const supabase = getSupabaseAdmin();
+
+    if (!VALID_USER_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Rôle utilisateur invalide' });
+    }
+    if (role === 'gestionnaire_stock' && req.user.role !== 'administrateur') {
+      return res.status(403).json({ message: 'Seul un administrateur peut créer ce rôle' });
+    }
 
     const { data: existing } = await supabase
       .from('users')
@@ -112,6 +120,5 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 export default router;
-
 
 
