@@ -151,14 +151,15 @@ const Commandes = () => {
   };
 
   const envoyerEnPreparationColis = async (commandeId) => {
-    if (!window.confirm('Envoyer cette commande directement en Préparation Colis (sans passer par l\'atelier) ?')) {
+    if (!window.confirm('Envoyer cette commande directement en Préparation Colis ?\n\nMême sans stock disponible, elle sera envoyée. Si le client refuse le colis, la tenue sera automatiquement ajoutée au stock.')) {
       return;
     }
 
     setSendingToPreparation(commandeId);
     try {
       await api.put(`/commandes/${commandeId}`, {
-        statut: 'en_stock'
+        statut: 'en_stock',
+        directPreparation: true,
       });
       
       toast.success('Commande envoyée en Préparation Colis ! 📦');
@@ -657,11 +658,9 @@ const Commandes = () => {
                       
                       <button
                         onClick={() => envoyerEnPreparationColis(commande._id)}
-                        disabled={!stockReservation || sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
+                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-success btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
-                        title={stockReservation
-                          ? "Envoyer l'article réservé directement en Préparation Colis"
-                          : "Indisponible : cette variation doit être confectionnée"}
+                        title="Envoyer directement en Préparation Colis, même sans stock disponible"
                       >
                         <Package size={14} className="flex-shrink-0" />
                         <span className="truncate">{sendingToPreparation === commande._id ? 'Envoi...' : 'Direct'}</span>
