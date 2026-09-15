@@ -6,6 +6,7 @@ import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapUser } from '../map.js';
 
 const router = express.Router();
+const VALID_USER_ROLES = ['administrateur', 'gestionnaire', 'gestionnaire_stock', 'appelant', 'styliste', 'couturier', 'livreur'];
 
 router.get('/', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
@@ -54,6 +55,13 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire', 'admi
   try {
     const { nom, email, role, telephone, actif, pays_code, pays_autorises, password } = req.body;
     const supabase = getSupabaseAdmin();
+
+    if (role && !VALID_USER_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Rôle utilisateur invalide' });
+    }
+    if (role === 'gestionnaire_stock' && req.user.role !== 'administrateur') {
+      return res.status(403).json({ message: 'Seul un administrateur peut attribuer ce rôle' });
+    }
 
     // Verifier acces au user cible
     const { data: existing, error: e1 } = await supabase
@@ -124,6 +132,5 @@ router.delete('/:id', authenticate, resolveCountry, authorize('administrateur'),
 });
 
 export default router;
-
 
 
