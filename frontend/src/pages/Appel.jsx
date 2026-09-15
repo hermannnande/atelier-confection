@@ -11,7 +11,13 @@ import {
 } from '../utils/orderSupplements';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
-const TAILLES_SUPPLEMENTAIRES = ['Standard', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', 'Taille Standard'];
+const COULEURS_COMMANDES = [
+  'Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Rouge Sang', 'Bleu', 'Bleu ciel',
+  'Bleu bic', 'Bleu Marine', 'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde',
+  'Rose', 'Saumon', 'Violet', 'Violet clair', 'Orange', 'Grise', 'Beige', 'Marron',
+  'Terracotta', 'Kaki', 'Multicolore',
+];
 
 function buildOrderDraft(commande) {
   const client = commande?.client && typeof commande.client === 'object' ? commande.client : {};
@@ -80,6 +86,7 @@ const Appel = () => {
   const [isEditingCommande, setIsEditingCommande] = useState(false);
   const [supplementModeleId, setSupplementModeleId] = useState('');
   const [supplementTaille, setSupplementTaille] = useState('');
+  const [supplementCouleur, setSupplementCouleur] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
@@ -124,6 +131,7 @@ const Appel = () => {
       setIsEditingCommande(false);
       setSupplementModeleId('');
       setSupplementTaille('');
+      setSupplementCouleur('');
     }
   }, [selectedCommande]);
 
@@ -270,6 +278,7 @@ const Appel = () => {
     setIsEditingCommande(false);
     setSupplementModeleId('');
     setSupplementTaille('');
+    setSupplementCouleur('');
   };
 
   const closeCommandeModal = () => {
@@ -279,6 +288,7 @@ const Appel = () => {
     setIsEditingCommande(false);
     setSupplementModeleId('');
     setSupplementTaille('');
+    setSupplementCouleur('');
   };
 
   const buildDraftPayload = (extra = {}) => {
@@ -337,6 +347,29 @@ const Appel = () => {
     }
   };
 
+  const handleMainModelChange = (modeleId) => {
+    const modele = catalogueModeles.find(
+      (item) => String(item.id || item._id) === String(modeleId),
+    );
+    if (!modele) return;
+
+    const prixCatalogue = Math.round(Number(modele.prixBase ?? modele.prix_base));
+    setOrderDraft((prev) => ({
+      ...prev,
+      modele: {
+        ...prev.modele,
+        nom: modele.nom,
+        image: modele.image || '',
+        description: modele.description || '',
+      },
+      taille: '',
+      couleur: '',
+      prixBase: Number.isFinite(prixCatalogue) && prixCatalogue >= 0
+        ? prixCatalogue
+        : prev.prixBase,
+    }));
+  };
+
   const handleAddSupplement = () => {
     const modele = catalogueModeles.find(
       (item) => String(item.id || item._id) === String(supplementModeleId),
@@ -347,6 +380,10 @@ const Appel = () => {
     }
     if (!supplementTaille) {
       toast.error('Choisis la taille de l’article supplémentaire');
+      return;
+    }
+    if (!supplementCouleur) {
+      toast.error('Choisis la couleur de l’article supplémentaire');
       return;
     }
 
@@ -364,12 +401,14 @@ const Appel = () => {
           id: `modele-${modele.id || modele._id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           libelle: modele.nom,
           taille: supplementTaille,
+          couleur: supplementCouleur,
           montant,
         },
       ],
     }));
     setSupplementModeleId('');
     setSupplementTaille('');
+    setSupplementCouleur('');
   };
 
   const handleRemoveSupplement = (supplementId) => {
@@ -514,6 +553,15 @@ const Appel = () => {
       return bEff - aEff;
     });
   }, [commandesAppel, searchTerm, epingles]);
+
+  const selectedMainModeleId = (() => {
+    const currentName = String(orderDraft?.modele?.nom || '').trim().toLocaleLowerCase('fr');
+    if (!currentName) return '';
+    const currentModele = catalogueModeles.find(
+      (modele) => String(modele.nom || '').trim().toLocaleLowerCase('fr') === currentName,
+    );
+    return currentModele ? String(currentModele.id || currentModele._id) : '';
+  })();
 
   if (loading) {
     return (
@@ -803,7 +851,7 @@ const Appel = () => {
                       className="inline-flex items-center gap-1 rounded-full bg-violet-100 text-violet-800 px-2 py-1 text-[10px] font-bold"
                     >
                       <Tag size={10} />
-                      {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''} +{item.montant.toLocaleString('fr-FR')} F
+                      {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''}{item.couleur ? ` · ${item.couleur}` : ''} +{item.montant.toLocaleString('fr-FR')} F
                     </span>
                   ))}
                 </div>
@@ -937,34 +985,62 @@ const Appel = () => {
                   </div>
 
                   <p className="text-xs font-black uppercase text-blue-800">Tenue principale</p>
-                  <input
-                    type="text"
-                    value={orderDraft.modele.nom}
-                    onChange={(e) => setOrderDraft((prev) => ({
-                      ...prev,
-                      modele: { ...prev.modele, nom: e.target.value },
-                    }))}
+                  <select
+                    value={selectedMainModeleId}
+                    onChange={(e) => handleMainModelChange(e.target.value)}
                     className="input !py-1.5 text-xs"
-                    placeholder="Modèle"
-                    disabled={processing}
-                  />
+                    disabled={processing || catalogueLoading || catalogueModeles.length === 0}
+                    aria-label="Modèle principal"
+                  >
+                    <option value="" disabled>
+                      {catalogueLoading
+                        ? 'Chargement de la bibliothèque…'
+                        : orderDraft.modele.nom
+                          ? `Choisir dans la bibliothèque — actuel : ${orderDraft.modele.nom}`
+                          : 'Choisir un modèle dans la bibliothèque…'}
+                    </option>
+                    {catalogueModeles.map((modele) => {
+                      const modeleId = modele.id || modele._id;
+                      const prixCatalogue = Math.round(Number(modele.prixBase ?? modele.prix_base));
+                      const tarifValide = Number.isFinite(prixCatalogue) && prixCatalogue >= 0;
+                      return (
+                        <option key={modeleId} value={modeleId} disabled={!tarifValide}>
+                          {modele.nom} — {tarifValide ? `${prixCatalogue.toLocaleString('fr-FR')} F` : 'tarif non défini'}
+                        </option>
+                      );
+                    })}
+                  </select>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <input
-                      type="text"
+                    <select
                       value={orderDraft.taille}
                       onChange={(e) => setOrderDraft((prev) => ({ ...prev, taille: e.target.value }))}
                       className="input !py-1.5 text-xs"
-                      placeholder="Taille"
                       disabled={processing}
-                    />
-                    <input
-                      type="text"
+                      aria-label="Taille de la tenue principale"
+                    >
+                      <option value="">Taille…</option>
+                      {orderDraft.taille && !TAILLES_COMMANDES.includes(orderDraft.taille) && (
+                        <option value={orderDraft.taille}>{orderDraft.taille}</option>
+                      )}
+                      {TAILLES_COMMANDES.map((taille) => (
+                        <option key={taille} value={taille}>{taille}</option>
+                      ))}
+                    </select>
+                    <select
                       value={orderDraft.couleur}
                       onChange={(e) => setOrderDraft((prev) => ({ ...prev, couleur: e.target.value }))}
                       className="input !py-1.5 text-xs"
-                      placeholder="Couleur"
                       disabled={processing}
-                    />
+                      aria-label="Couleur de la tenue principale"
+                    >
+                      <option value="">Couleur…</option>
+                      {orderDraft.couleur && !COULEURS_COMMANDES.includes(orderDraft.couleur) && (
+                        <option value={orderDraft.couleur}>{orderDraft.couleur}</option>
+                      )}
+                      {COULEURS_COMMANDES.map((couleur) => (
+                        <option key={couleur} value={couleur}>{couleur}</option>
+                      ))}
+                    </select>
                   </div>
                   <label className="block text-xs font-bold text-gray-700">
                     Prix de la tenue principale
@@ -1082,7 +1158,7 @@ const Appel = () => {
                     Articles / suppléments ajoutés
                   </p>
                   <p className="text-[10px] text-violet-700 mt-0.5">
-                    Choisis un modèle : son prix catalogue est ajouté automatiquement au total.
+                    Choisis le modèle, la taille et la couleur : le prix catalogue s’ajoute au total.
                   </p>
                 </div>
 
@@ -1093,7 +1169,7 @@ const Appel = () => {
                         key={item.id}
                         className="inline-flex items-center gap-1 rounded-full bg-violet-600 text-white pl-2.5 pr-1 py-1 text-[11px] font-bold"
                       >
-                        {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''} +{item.montant.toLocaleString('fr-FR')} F
+                        {item.libelle}{item.taille ? ` · Taille ${item.taille}` : ''}{item.couleur ? ` · ${item.couleur}` : ''} +{item.montant.toLocaleString('fr-FR')} F
                         <button
                           type="button"
                           onClick={() => handleRemoveSupplement(item.id)}
@@ -1108,14 +1184,15 @@ const Appel = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-[minmax(0,1fr)_32px] gap-1.5 sm:grid-cols-[minmax(0,1fr)_80px_32px]">
+                <div className="grid grid-cols-[82px_minmax(0,1fr)_32px] gap-1.5">
                   <select
                     value={supplementModeleId}
                     onChange={(e) => {
                       setSupplementModeleId(e.target.value);
                       setSupplementTaille('');
+                      setSupplementCouleur('');
                     }}
-                    className="input col-span-2 min-w-0 !px-2 !py-1.5 text-[11px] font-semibold sm:col-span-1"
+                    className="input col-span-3 min-w-0 !px-2 !py-1.5 text-[11px] font-semibold"
                     disabled={processing || catalogueLoading || catalogueModeles.length === 0}
                     aria-label="Modèle supplémentaire"
                   >
@@ -1141,14 +1218,26 @@ const Appel = () => {
                     aria-label="Taille de l’article supplémentaire"
                   >
                     <option value="">Taille…</option>
-                    {TAILLES_SUPPLEMENTAIRES.map((taille) => (
+                    {TAILLES_COMMANDES.map((taille) => (
                       <option key={taille} value={taille}>{taille}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={supplementCouleur}
+                    onChange={(e) => setSupplementCouleur(e.target.value)}
+                    className="input min-w-0 !px-2 !py-1.5 text-[11px] font-semibold"
+                    disabled={processing || !supplementModeleId}
+                    aria-label="Couleur de l’article supplémentaire"
+                  >
+                    <option value="">Couleur…</option>
+                    {COULEURS_COMMANDES.map((couleur) => (
+                      <option key={couleur} value={couleur}>{couleur}</option>
                     ))}
                   </select>
                   <button
                     type="button"
                     onClick={handleAddSupplement}
-                    disabled={processing || !supplementModeleId || !supplementTaille}
+                    disabled={processing || !supplementModeleId || !supplementTaille || !supplementCouleur}
                     className="w-8 h-8 rounded-md bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center disabled:opacity-50"
                     title="Ajouter ce modèle au total"
                     aria-label="Ajouter le modèle sélectionné"
@@ -1226,3 +1315,4 @@ const Appel = () => {
 };
 
 export default Appel;
+
