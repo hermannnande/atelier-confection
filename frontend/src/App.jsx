@@ -31,6 +31,10 @@ import MesGains from './pages/MesGains';
 import RemunerationsCouturiers from './pages/RemunerationsCouturiers';
 import Layout from './components/Layout';
 
+const getDefaultRoute = (user) => (
+  user?.role === 'gestionnaire_stock' ? '/stock' : '/dashboard'
+);
+
 // Route protégée
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuthStore();
@@ -40,13 +44,15 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultRoute(user)} replace />;
   }
 
   return children;
 };
 
 function App() {
+  const { user } = useAuthStore();
+
   return (
     <BrowserRouter future={{ v7_relativeSplatPath: true }}>
       <Toaster 
@@ -81,8 +87,12 @@ function App() {
             <Layout />
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route index element={<Navigate to={getDefaultRoute(user)} replace />} />
+          <Route path="dashboard" element={
+            <ProtectedRoute allowedRoles={['administrateur', 'gestionnaire', 'appelant', 'styliste', 'couturier', 'livreur']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
           
           {/* Appel - Appelants, Gestionnaires, Admins */}
           <Route path="appel" element={
@@ -102,7 +112,11 @@ function App() {
               <NouvelleCommande />
             </ProtectedRoute>
           } />
-          <Route path="commandes/:id" element={<CommandeDetail />} />
+          <Route path="commandes/:id" element={
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
+              <CommandeDetail />
+            </ProtectedRoute>
+          } />
 
           {/* Rappels clients - Appelants, Gestionnaires, Admins */}
           <Route path="rappels" element={
@@ -127,7 +141,7 @@ function App() {
           
           {/* Modèles en attente - Stylistes, Gestionnaires, Admins */}
           <Route path="modeles-en-attente" element={
-            <ProtectedRoute allowedRoles={['styliste', 'gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['styliste', 'gestionnaire_stock', 'gestionnaire', 'administrateur']}>
               <ModelesEnAttente />
             </ProtectedRoute>
           } />
@@ -162,7 +176,7 @@ function App() {
           
           {/* Stock */}
           <Route path="stock" element={
-            <ProtectedRoute allowedRoles={['administrateur', 'gestionnaire']}>
+            <ProtectedRoute allowedRoles={['administrateur', 'gestionnaire', 'gestionnaire_stock']}>
               <Stock />
             </ProtectedRoute>
           } />
@@ -251,6 +265,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
