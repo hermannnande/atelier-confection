@@ -3,6 +3,10 @@ import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapStock } from '../map.js';
+import {
+  buildStockSynchronization,
+  enrichStockWithSynchronization,
+} from '../../services/stock-synchronization.service.js';
 
 const router = express.Router();
 
@@ -33,6 +37,52 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
     return res.json({ stock, totaux });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
+  }
+});
+
+// Vue du stock physique avec les pièces déjà réservées par les commandes.
+// La réservation est calculée : elle ne retire pas physiquement l'article avant son envoi.
+router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const [stockResult, ordersResult] = await Promise.all([
+      supabase
+        .from('stock')
+        .select('*')
+        .eq('pays_code', req.country)
+        .order('modele', { ascending: true }),
+      supabase
+        .from('commandes')
+        .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
+        .eq('pays_code', req.country)
+        .in('statut', ['validee', 'en_stock']),
+    ]);
+
+    if (stockResult.error) {
+      return res.status(500).json({ message: 'Erreur lors du chargement du stock', error: stockResult.error.message });
+    }
+    if (ordersResult.error) {
+      return res.status(500).json({ message: 'Erreur lors du chargement des réservations', error: ordersResult.error.message });
+    }
+
+    const stock = (stockResult.data || []).map(mapStock);
+    const synchronization = buildStockSynchronization({
+      orders: ordersResult.data || [],
+      stock,
+    });
+    const valeurTotale = stock.reduce(
+      (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
+      0,
+    );
+
+    return res.json({
+      stock: enrichStockWithSynchronization(stock, synchronization),
+      variations: synchronization.variations,
+      couvertureCommandes: synchronization.couvertureCommandes,
+      totaux: { ...synchronization.totals, valeurTotale },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la synchronisation du stock', error: error.message });
   }
 });
 
@@ -235,6 +285,5 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
 });
 
 export default router;
-
 
 

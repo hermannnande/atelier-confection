@@ -100,7 +100,7 @@ const Layout = () => {
     { name: 'Historique Complet', href: '/historique', icon: History, roles: ['administrateur', 'gestionnaire'], gradient: 'from-indigo-500 to-purple-500' },
     { name: 'Historique Présences', href: '/historique-presences', icon: Calendar, roles: ['administrateur', 'gestionnaire'], gradient: 'from-lime-500 to-green-500' },
     { name: 'Bibliothèque Modèles', href: '/modeles', icon: Palette, roles: ['administrateur'], gradient: 'from-fuchsia-500 to-pink-500' },
-    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur'], gradient: 'from-emerald-500 to-teal-500' },
+    { name: 'Stock', href: '/stock', icon: Package, roles: ['administrateur', 'gestionnaire'], gradient: 'from-emerald-500 to-teal-500' },
     { name: 'Modèles en attente', href: '/modeles-en-attente', icon: Package, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-purple-500 to-pink-500' },
     { name: 'Atelier - Styliste', href: '/atelier/styliste', icon: Scissors, roles: ['administrateur', 'gestionnaire', 'styliste'], gradient: 'from-amber-500 to-orange-500' },
     { name: 'Atelier - Couturier', href: '/atelier/couturier', icon: Shirt, roles: ['administrateur', 'gestionnaire', 'couturier', 'styliste'], gradient: 'from-rose-500 to-red-500' },

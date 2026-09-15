@@ -17,6 +17,8 @@ const relativeArrival = (value, now) => {
 const ModelesEnAttente = () => {
   const [groupes, setGroupes] = useState([]);
   const [totalCommandes, setTotalCommandes] = useState(0);
+  const [totalValidees, setTotalValidees] = useState(0);
+  const [totalCouvertesStock, setTotalCouvertesStock] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +31,8 @@ const ModelesEnAttente = () => {
       const response = await api.get('/commandes/modeles-en-attente/suivi');
       setGroupes(response.data.groupes || []);
       setTotalCommandes(response.data.totalCommandes || 0);
+      setTotalValidees(response.data.totalValidees || 0);
+      setTotalCouvertesStock(response.data.totalCouvertesStock || 0);
       setLastRefresh(new Date(response.data.serverNow || Date.now()));
     } catch (error) {
       if (!silent) toast.error(error.response?.data?.message || 'Erreur lors du chargement');
@@ -110,7 +114,7 @@ const ModelesEnAttente = () => {
               Modèles en attente
             </h1>
             <p className="text-xs font-medium text-gray-600 sm:text-sm lg:text-base">
-              Commandes validées à préparer, regroupées par modèle
+              Besoins réels à confectionner après déduction du stock disponible
             </p>
           </div>
         </div>
@@ -126,14 +130,19 @@ const ModelesEnAttente = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
         <div className="stat-card !rounded-xl !p-3 sm:!rounded-2xl sm:!p-5">
           <p className="text-[10px] font-bold uppercase text-gray-500 sm:text-xs">Modèles à préparer</p>
           <p className="mt-1 text-2xl font-black text-purple-700 sm:text-3xl">{groupes.length}</p>
         </div>
         <div className="stat-card !rounded-xl !p-3 sm:!rounded-2xl sm:!p-5">
-          <p className="text-[10px] font-bold uppercase text-gray-500 sm:text-xs">Pièces attendues</p>
+          <p className="text-[10px] font-bold uppercase text-gray-500 sm:text-xs">Pièces à confectionner</p>
           <p className="mt-1 text-2xl font-black text-pink-700 sm:text-3xl">{totalCommandes}</p>
+        </div>
+        <div className="stat-card col-span-2 !rounded-xl !p-3 sm:col-span-1 sm:!rounded-2xl sm:!p-5">
+          <p className="text-[10px] font-bold uppercase text-gray-500 sm:text-xs">Couvertes par le stock</p>
+          <p className="mt-1 text-2xl font-black text-emerald-700 sm:text-3xl">{totalCouvertesStock}</p>
+          <p className="text-[10px] text-gray-500 sm:text-xs">sur {totalValidees} commande(s) validée(s)</p>
         </div>
       </div>
 
@@ -204,7 +213,9 @@ const ModelesEnAttente = () => {
           </h3>
           <p className="text-sm text-gray-600">
             {groupes.length === 0
-              ? 'Aucune commande ne nécessite actuellement de préparation.'
+              ? totalValidees > 0
+                ? 'Toutes les commandes validées sont actuellement couvertes par le stock.'
+                : 'Aucune commande ne nécessite actuellement de préparation.'
               : filterMode === 'recent' && totalNouveautes === 0
                 ? 'Aucune nouvelle commande validée au cours de la dernière heure.'
                 : filterMode === 'urgent' && totalUrgences === 0

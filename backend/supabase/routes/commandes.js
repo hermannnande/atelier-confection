@@ -21,6 +21,7 @@ import {
   resolveStoredOrderBasePrice,
 } from '../../services/order-supplements.service.js';
 import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
+import { buildStockSynchronization } from '../../services/stock-synchronization.service.js';
 
 const router = express.Router();
 
@@ -253,21 +254,40 @@ router.get(
       const supabase = getSupabaseAdmin();
       const now = new Date();
 
-      const { data: orders, error: ordersError } = await supabase
-        .from('commandes')
-        .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at, updated_at, historique')
-        .eq('pays_code', req.country)
-        .eq('statut', 'validee')
-        .order('created_at', { ascending: false });
+      const [ordersResult, stockResult] = await Promise.all([
+        supabase
+          .from('commandes')
+          .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at, updated_at, historique')
+          .eq('pays_code', req.country)
+          .in('statut', ['validee', 'en_stock'])
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('stock')
+          .select('modele, taille, couleur, quantite_principale, quantite_en_livraison, image')
+          .eq('pays_code', req.country),
+      ]);
 
-      if (ordersError) {
-        return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: ordersError.message });
+      if (ordersResult.error) {
+        return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: ordersResult.error.message });
       }
-      const groupes = groupPendingModels(orders || [], { recentAfter: recentVisibilityThreshold(now) });
+      if (stockResult.error) {
+        return res.status(500).json({ message: 'Erreur lors du chargement du stock', error: stockResult.error.message });
+      }
+
+      const synchronization = buildStockSynchronization({
+        orders: ordersResult.data || [],
+        stock: stockResult.data || [],
+      });
+      const groupes = groupPendingModels(
+        synchronization.uncoveredOrders,
+        { recentAfter: recentVisibilityThreshold(now) },
+      );
 
       return res.json({
         groupes,
-        totalCommandes: (orders || []).length,
+        totalCommandes: synchronization.totals.aConfectionner,
+        totalValidees: synchronization.totals.commandesValidees,
+        totalCouvertesStock: synchronization.totals.reserveCommandes,
         totalModeles: groupes.length,
         recentWindowMinutes: 60,
         serverNow: now.toISOString(),
@@ -547,6 +567,29 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     const { data: existing, error: e1 } = await supabase.from('commandes').select('*').eq('id', req.params.id).single();
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
     if (!ensureCountryAccess(existing, req, res)) return;
+
+    if (existing.statut === 'validee' && req.body.statut === 'en_stock') {
+      const [stockResult, ordersResult] = await Promise.all([
+        supabase.from('stock').select('*').eq('pays_code', req.country),
+        supabase
+          .from('commandes')
+          .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
+          .eq('pays_code', req.country)
+          .in('statut', ['validee', 'en_stock']),
+      ]);
+      if (stockResult.error || ordersResult.error) {
+        return res.status(500).json({ message: 'Impossible de vérifier la réservation du stock' });
+      }
+      const synchronization = buildStockSynchronization({
+        orders: ordersResult.data || [],
+        stock: stockResult.data || [],
+      });
+      if (!synchronization.couvertureCommandes[String(existing.id)]?.couvertParStock) {
+        return res.status(409).json({
+          message: 'Cette variation n’est plus disponible. Envoyez la commande à l’atelier.',
+        });
+      }
+    }
 
     // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
     // Ne pas restreindre par appelant_id

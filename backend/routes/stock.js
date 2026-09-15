@@ -1,6 +1,11 @@
 import express from 'express';
 import Stock from '../models/Stock.js';
+import Commande from '../models/Commande.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import {
+  buildStockSynchronization,
+  enrichStockWithSynchronization,
+} from '../services/stock-synchronization.service.js';
 
 const router = express.Router();
 
@@ -27,6 +32,30 @@ router.get('/', authenticate, async (req, res) => {
     res.json({ stock, totaux });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
+  }
+});
+
+// Vue du stock physique avec les réservations des commandes validées et préparées.
+router.get('/suivi-commandes', authenticate, async (req, res) => {
+  try {
+    const [stock, orders] = await Promise.all([
+      Stock.find().sort({ modele: 1, taille: 1, couleur: 1 }).lean(),
+      Commande.find({ statut: { $in: ['validee', 'en_stock'] } }).lean(),
+    ]);
+    const synchronization = buildStockSynchronization({ orders, stock });
+    const valeurTotale = stock.reduce(
+      (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
+      0,
+    );
+
+    return res.json({
+      stock: enrichStockWithSynchronization(stock, synchronization),
+      variations: synchronization.variations,
+      couvertureCommandes: synchronization.couvertureCommandes,
+      totaux: { ...synchronization.totals, valeurTotale },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erreur lors de la synchronisation du stock', error: error.message });
   }
 });
 
@@ -191,7 +220,6 @@ router.get('/stats/resume', authenticate, authorize('gestionnaire', 'administrat
 });
 
 export default router;
-
 
 
 

@@ -99,8 +99,8 @@ const Commandes = () => {
       });
       
       setCommandes(commandesTriees);
-      // Vérifier la disponibilité en stock
-      if (!silent) verifierStockPourCommandes(commandesTriees);
+      // Réactualiser aussi les réservations : plusieurs utilisateurs peuvent agir en même temps.
+      await verifierStockPourCommandes(commandesTriees);
     } catch (error) {
       if (!silent) toast.error('Erreur lors du chargement des commandes');
       console.error(error);
@@ -111,66 +111,21 @@ const Commandes = () => {
 
   const verifierStockPourCommandes = async (commandes) => {
     try {
-      const response = await api.get('/stock');
-      const stock = response.data.stock || response.data;
-      
-      console.log('📦 Stock chargé:', stock);
-      console.log('📋 Commandes à vérifier:', commandes.length);
-      
+      const response = await api.get('/stock/suivi-commandes');
+      const couverture = response.data.couvertureCommandes || {};
       const disponibilite = {};
-      
+
       commandes.forEach((commande) => {
-        // Récupérer à la fois l'ID et le NOM du modèle
-        const modeleId = typeof commande.modele === 'object' ? commande.modele._id || commande.modele.id : commande.modele;
-        const modeleNom = typeof commande.modele === 'object' ? commande.modele.nom : commande.modele;
-        
-        console.log(`🔍 Recherche stock pour: ${modeleNom} (${modeleId}) - ${commande.taille} - ${commande.couleur}`);
-        
-        const variationEnStock = stock.find(item => {
-          // Comparer par ID OU par NOM (car le stock peut utiliser l'un ou l'autre)
-          const itemModeleId = typeof item.modele === 'object' ? item.modele._id || item.modele.id : item.modele;
-          const itemModeleNom = typeof item.modele === 'object' ? item.modele.nom : item.modele;
-          
-          // Vérifier la quantité (quantite OU quantitePrincipale)
-          const qte = item.quantitePrincipale || item.quantite || 0;
-          
-          const matchParId = itemModeleId === modeleId;
-          const matchParNom = itemModeleNom === modeleNom;
-          const matchTaille = item.taille === commande.taille;
-          const matchCouleur = item.couleur === commande.couleur;
-          const aStock = qte > 0;
-          
-          const match = (matchParId || matchParNom) && matchTaille && matchCouleur && aStock;
-          
-          if (match) {
-            console.log('✅ Trouvé en stock!', {
-              modele: itemModeleNom,
-              taille: item.taille,
-              couleur: item.couleur,
-              quantite: qte
-            });
-          }
-          
-          return match;
-        });
-        
-        if (variationEnStock) {
-          const commandeId = commande._id || commande.id;
-          const qte = variationEnStock.quantitePrincipale || variationEnStock.quantite || 0;
-          disponibilite[commandeId] = {
-            disponible: true,
-            quantite: qte
-          };
-          console.log(`✅ Badge ajouté pour commande ${commandeId} avec quantité ${qte}`);
-        } else {
-          console.log(`❌ Pas trouvé en stock pour ${modeleNom} - ${commande.taille} - ${commande.couleur}`);
+        const commandeId = String(commande._id || commande.id);
+        const reservation = couverture[commandeId];
+        if (reservation?.couvertParStock) {
+          disponibilite[commandeId] = reservation;
         }
       });
-      
-      console.log('📊 Disponibilité finale:', disponibilite);
+
       setStockDisponible(disponibilite);
     } catch (error) {
-      console.error('❌ Erreur lors de la vérification du stock:', error);
+      console.error('Erreur lors de la vérification du stock:', error);
     }
   };
 
@@ -528,6 +483,7 @@ const Commandes = () => {
         <div className="grid grid-cols-1 gap-3 sm:gap-4 max-w-full">
           {filteredCommandes.map((commande) => {
             const commandeId = commande._id || commande.id;
+            const stockReservation = stockDisponible[commandeId];
             const isMarked = isCardMarked(commande);
             const isReminderConfirmed = isConfirmedAfterReminder(commande);
             const isAgedValidated = isValidatedForAtLeastDays(commande, AGED_VALIDATED_DAYS);
@@ -606,10 +562,10 @@ const Commandes = () => {
                         <p className="text-gray-600 truncate">
                         {commande.taille} - {commande.couleur}
                       </p>
-                        {(stockDisponible[commande._id] || stockDisponible[commande.id]) && (
+                        {stockReservation && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
                             <Package size={10} className="mr-1" />
-                            En Stock ({(stockDisponible[commande._id] || stockDisponible[commande.id]).quantite})
+                            Réservée sur stock
                           </span>
                         )}
                       </div>
@@ -701,9 +657,11 @@ const Commandes = () => {
                       
                       <button
                         onClick={() => envoyerEnPreparationColis(commande._id)}
-                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
+                        disabled={!stockReservation || sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-success btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
-                        title="Envoyer directement en Préparation Colis (sans passer par l'atelier)"
+                        title={stockReservation
+                          ? "Envoyer l'article réservé directement en Préparation Colis"
+                          : "Indisponible : cette variation doit être confectionnée"}
                       >
                         <Package size={14} className="flex-shrink-0" />
                         <span className="truncate">{sendingToPreparation === commande._id ? 'Envoi...' : 'Direct'}</span>

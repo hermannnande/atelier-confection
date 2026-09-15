@@ -5,6 +5,7 @@ import { Package, Plus, Search, Eye, X, Save, AlertTriangle, ChevronRight, Edit2
 
 const Stock = () => {
   const [stock, setStock] = useState([]);
+  const [stockTotals, setStockTotals] = useState({});
   const [modeles, setModeles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,8 +72,9 @@ const Stock = () => {
 
   const fetchStock = async () => {
     try {
-      const response = await api.get('/stock');
+      const response = await api.get('/stock/suivi-commandes');
       setStock(response.data.stock || []);
+      setStockTotals(response.data.totaux || {});
     } catch (error) {
       toast.error('Erreur lors du chargement du stock');
       console.error(error);
@@ -106,6 +108,8 @@ const Stock = () => {
         image: imageUrl,
         variations: [],
         quantiteTotal: 0,
+        quantiteReservee: 0,
+        quantiteDisponible: 0,
         quantiteLivraison: 0,
         valeurTotal: 0,
         taillesUniques: new Set(),
@@ -114,6 +118,8 @@ const Stock = () => {
     }
     acc[key].variations.push(item);
     acc[key].quantiteTotal += item.quantitePrincipale || item.quantite || 0;
+    acc[key].quantiteReservee += item.quantiteReservee || 0;
+    acc[key].quantiteDisponible += item.quantiteDisponible || 0;
     acc[key].quantiteLivraison += item.quantiteEnLivraison || 0;
     acc[key].valeurTotal += (item.quantitePrincipale || item.quantite || 0) * item.prix;
     acc[key].taillesUniques.add(item.taille);
@@ -183,10 +189,23 @@ const Stock = () => {
       fetchStock();
       
       // Mettre à jour les données du modal
+      const refreshedVariations = editedVariations.map((variation) => ({
+        ...variation,
+        quantiteReservee: Math.min(
+          variation.quantitePrincipale,
+          variation.quantiteReservee || 0,
+        ),
+        quantiteDisponible: Math.max(
+          variation.quantitePrincipale - (variation.quantiteReservee || 0),
+          0,
+        ),
+      }));
       const updatedGroup = {
         ...selectedModeleDetails,
-        variations: editedVariations,
+        variations: refreshedVariations,
         quantiteTotal: editedVariations.reduce((sum, v) => sum + v.quantitePrincipale, 0),
+        quantiteReservee: refreshedVariations.reduce((sum, v) => sum + v.quantiteReservee, 0),
+        quantiteDisponible: refreshedVariations.reduce((sum, v) => sum + v.quantiteDisponible, 0),
         valeurTotal: editedVariations.reduce((sum, v) => sum + (v.quantitePrincipale * v.prix), 0)
       };
       setSelectedModeleDetails(updatedGroup);
@@ -314,12 +333,14 @@ const Stock = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 max-w-full">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 max-w-full">
         {[
           { name: 'Modèles', value: stockGroupe.length, gradient: 'from-blue-500 to-cyan-500' },
-          { name: 'Stock Principal', value: stock.reduce((sum, item) => sum + (item.quantitePrincipale || item.quantite || 0), 0), gradient: 'from-emerald-500 to-teal-500' },
-          { name: 'En Livraison', value: stock.reduce((sum, item) => sum + (item.quantiteEnLivraison || 0), 0), gradient: 'from-amber-500 to-orange-500' },
-          { name: 'Valeur Totale', value: `${stock.reduce((sum, item) => sum + ((item.quantitePrincipale || item.quantite || 0) * item.prix), 0).toLocaleString('fr-FR')} F`, gradient: 'from-purple-500 to-pink-500' }
+          { name: 'Stock physique', value: stockTotals.stockPhysique || 0, gradient: 'from-emerald-500 to-teal-500' },
+          { name: 'Réservé', value: stockTotals.quantiteReservee || 0, gradient: 'from-blue-500 to-indigo-500' },
+          { name: 'Disponible', value: stockTotals.quantiteDisponible || 0, gradient: 'from-cyan-500 to-sky-500' },
+          { name: 'En livraison', value: stockTotals.enLivraison || 0, gradient: 'from-amber-500 to-orange-500' },
+          { name: 'Valeur totale', value: `${Number(stockTotals.valeurTotale || 0).toLocaleString('fr-FR')} F`, gradient: 'from-purple-500 to-pink-500' }
         ].map((stat, i) => (
           <div key={i} className="stat-card max-w-full overflow-hidden">
             <p className="text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-500 uppercase mb-1 sm:mb-2 truncate">{stat.name}</p>
@@ -331,14 +352,14 @@ const Stock = () => {
       </div>
 
       {/* Alertes */}
-      {stock.filter(item => (item.quantitePrincipale || item.quantite || 0) <= 2).length > 0 && (
+      {stock.filter(item => (item.quantiteDisponible || 0) <= 2).length > 0 && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3 sm:p-4 lg:p-6 max-w-full overflow-hidden">
           <div className="flex items-center gap-2 sm:gap-3">
             <AlertTriangle className="text-amber-600 flex-shrink-0" size={20} />
             <div className="min-w-0 flex-1">
               <p className="font-bold text-sm sm:text-base text-gray-900 truncate">Alertes de Stock</p>
               <p className="text-xs sm:text-sm text-gray-600 break-words">
-                {stock.filter(item => (item.quantitePrincipale || item.quantite || 0) <= 2).length} variation(s) en faible stock
+                {stock.filter(item => (item.quantiteDisponible || 0) <= 2).length} variation(s) avec au plus 2 pièces réellement disponibles
               </p>
             </div>
           </div>
@@ -394,16 +415,22 @@ const Stock = () => {
                 <h3 className="font-black text-gray-900 text-xl mb-2">{item.modele}</h3>
                 
                 {/* Stats inline */}
-                <div className="flex items-center space-x-4 text-sm">
+                <div className="grid grid-cols-3 gap-2 text-sm">
                   <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-gray-500">Stock:</span>
-                    <span className={`font-bold ${item.quantiteTotal <= 5 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    <span className="font-semibold text-gray-500">Physique:</span>
+                    <span className="font-bold text-emerald-600">
                       {item.quantiteTotal}
                     </span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <span className="font-semibold text-gray-500">Livraison:</span>
-                    <span className="font-bold text-amber-600">{item.quantiteLivraison}</span>
+                    <span className="font-semibold text-gray-500">Réservé:</span>
+                    <span className="font-bold text-indigo-600">{item.quantiteReservee}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="font-semibold text-gray-500">Libre:</span>
+                    <span className={`font-bold ${item.quantiteDisponible <= 2 ? 'text-red-600' : 'text-cyan-600'}`}>
+                      {item.quantiteDisponible}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -471,13 +498,26 @@ const Stock = () => {
 
             <div className="p-6 space-y-6">
               {/* Stats résumé */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200">
-                  <p className="text-sm font-bold text-gray-600 mb-1">Stock Principal</p>
+                  <p className="text-sm font-bold text-gray-600 mb-1">Stock physique</p>
                   <p className="text-3xl font-black text-emerald-600">
                     {editMode 
                       ? editedVariations.reduce((sum, v) => sum + v.quantitePrincipale, 0)
                       : selectedModeleDetails.quantiteTotal
+                    }
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-200">
+                  <p className="text-sm font-bold text-gray-600 mb-1">Réservé</p>
+                  <p className="text-3xl font-black text-indigo-600">{selectedModeleDetails.quantiteReservee}</p>
+                </div>
+                <div className="bg-gradient-to-br from-cyan-50 to-sky-50 rounded-xl p-4 border border-cyan-200">
+                  <p className="text-sm font-bold text-gray-600 mb-1">Disponible</p>
+                  <p className="text-3xl font-black text-cyan-600">
+                    {editMode
+                      ? editedVariations.reduce((sum, v) => sum + Math.max(v.quantitePrincipale - (v.quantiteReservee || 0), 0), 0)
+                      : selectedModeleDetails.quantiteDisponible
                     }
                   </p>
                 </div>
@@ -541,6 +581,8 @@ const Stock = () => {
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Taille</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Couleur</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Stock Principal</th>
+                      <th className="px-4 py-3 text-left font-bold text-gray-700">Réservé</th>
+                      <th className="px-4 py-3 text-left font-bold text-gray-700">Disponible</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">En Livraison</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Prix Unitaire</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Valeur</th>
@@ -549,6 +591,8 @@ const Stock = () => {
                   <tbody>
                     {(editMode ? editedVariations : selectedModeleDetails.variations).map((variation, idx) => {
                       const qty = variation.quantitePrincipale || variation.quantite || 0;
+                      const reserved = variation.quantiteReservee || 0;
+                      const available = Math.max(qty - reserved, 0);
                       const valeur = qty * variation.prix;
                       return (
                         <tr key={idx} className="border-b border-gray-100 hover:bg-blue-50/30 transition-colors">
@@ -572,6 +616,14 @@ const Stock = () => {
                                 {qty}
                               </span>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-bold text-lg text-indigo-600">{reserved}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`font-bold text-lg ${available <= 2 ? 'text-red-600' : 'text-cyan-600'}`}>
+                              {available}
+                            </span>
                           </td>
                           <td className="px-4 py-3">
                             <span className="font-bold text-lg text-amber-600">

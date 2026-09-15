@@ -13,6 +13,7 @@ import {
   assertCanSendOrderToReminder,
 } from '../services/order-reminder.service.js';
 import { groupPendingModels, recentVisibilityThreshold } from '../services/pending-models.service.js';
+import { buildStockSynchronization } from '../services/stock-synchronization.service.js';
 
 const router = express.Router();
 
@@ -114,11 +115,20 @@ router.get(
   async (req, res) => {
     try {
       const now = new Date();
-      const orders = await Commande.find({ statut: 'validee' }).lean();
-      const groupes = groupPendingModels(orders, { recentAfter: recentVisibilityThreshold(now) });
+      const [orders, stock] = await Promise.all([
+        Commande.find({ statut: { $in: ['validee', 'en_stock'] } }).lean(),
+        Stock.find().lean(),
+      ]);
+      const synchronization = buildStockSynchronization({ orders, stock });
+      const groupes = groupPendingModels(
+        synchronization.uncoveredOrders,
+        { recentAfter: recentVisibilityThreshold(now) },
+      );
       return res.json({
         groupes,
-        totalCommandes: orders.length,
+        totalCommandes: synchronization.totals.aConfectionner,
+        totalValidees: synchronization.totals.commandesValidees,
+        totalCouvertesStock: synchronization.totals.reserveCommandes,
         totalModeles: groupes.length,
         recentWindowMinutes: 60,
         serverNow: now.toISOString(),
@@ -165,6 +175,19 @@ router.put('/:id', authenticate, authorize('appelant', 'gestionnaire', 'administ
     
     if (!commande) {
       return res.status(404).json({ message: 'Commande non trouvée' });
+    }
+
+    if (commande.statut === 'validee' && req.body.statut === 'en_stock') {
+      const [stock, orders] = await Promise.all([
+        Stock.find().lean(),
+        Commande.find({ statut: { $in: ['validee', 'en_stock'] } }).lean(),
+      ]);
+      const synchronization = buildStockSynchronization({ orders, stock });
+      if (!synchronization.couvertureCommandes[String(commande._id)]?.couvertParStock) {
+        return res.status(409).json({
+          message: 'Cette variation n’est plus disponible. Envoyez la commande à l’atelier.',
+        });
+      }
     }
 
     // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
