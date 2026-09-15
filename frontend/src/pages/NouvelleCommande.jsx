@@ -29,7 +29,7 @@ import {
 const TAILLES_DISPONIBLES = ['Standard', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 const COULEURS_DE_BASE = [
-  'Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Bleu', 'Bleu ciel', 'Bleu bic',
+  'Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Bleu', 'Bleu ciel', 'Bleu bic', 'Bleu marine',
   'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde', 'Rose', 'Saumon',
   'Violet', 'Violet clair', 'Orange', 'Grise', 'Beige', 'Marron',
   'Terracotta', 'Kaki', 'Multicolore',
@@ -43,6 +43,7 @@ const COULEUR_CLASS = {
   Bleu: 'bg-blue-500',
   'Bleu ciel': 'bg-sky-300',
   'Bleu bic': 'bg-blue-600',
+  'Bleu marine': 'bg-blue-900',
   Vert: 'bg-green-500',
   'Vert Treillis': 'bg-green-700',
   Jaune: 'bg-yellow-400',
@@ -1046,3 +1047,4 @@ const NouvelleCommande = () => {
 };
 
 export default NouvelleCommande;
+
