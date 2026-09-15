@@ -13,6 +13,7 @@ import {
   LockKeyhole,
   Package,
   PackageOpen,
+  Pin,
   Plus,
   Save,
   Search,
@@ -23,6 +24,7 @@ import {
 const Stock = () => {
   const { user } = useAuthStore();
   const canEditPrices = ['administrateur', 'gestionnaire'].includes(user?.role);
+  const canPinModels = ['administrateur', 'gestionnaire', 'gestionnaire_stock'].includes(user?.role);
   const [stock, setStock] = useState([]);
   const [stockTotals, setStockTotals] = useState({});
   const [modeles, setModeles] = useState([]);
@@ -37,6 +39,7 @@ const Stock = () => {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
+  const [pinningModelId, setPinningModelId] = useState(null);
   const [selectedModeleDetails, setSelectedModeleDetails] = useState(null);
   const [selectedModele, setSelectedModele] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -124,14 +127,19 @@ const Stock = () => {
     const key = item.modele;
     if (!acc[key]) {
       // Chercher l'image depuis la bibliothèque de modèles si elle n'existe pas dans le stock
+      const normalizedModelName = String(key || '').trim().toLocaleLowerCase('fr');
+      const modeleCorrespondant = modeles.find((modele) => (
+        String(modele.nom || '').trim().toLocaleLowerCase('fr') === normalizedModelName
+      ));
       let imageUrl = item.image;
       if (!imageUrl) {
-        const modeleCorrespondant = modeles.find(m => m.nom === key);
         imageUrl = modeleCorrespondant?.image || null;
       }
       
       acc[key] = {
         modele: key,
+        modeleId: modeleCorrespondant?.id || modeleCorrespondant?._id || null,
+        epingleStock: modeleCorrespondant?.epingle_stock === true || modeleCorrespondant?.epingleStock === true,
         image: imageUrl,
         variations: [],
         quantiteTotal: 0,
@@ -166,7 +174,8 @@ const Stock = () => {
       )),
     }))
     .sort((a, b) => (
-      Number(b.quantiteReservee > 0) - Number(a.quantiteReservee > 0)
+      Number(b.epingleStock) - Number(a.epingleStock)
+      || Number(b.quantiteReservee > 0) - Number(a.quantiteReservee > 0)
       || Number(b.quantiteDisponible <= 2 && b.quantiteTotal > 0) - Number(a.quantiteDisponible <= 2 && a.quantiteTotal > 0)
       || b.quantiteDisponible - a.quantiteDisponible
       || a.modele.localeCompare(b.modele, 'fr', { numeric: true })
@@ -215,6 +224,35 @@ const Stock = () => {
     })));
     setEditMode(false);
     setShowDetailsModal(true);
+  };
+
+  const handleTogglePin = async (modeleGroup) => {
+    if (!modeleGroup.modeleId || pinningModelId) {
+      if (!modeleGroup.modeleId) toast.error('Ce modèle doit être ajouté au catalogue avant de pouvoir être épinglé');
+      return;
+    }
+
+    const nextPinned = !modeleGroup.epingleStock;
+    setPinningModelId(modeleGroup.modeleId);
+    setModeles((current) => current.map((modele) => (
+      (modele.id || modele._id) === modeleGroup.modeleId
+        ? { ...modele, epingle_stock: nextPinned, epingleStock: nextPinned }
+        : modele
+    )));
+
+    try {
+      await api.patch(`/modeles/${modeleGroup.modeleId}/epingle-stock`, { epingle: nextPinned });
+      toast.success(nextPinned ? `${modeleGroup.modele} épinglé en haut` : `${modeleGroup.modele} désépinglé`);
+    } catch (error) {
+      setModeles((current) => current.map((modele) => (
+        (modele.id || modele._id) === modeleGroup.modeleId
+          ? { ...modele, epingle_stock: !nextPinned, epingleStock: !nextPinned }
+          : modele
+      )));
+      toast.error(error.response?.data?.message || "Impossible de modifier l'épingle");
+    } finally {
+      setPinningModelId(null);
+    }
   };
 
   const handleEditVariation = (index, field, value) => {
@@ -517,13 +555,36 @@ const Stock = () => {
                   : { label: 'Disponible', className: 'bg-emerald-100 text-emerald-700' };
 
             return (
-              <button
+              <article
                 key={item.modele}
-                type="button"
-                onClick={() => handleViewDetails(item)}
-                className="group overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-gray-200/90 transition hover:-translate-y-0.5 hover:shadow-lg hover:ring-emerald-300"
+                className={`relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 transition hover:-translate-y-0.5 hover:shadow-lg ${
+                  item.epingleStock ? 'ring-2 ring-amber-300' : 'ring-gray-200/90 hover:ring-emerald-300'
+                }`}
               >
-                <div className="flex items-center gap-3 border-b border-gray-100 p-3.5">
+                {canPinModels && (
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePin(item)}
+                    disabled={!item.modeleId || pinningModelId === item.modeleId}
+                    aria-pressed={item.epingleStock}
+                    aria-label={item.epingleStock ? `Désépingler ${item.modele}` : `Épingler ${item.modele} en haut`}
+                    title={item.epingleStock ? 'Retirer des modèles épinglés' : 'Épingler ce modèle en haut pour tous'}
+                    className={`absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-xl shadow-sm ring-1 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                      item.epingleStock
+                        ? 'bg-amber-100 text-amber-700 ring-amber-300'
+                        : 'bg-white text-gray-400 ring-gray-200 hover:bg-amber-50 hover:text-amber-600 hover:ring-amber-200'
+                    }`}
+                  >
+                    <Pin size={16} fill={item.epingleStock ? 'currentColor' : 'none'} />
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleViewDetails(item)}
+                  className="group block w-full text-left"
+                >
+                <div className="flex items-center gap-3 border-b border-gray-100 p-3.5 pr-14">
                   <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-cyan-100 ring-1 ring-gray-200">
                     {item.image ? (
                       <img src={item.image} alt={item.modele} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
@@ -532,11 +593,15 @@ const Stock = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
                       <h2 className="line-clamp-2 text-base font-black leading-tight text-gray-950 sm:text-lg">{item.modele}</h2>
-                      <ChevronRight className="mt-0.5 flex-shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" size={19} />
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {item.epingleStock && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">
+                          <Pin size={10} fill="currentColor" /> Épinglé
+                        </span>
+                      )}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${status.className}`}>{status.label}</span>
                       <span className="text-[10px] font-bold text-gray-400">{item.variations.length} variation(s)</span>
                     </div>
@@ -592,7 +657,8 @@ const Stock = () => {
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-700"><Eye size={14} /> Détails</span>
                 </div>
-              </button>
+                </button>
+              </article>
             );
           })}
         </section>
