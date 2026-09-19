@@ -7,15 +7,16 @@ import { useAuthStore } from '../store/authStore';
 import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 import { isConfirmedAfterReminder } from '../utils/orderReminderHighlight';
 import OrderSupplementTags from '../components/OrderSupplementTags';
+import { normalizeSize as canonicalSize } from '../utils/sizeNormalization';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
 const REMINDER_CONFIRMED_CARD_CLASS = '!bg-orange-100 !border-orange-500 ring-2 ring-orange-200 shadow-orange-200/60';
 const AGED_VALIDATED_CARD_CLASS = '!bg-violet-100 !border-violet-500 ring-2 ring-violet-200 shadow-violet-200/60';
 const AGED_VALIDATED_DAYS = 5;
 const STATUTS_AVANT_ENVOI = new Set(['nouvelle', 'validee']);
-const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
+const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
 
-const normalizeSize = (value) => String(value || '').trim().toUpperCase();
+const normalizeSize = (value) => canonicalSize(value).toUpperCase();
 const modelLabel = (commande) => String(commande?.modele?.nom || commande?.modele || 'Modèle inconnu').trim();
 const normalizeModel = (commande) => modelLabel(commande).toLocaleLowerCase('fr');
 const phoneNumberForCall = (value) => {

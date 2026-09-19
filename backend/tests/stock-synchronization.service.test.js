@@ -129,3 +129,16 @@ test('les tenues supplémentaires ne restent pas réservées après l’envoi en
   assert.equal(result.totals.reserveCommandes, 0);
   assert.equal(result.totals.aConfectionner, 0);
 });
+
+test('une commande XXL réserve le stock 2XL sans créer un besoin atelier', () => {
+  const result = buildStockSynchronization({
+    orders: [davichi('1', 'validee', { taille: 'XXL' })],
+    stock: [stockDavichi(1), {
+      id: 'stock-2', modele: 'DAVICHI', couleur: 'Bleu marine',
+      taille: '2XL', quantitePrincipale: 1,
+    }],
+  });
+  assert.equal(result.couvertureCommandes['1'].couvertParStock, true);
+  assert.equal(result.totals.aConfectionner, 0);
+  assert.equal(result.variations.find((v) => v.taille === '2XL').reserveCommandes, 1);
+});

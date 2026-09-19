@@ -1,5 +1,8 @@
 // Déplace uniquement les tenues supplémentaires créées depuis le catalogue.
 // La tenue principale reste gérée par les routes de livraison existantes.
+import { normalizeSize } from './size-normalization.service.js';
+import { findStockVariation } from './stock-variation.service.js';
+
 export async function moveOrderSupplementStock({
   supabase,
   commande,
@@ -14,19 +17,9 @@ export async function moveOrderSupplementStock({
 
   for (const article of supplements) {
     const modele = String(article.libelle || '').trim();
-    const taille = String(article.taille || '').trim();
+    const taille = normalizeSize(article.taille);
     const couleur = String(article.couleur || '').trim();
     if (!modele || !taille || !couleur) continue;
-
-    const query = () => supabase.from('stock')
-      .select('*')
-      .eq('pays_code', country)
-      .eq('modele', modele)
-      .eq('taille', taille)
-      .eq('couleur', couleur)
-      .maybeSingle();
-    const { data: stockItem, error: readError } = await query();
-    if (readError) throw readError;
 
     const isAssign = action === 'assigner';
     const isDelivered = action === 'livree';
@@ -35,6 +28,14 @@ export async function moveOrderSupplementStock({
     if (!isAssign && !isDelivered && !isReturn && !isProduction) {
       throw new Error(`Mouvement de stock inconnu : ${action}`);
     }
+    const query = () => findStockVariation(supabase, {
+      country, modele, taille, couleur,
+      preferQuantity: isAssign
+        ? 'quantite_principale'
+        : isProduction ? '__none' : 'quantite_en_livraison',
+    });
+    const { data: stockItem, error: readError } = await query();
+    if (readError) throw readError;
     if (isAssign && (!stockItem || Number(stockItem.quantite_principale) < 1)) continue;
     if (isDelivered && (!stockItem || Number(stockItem.quantite_en_livraison) < 1)) continue;
     if (action === 'retour' && (!stockItem || Number(stockItem.quantite_en_livraison) < 1)) continue;

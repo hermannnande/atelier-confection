@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { normalizeSize } from '../utils/sizeNormalization';
 import {
   Save,
   ArrowLeft,
@@ -350,7 +351,7 @@ const NouvelleCommande = () => {
 
   const getVariationStock = (taille, couleur) => {
     if (!selectedModel) return null;
-    return selectedModel.variations.find((v) => v.taille === taille && v.couleur === couleur);
+    return selectedModel.variations.find((v) => normalizeSize(v.taille) === normalizeSize(taille) && v.couleur === couleur);
   };
 
   const variationActuelle = useMemo(() => {
@@ -447,7 +448,7 @@ const NouvelleCommande = () => {
     const article = {
       id: crypto.randomUUID(),
       modele: { ...formData.modele },
-      taille: formData.taille,
+      taille: normalizeSize(formData.taille),
       couleur: formData.couleur,
       prix: Number(formData.prix),
     };

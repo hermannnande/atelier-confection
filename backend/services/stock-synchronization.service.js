@@ -1,5 +1,6 @@
-const PENDING_STATUS = 'validee';
+import { normalizeSize } from './size-normalization.service.js';
 
+const PENDING_STATUS = 'validee';
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
 const asQuantity = (value) => {
@@ -78,7 +79,7 @@ function comparePendingOrders(a, b) {
 
 export function stockVariationKey(source) {
   const { nom } = modelDetails(source);
-  return [nom, source?.couleur, source?.taille].map(normalizePart).join('::');
+  return [nom, source?.couleur, normalizeSize(source?.taille)].map(normalizePart).join('::');
 }
 
 export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
@@ -93,7 +94,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
         modele: nom,
         image,
         couleur: asText(source?.couleur, 'Non précisée'),
-        taille: asText(source?.taille, 'Non précisée'),
+        taille: asText(normalizeSize(source?.taille), 'Non précisée'),
         stockPhysique: 0,
         enLivraison: 0,
         reservePreparation: 0,

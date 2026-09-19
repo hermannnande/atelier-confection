@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
+import { normalizeSize } from '../utils/sizeNormalization';
 import {
   AlertTriangle,
   Boxes,
@@ -50,7 +51,7 @@ const Stock = () => {
   const [stockQuantity, setStockQuantity] = useState(1);
   
   // Suggestions
-  const taillesSuggestions = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'];
+  const taillesSuggestions = ['Standard', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
   const couleursSuggestions = [
     'Blanc',
     'Noir',
@@ -329,7 +330,7 @@ const Stock = () => {
 
       await api.post('/stock', {
         modele: selectedModele.nom,
-        taille: selectedTaille,
+        taille: normalizeSize(selectedTaille),
         couleur: selectedCouleur,
         quantite: stockQuantity,
         prix: selectedModele?.prixBase || selectedModele?.prix_base || 0,
@@ -1200,4 +1201,3 @@ const Stock = () => {
 };
 
 export default Stock;
-

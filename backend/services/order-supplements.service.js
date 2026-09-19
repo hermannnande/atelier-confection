@@ -1,3 +1,5 @@
+import { normalizeSize } from './size-normalization.service.js';
+
 const MAX_SUPPLEMENTS = 20;
 const MAX_LABEL_LENGTH = 100;
 const MAX_SIZE_LENGTH = 30;
@@ -30,7 +32,7 @@ export function normalizeOrderSupplements(value) {
       throw new Error(`Le libellé du supplément ${index + 1} est trop long`);
     }
 
-    const taille = String(item?.taille ?? '').trim();
+    const taille = normalizeSize(item?.taille);
     if (taille.length > MAX_SIZE_LENGTH) {
       throw new Error(`La taille du supplément ${index + 1} est trop longue`);
     }

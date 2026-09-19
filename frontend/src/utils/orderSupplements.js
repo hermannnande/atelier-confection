@@ -1,10 +1,12 @@
+import { normalizeSize } from './sizeNormalization.js';
+
 export function normalizeOrderSupplements(value) {
   if (!Array.isArray(value)) return [];
   return value
     .map((item, index) => ({
       id: String(item?.id || `supplement-${index + 1}`),
       libelle: String(item?.libelle ?? item?.label ?? '').trim(),
-      taille: String(item?.taille ?? '').trim(),
+      taille: normalizeSize(item?.taille),
       couleur: String(item?.couleur ?? '').trim(),
       montant: Math.max(0, Math.round(Number(item?.montant ?? item?.prix) || 0)),
       ...(item?.articleCatalogue === true ? {

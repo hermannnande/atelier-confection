@@ -23,6 +23,8 @@ import {
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
 import { buildStockSynchronization } from '../../services/stock-synchronization.service.js';
+import { normalizeSize } from '../../services/size-normalization.service.js';
+import { findStockVariation } from '../../services/stock-variation.service.js';
 
 const router = express.Router();
 
@@ -188,7 +190,7 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
       pays_code: req.country, // Multi-pays : la commande est creee dans le pays actif
       client,
       modele,
-      taille: req.body.taille,
+      taille: normalizeSize(req.body.taille),
       couleur: req.body.couleur,
       prix_base: prixBase,
       supplements,
@@ -603,7 +605,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     const update = {};
     if (req.body.client) update.client = { ...existing.client, ...req.body.client };
     if (req.body.modele) update.modele = { ...existing.modele, ...req.body.modele };
-    if (req.body.taille) update.taille = req.body.taille;
+    if (req.body.taille) update.taille = normalizeSize(req.body.taille);
     if (req.body.couleur) update.couleur = req.body.couleur;
 
     const supplementsChanged = req.body.supplements !== undefined;
@@ -899,18 +901,13 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
 
     // Ajouter au stock principal (upsert)
     const modeleNom = existing.modele?.nom;
-    const taille = existing.taille;
+    const taille = normalizeSize(existing.taille);
     const couleur = existing.couleur;
 
     const commandeCountry = existing.pays_code || 'CI';
-    const { data: stockItem } = await supabase
-      .from('stock')
-      .select('*')
-      .eq('pays_code', commandeCountry)
-      .eq('modele', modeleNom)
-      .eq('taille', taille)
-      .eq('couleur', couleur)
-      .maybeSingle();
+    const { data: stockItem } = await findStockVariation(supabase, {
+      country: commandeCountry, modele: modeleNom, taille, couleur,
+    });
 
     if (stockItem) {
       const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];

@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapTimestamps, withMongoShape } from '../map.js';
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
+import { findStockVariation } from '../../services/stock-variation.service.js';
 
 const router = express.Router();
 
@@ -242,14 +243,11 @@ router.post('/:sessionId/cloturer', authenticate, resolveCountry, authorize('ges
         if (!commande) continue;
 
         // Trouver l'item dans le stock (du pays de la session)
-        const { data: stockItem, error: stockError } = await supabase
-          .from('stock')
-          .select('*')
-          .eq('pays_code', sessionCountry)
-          .eq('modele', commande.modele?.nom || commande.modele)
-          .eq('taille', commande.taille)
-          .eq('couleur', commande.couleur)
-          .maybeSingle();
+        const { data: stockItem, error: stockError } = await findStockVariation(supabase, {
+          country: sessionCountry, modele: commande.modele?.nom || commande.modele,
+          taille: commande.taille, couleur: commande.couleur,
+          preferQuantity: 'quantite_en_livraison',
+        });
 
         if (!stockError && stockItem) {
           // Remettre en stock principal depuis stock en livraison

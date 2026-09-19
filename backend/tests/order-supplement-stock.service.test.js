@@ -22,7 +22,8 @@ function emptyStockClient() {
       return {
         select() { return this; },
         eq() { return this; },
-        async maybeSingle() { return { data: null, error: null }; },
+        in() { return this; },
+        then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); },
         async insert(row) {
           inserted.push(row);
           return { error: null };

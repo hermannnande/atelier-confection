@@ -1,3 +1,5 @@
+import { normalizeSize } from '../services/size-normalization.service.js';
+
 export function mapTimestamps(row) {
   if (!row) return row;
   const { created_at, updated_at, ...rest } = row;
@@ -19,10 +21,13 @@ export function mapCommande(row) {
   return withMongoShape(
     mapTimestamps({
       ...row,
+      taille: normalizeSize(row.taille),
       noteAppelant: row.note_appelant,
       numeroCommande: row.numero_commande,
       prixBase: row.prix_base ?? row.prix,
-      supplements: Array.isArray(row.supplements) ? row.supplements : [],
+      supplements: Array.isArray(row.supplements)
+        ? row.supplements.map((item) => ({ ...item, taille: normalizeSize(item?.taille) }))
+        : [],
       appelant: row.appelant ?? undefined,
       styliste: row.styliste ?? undefined,
       couturier: row.couturier ?? undefined,
@@ -55,6 +60,7 @@ export function mapStock(row) {
   return withMongoShape(
     mapTimestamps({
       ...row,
+      taille: normalizeSize(row.taille),
       quantitePrincipale: row.quantite_principale,
       quantiteEnLivraison: row.quantite_en_livraison,
     })
@@ -83,4 +89,3 @@ export function mapLivraison(row) {
     })
   );
 }
-

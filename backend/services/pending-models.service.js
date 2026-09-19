@@ -1,8 +1,10 @@
 // Seules les commandes confirmées doivent déclencher une préparation.
 // Les commandes "nouvelle" restent dans Commandes pour être traitées, mais ne
 // deviennent un besoin atelier qu'après leur validation.
+import { normalizeSize } from './size-normalization.service.js';
+
 const TRACKED_STATUSES = new Set(['validee']);
-const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL', '5XL'];
+const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
 
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
@@ -62,7 +64,7 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
 
     const { nom, image } = modelDetails(order);
     const modelKey = nom.toLocaleLowerCase('fr');
-    const taille = asText(order?.taille, 'Non précisée');
+    const taille = asText(normalizeSize(order?.taille), 'Non précisée');
     const couleur = asText(order?.couleur, 'Non précisée');
     const variationKey = `${couleur.toLocaleLowerCase('fr')}::${taille.toLocaleLowerCase('fr')}`;
     const pendingAt = orderPendingAt(order);

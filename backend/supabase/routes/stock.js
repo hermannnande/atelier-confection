@@ -7,6 +7,8 @@ import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
 } from '../../services/stock-synchronization.service.js';
+import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
+import { findStockVariation } from '../../services/stock-variation.service.js';
 
 const router = express.Router();
 
@@ -21,7 +23,10 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
       .eq('pays_code', req.country)
       .order('modele', { ascending: true });
     if (modele) q = q.ilike('modele', `%${modele}%`);
-    if (taille) q = q.eq('taille', taille);
+    if (taille) {
+      const sizes = equivalentSizes(taille);
+      q = sizes.length === 1 ? q.eq('taille', sizes[0]) : q.in('taille', sizes);
+    }
     if (couleur) q = q.eq('couleur', couleur);
 
     const { data, error } = await q;
@@ -186,14 +191,13 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
       return res.status(400).json({ message: 'Le prix du catalogue est invalide' });
     }
 
-    const { data: existing } = await supabase
-      .from('stock')
-      .select('*')
-      .eq('pays_code', req.country)
-      .eq('modele', modele)
-      .eq('taille', taille)
-      .eq('couleur', couleur)
-      .maybeSingle();
+    const canonicalSize = normalizeSize(taille);
+    const { data: existing, error: lookupError } = await findStockVariation(supabase, {
+      country: req.country, modele, taille: canonicalSize, couleur, preferQuantity: '__none',
+    });
+    if (lookupError) {
+      return res.status(500).json({ message: 'Erreur lors de la recherche du stock', error: lookupError.message });
+    }
 
     if (existing) {
       const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];
@@ -210,6 +214,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
       const { data, error } = await supabase
         .from('stock')
         .update({
+          taille: canonicalSize,
           quantite_principale: (existing.quantite_principale || 0) + quantity,
           prix: req.user.role === 'gestionnaire_stock' ? existing.prix : unitPrice,
           image: image ?? existing.image,
@@ -240,7 +245,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
       .insert({
         pays_code: req.country,
         modele,
-        taille,
+        taille: canonicalSize,
         couleur,
         quantite_principale: quantity,
         quantite_en_livraison: 0,

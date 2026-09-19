@@ -4,6 +4,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, X, RefreshCw, Plus, Search, Pin, PinOff, Pencil, Save, Tag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { normalizeSize } from '../utils/sizeNormalization';
 import {
   getOrderBasePrice,
   getOrderTotal,
@@ -11,7 +12,7 @@ import {
 } from '../utils/orderSupplements';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
-const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', 'Taille Standard'];
+const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'Taille Standard'];
 const COULEURS_COMMANDES = [
   'Blanc', 'Noir', 'Rouge', 'Rouge Bordeaux', 'Rouge Sang', 'Bleu', 'Bleu ciel',
   'Bleu bic', 'Bleu marine', 'Bleu Turquoise', 'Vert', 'Vert Treillis', 'Jaune', 'Jaune Moutarde',
@@ -32,7 +33,7 @@ function buildOrderDraft(commande) {
       ville: commande?.ville || client.ville || '',
     },
     modele: { ...modele, nom: modele.nom || modele.sku || '' },
-    taille: commande?.taille || '',
+    taille: normalizeSize(commande?.taille),
     couleur: commande?.couleur || '',
     prixBase: getOrderBasePrice(commande),
     supplements: normalizeOrderSupplements(commande?.supplements),
@@ -207,7 +208,7 @@ const Appel = () => {
       const stockModeleNom = typeof s.modele === 'string' ? s.modele : (s.modele?.nom || '');
       
       const modeleMatch = stockModeleNom.toLowerCase() === modeleNom.toLowerCase();
-      const tailleMatch = s.taille === taille;
+      const tailleMatch = normalizeSize(s.taille) === normalizeSize(taille);
       const couleurMatch = s.couleur === couleur;
       const quantiteMatch = (s.quantitePrincipale || 0) > 0;
       
@@ -309,7 +310,7 @@ const Appel = () => {
         ville: orderDraft.client.ville.trim(),
       },
       modele: { ...orderDraft.modele, nom: orderDraft.modele.nom.trim() },
-      taille: orderDraft.taille.trim(),
+      taille: normalizeSize(orderDraft.taille),
       couleur: orderDraft.couleur.trim(),
       prixBase: Number(orderDraft.prixBase),
       supplements: normalizeOrderSupplements(orderDraft.supplements),
@@ -400,7 +401,7 @@ const Appel = () => {
         {
           id: `modele-${modele.id || modele._id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           libelle: modele.nom,
-          taille: supplementTaille,
+          taille: normalizeSize(supplementTaille),
           couleur: supplementCouleur,
           montant,
         },
@@ -1315,4 +1316,3 @@ const Appel = () => {
 };
 
 export default Appel;
-

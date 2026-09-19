@@ -5,6 +5,8 @@ import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
+import { normalizeSize } from '../../services/size-normalization.service.js';
+import { findStockVariation } from '../../services/stock-variation.service.js';
 
 const router = express.Router();
 
@@ -107,14 +109,10 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
     }
 
     // Vérifier le stock dans le pays de la commande (optionnel, ne bloque pas)
-    const { data: stockItem, error: e2 } = await supabase
-      .from('stock')
-      .select('*')
-      .eq('pays_code', commandeCountry)
-      .eq('modele', commande.modele?.nom)
-      .eq('taille', commande.taille)
-      .eq('couleur', commande.couleur)
-      .maybeSingle();
+    const { data: stockItem, error: e2 } = await findStockVariation(supabase, {
+      country: commandeCountry, modele: commande.modele?.nom,
+      taille: commande.taille, couleur: commande.couleur,
+    });
 
     // Créer livraison (même si stock vide)
     const nowIso = new Date().toISOString();
@@ -288,14 +286,11 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
         .eq('id', livraison.commande_id);
 
       // réduire stock en livraison (dans le pays de la livraison)
-      const { data: stockItem } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('pays_code', livraisonCountry)
-        .eq('modele', commande.modele?.nom)
-        .eq('taille', commande.taille)
-        .eq('couleur', commande.couleur)
-        .maybeSingle();
+      const { data: stockItem } = await findStockVariation(supabase, {
+        country: livraisonCountry, modele: commande.modele?.nom,
+        taille: commande.taille, couleur: commande.couleur,
+        preferQuantity: 'quantite_en_livraison',
+      });
 
       if (stockItem) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
@@ -377,14 +372,11 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         .eq('id', commande.id);
 
       // Retour automatique au stock principal
-      const { data: stockItem } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('pays_code', livraisonCountry)
-        .eq('modele', commande.modele?.nom)
-        .eq('taille', commande.taille)
-        .eq('couleur', commande.couleur)
-        .maybeSingle();
+      const { data: stockItem } = await findStockVariation(supabase, {
+        country: livraisonCountry, modele: commande.modele?.nom,
+        taille: commande.taille, couleur: commande.couleur,
+        preferQuantity: 'quantite_en_livraison',
+      });
 
       const nowIso = new Date().toISOString();
       const mouvement = {
@@ -416,7 +408,7 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         const { error: insertStockError } = await supabase.from('stock').insert({
           pays_code: livraisonCountry,
           modele: commande.modele?.nom || commande.modele || 'Modèle inconnu',
-          taille: commande.taille,
+          taille: normalizeSize(commande.taille),
           couleur: commande.couleur,
           quantite_principale: 1,
           quantite_en_livraison: 0,
@@ -428,14 +420,12 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
         // Une ligne a pu être créée entre la lecture et l'insertion : dans ce
         // cas on la recharge et on applique le retour sur la ligne existante.
         if (insertStockError?.code === '23505') {
-          const { data: concurrentStock } = await supabase
-            .from('stock')
-            .select('*')
-            .eq('pays_code', livraisonCountry)
-            .eq('modele', commande.modele?.nom || commande.modele || 'Modèle inconnu')
-            .eq('taille', commande.taille)
-            .eq('couleur', commande.couleur)
-            .maybeSingle();
+          const { data: concurrentStock } = await findStockVariation(supabase, {
+            country: livraisonCountry,
+            modele: commande.modele?.nom || commande.modele || 'Modèle inconnu',
+            taille: commande.taille, couleur: commande.couleur,
+            preferQuantity: 'quantite_en_livraison',
+          });
           if (concurrentStock) {
             const mouvements = Array.isArray(concurrentStock.mouvements) ? concurrentStock.mouvements : [];
             mouvements.push(mouvement);
@@ -582,14 +572,11 @@ router.post(
       }
 
       // 2) Restaurer le stock : en livraison → principal (si une ligne existe)
-      const { data: stockItem } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('pays_code', livraisonCountry)
-        .eq('modele', commande.modele?.nom)
-        .eq('taille', commande.taille)
-        .eq('couleur', commande.couleur)
-        .maybeSingle();
+      const { data: stockItem } = await findStockVariation(supabase, {
+        country: livraisonCountry, modele: commande.modele?.nom,
+        taille: commande.taille, couleur: commande.couleur,
+        preferQuantity: 'quantite_en_livraison',
+      });
 
       if (stockItem && (stockItem.quantite_en_livraison || 0) >= 1) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
@@ -715,14 +702,11 @@ router.post('/:id/confirmer-retour', authenticate, resolveCountry, authorize('ge
       .eq('id', req.params.id);
 
     if (commande) {
-      const { data: stockItem } = await supabase
-        .from('stock')
-        .select('*')
-        .eq('pays_code', livraisonCountry)
-        .eq('modele', commande.modele?.nom)
-        .eq('taille', commande.taille)
-        .eq('couleur', commande.couleur)
-        .maybeSingle();
+      const { data: stockItem } = await findStockVariation(supabase, {
+        country: livraisonCountry, modele: commande.modele?.nom,
+        taille: commande.taille, couleur: commande.couleur,
+        preferQuantity: 'quantite_en_livraison',
+      });
 
       if (stockItem) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];

@@ -23,6 +23,18 @@ test('regroupe les commandes par modèle, couleur et taille', () => {
   assert.equal(groupPendingModels(orders).some((groupe) => groupe.nom === 'KAYLA'), false);
 });
 
+test('regroupe XXL et 2XL dans une seule taille en attente', () => {
+  const [davichi] = groupPendingModels([
+    { id: '1', statut: 'validee', modele: 'DAVICHI', couleur: 'Bleu marine', taille: 'XXL' },
+    { id: '2', statut: 'validee', modele: 'DAVICHI', couleur: 'Bleu marine', taille: '2XL' },
+  ]);
+
+  assert.deepEqual(
+    davichi.variations.map(({ couleur, taille, quantite }) => ({ couleur, taille, quantite })),
+    [{ couleur: 'Bleu marine', taille: '2XL', quantite: 2 }],
+  );
+});
+
 test('signale seulement les commandes postérieures au seuil de récence', () => {
   const orders = [
     { statut: 'validee', modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', created_at: '2026-09-10T08:00:00Z' },
