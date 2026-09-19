@@ -20,6 +20,7 @@ import {
   normalizeOrderSupplements,
   resolveStoredOrderBasePrice,
 } from '../../services/order-supplements.service.js';
+import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
 import { buildStockSynchronization } from '../../services/stock-synchronization.service.js';
 
@@ -257,7 +258,7 @@ router.get(
       const [ordersResult, stockResult] = await Promise.all([
         supabase
           .from('commandes')
-          .select('id, numero_commande, modele, taille, couleur, statut, urgence, created_at, updated_at, historique')
+          .select('id, numero_commande, modele, taille, couleur, supplements, statut, urgence, created_at, updated_at, historique')
           .eq('pays_code', req.country)
           .eq('statut', 'validee')
           .order('created_at', { ascending: false }),
@@ -578,7 +579,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
         supabase.from('stock').select('*').eq('pays_code', req.country),
         supabase
           .from('commandes')
-          .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
+          .select('id, modele, taille, couleur, supplements, statut, urgence, created_at, historique')
           .eq('pays_code', req.country)
           .eq('statut', 'validee'),
       ]);
@@ -958,6 +959,11 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
       });
     }
 
+    await moveOrderSupplementStock({
+      supabase, commande: existing, country: commandeCountry, userId: req.userId,
+      action: 'production', commentaire: 'Ajout après confection',
+    });
+
     // 📱 Envoyer SMS automatique "Confection terminée"
     try {
       const autoSendEnabled = await smsService.isAutoSendEnabled('confectionnee');
@@ -1141,6 +1147,5 @@ router.get('/statistiques/analyse', authenticate, resolveCountry, authorize('ges
 });
 
 export default router;
-
 
 

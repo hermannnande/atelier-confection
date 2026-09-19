@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapTimestamps, withMongoShape } from '../map.js';
+import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 
 const router = express.Router();
 
@@ -273,6 +274,11 @@ router.post('/:sessionId/cloturer', authenticate, resolveCountry, authorize('ges
             })
             .eq('id', stockItem.id);
         }
+
+        await moveOrderSupplementStock({
+          supabase, commande, country: sessionCountry, userId: req.userId, action: 'refusee',
+          commentaire: 'Retour en stock suite à clôture session',
+        });
 
         // Remettre la commande en stock
         await supabase

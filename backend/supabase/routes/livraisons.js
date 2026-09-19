@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
+import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 
 const router = express.Router();
 
@@ -172,6 +173,10 @@ router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'ge
         .eq('id', stockItem.id);
       if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
     }
+    await moveOrderSupplementStock({
+      supabase, commande, country: commandeCountry, userId: req.userId, action: 'assigner',
+      commentaire: 'Assignation au livreur',
+    });
 
     try {
       await customerSmsService.sendCommandeNotification(
@@ -312,6 +317,12 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
       }
     }
 
+    if (commande) {
+      await moveOrderSupplementStock({
+        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'livree',
+        commentaire: 'Livraison réussie',
+      });
+    }
     return res.json({ message: 'Livraison confirmée', livraison: mapLivraison(livraison) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
@@ -438,6 +449,12 @@ router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', '
       }
     }
 
+    if (commande) {
+      await moveOrderSupplementStock({
+        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'refusee',
+        commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
+      });
+    }
     return res.json({ message: 'Refus enregistré et stock mis à jour', livraison: mapLivraison(updatedLivraison || livraison) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
@@ -597,6 +614,11 @@ router.post(
           .eq('id', stockItem.id);
       }
 
+      await moveOrderSupplementStock({
+        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'retour',
+        commentaire: `Renvoi en préparation${motif ? ` : ${motif}` : ''}`,
+      });
+
       // 3) Supprimer la livraison (la commande réapparaîtra dans "Préparation Colis")
       const { error: e4 } = await supabase.from('livraisons').delete().eq('id', req.params.id);
       if (e4) {
@@ -726,6 +748,12 @@ router.post('/:id/confirmer-retour', authenticate, resolveCountry, authorize('ge
       }
     }
 
+    if (commande) {
+      await moveOrderSupplementStock({
+        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'retour',
+        commentaire: `Retour après refus: ${commentaire || 'Aucun commentaire'}`,
+      });
+    }
     return res.json({ message: 'Retour confirmé et stock mis à jour', livraison: mapLivraison(livraison) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
@@ -856,7 +884,6 @@ router.post('/livreur/:livreurId/marquer-paiement-recu', authenticate, resolveCo
 });
 
 export default router;
-
 
 
 

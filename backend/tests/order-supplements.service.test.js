@@ -8,12 +8,27 @@ import {
 
 test('additionne les articles supplémentaires au prix de base', () => {
   const supplements = normalizeOrderSupplements([
-    { id: 's1', libelle: 'Deuxième tenue', taille: 'XL', montant: 13_500 },
+    { id: 's1', libelle: 'Deuxième tenue', taille: 'XL', couleur: 'Bleu Marine', montant: 13_500 },
     { id: 's2', libelle: 'Livraison express', montant: 2_000 },
   ]);
 
   assert.equal(calculateOrderTotal(13_500, supplements), 29_000);
   assert.equal(supplements[0].taille, 'XL');
+  assert.equal(supplements[0].couleur, 'Bleu Marine');
+});
+
+test('conserve l’identité catalogue des tenues ajoutées manuellement', () => {
+  const [article] = normalizeOrderSupplements([{
+    id: 'tenue-2',
+    libelle: 'Chic Dress',
+    taille: 'XL',
+    couleur: 'Blanc',
+    montant: 14_000,
+    articleCatalogue: true,
+    image: 'https://example.com/chic.jpg',
+  }]);
+  assert.equal(article.articleCatalogue, true);
+  assert.equal(article.image, 'https://example.com/chic.jpg');
 });
 
 test('retrouve le prix de base des anciennes commandes', () => {

@@ -52,6 +52,24 @@ function orderId(order) {
   return value === undefined || value === null ? '' : String(value);
 }
 
+export function orderStockArticles(order) {
+  const articles = [{
+    modele: order?.modele,
+    taille: order?.taille,
+    couleur: order?.couleur,
+  }];
+  for (const supplement of (Array.isArray(order?.supplements) ? order.supplements : [])) {
+    if (supplement?.articleCatalogue !== true) continue;
+    articles.push({
+      modele: { nom: supplement.libelle, image: supplement.image || '' },
+      taille: supplement.taille,
+      couleur: supplement.couleur,
+      supplementId: supplement.id,
+    });
+  }
+  return articles;
+}
+
 function comparePendingOrders(a, b) {
   return Number(Boolean(b?.urgence)) - Number(Boolean(a?.urgence))
     || validationTimestamp(a) - validationTimestamp(b)
@@ -104,7 +122,19 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     // réservation du stock. Seules les commandes encore validées et visibles
     // dans « Commandes » participent au calcul des réservations.
     if (order?.statut === PENDING_STATUS) {
-      ensureVariation(order).commandesValidees.push(order);
+      orderStockArticles(order).forEach((article, index) => {
+        const id = orderId(order);
+        const itemOrder = index === 0 ? order : {
+          ...order,
+          _id: `${id}::${article.supplementId || index}`,
+          id: `${id}::${article.supplementId || index}`,
+          modele: article.modele,
+          taille: article.taille,
+          couleur: article.couleur,
+          sourceOrderId: id,
+        };
+        ensureVariation(itemOrder).commandesValidees.push(itemOrder);
+      });
     }
   }
 
@@ -127,10 +157,11 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     const quantiteDisponible = Math.max(variation.stockPhysique - quantiteReservee, 0);
 
     coveredOrders.forEach((order) => {
-      const id = orderId(order);
+      const id = order.sourceOrderId || orderId(order);
       if (id) {
+        const previous = couvertureCommandes[id];
         couvertureCommandes[id] = {
-          couvertParStock: true,
+          couvertParStock: previous?.couvertParStock ?? true,
           stockPhysique: variation.stockPhysique,
           quantiteDisponible,
         };
@@ -138,7 +169,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     });
 
     missingOrders.forEach((order) => {
-      const id = orderId(order);
+      const id = order.sourceOrderId || orderId(order);
       if (id) {
         couvertureCommandes[id] = {
           couvertParStock: false,
@@ -242,4 +273,3 @@ export function enrichStockWithSynchronization(stock = [], synchronization) {
     };
   });
 }
-

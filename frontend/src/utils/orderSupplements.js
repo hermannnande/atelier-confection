@@ -7,6 +7,10 @@ export function normalizeOrderSupplements(value) {
       taille: String(item?.taille ?? '').trim(),
       couleur: String(item?.couleur ?? '').trim(),
       montant: Math.max(0, Math.round(Number(item?.montant ?? item?.prix) || 0)),
+      ...(item?.articleCatalogue === true ? {
+        articleCatalogue: true,
+        image: String(item?.image ?? '').trim(),
+      } : {}),
     }))
     .filter((item) => item.libelle && item.montant > 0);
 }
@@ -28,4 +32,3 @@ export function getOrderTotal(prixBase, supplements = []) {
     normalizeOrderSupplements(supplements).reduce((sum, item) => sum + item.montant, 0)
   );
 }
-

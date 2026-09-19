@@ -89,3 +89,43 @@ test('la synchronisation enrichit les lignes du stock avec réservé et disponib
   assert.equal(item.quantiteDisponible, 1);
 });
 
+test('chaque tenue ajoutée à une commande réserve sa propre variation', () => {
+  const commande = davichi('1', 'validee', {
+    supplements: [{
+      id: 'article-2',
+      libelle: 'Chic Dress',
+      taille: 'XL',
+      couleur: 'Blanc',
+      montant: 14_000,
+      articleCatalogue: true,
+    }],
+  });
+  const result = buildStockSynchronization({
+    orders: [commande],
+    stock: [stockDavichi(1)],
+  });
+
+  assert.equal(result.totals.reserveCommandes, 1);
+  assert.equal(result.totals.aConfectionner, 1);
+  assert.equal(result.uncoveredOrders[0].modele.nom, 'Chic Dress');
+  assert.equal(result.couvertureCommandes['1'].couvertParStock, false);
+});
+
+test('les tenues supplémentaires ne restent pas réservées après l’envoi en préparation', () => {
+  const result = buildStockSynchronization({
+    orders: [davichi('1', 'en_stock', {
+      supplements: [{
+        id: 'article-2',
+        libelle: 'Chic Dress',
+        taille: 'XL',
+        couleur: 'Blanc',
+        montant: 14_000,
+        articleCatalogue: true,
+      }],
+    })],
+    stock: [stockDavichi(1)],
+  });
+
+  assert.equal(result.totals.reserveCommandes, 0);
+  assert.equal(result.totals.aConfectionner, 0);
+});

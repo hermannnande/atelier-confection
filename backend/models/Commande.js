@@ -39,6 +39,9 @@ const commandeSchema = new mongoose.Schema({
     id: String,
     libelle: { type: String, trim: true },
     taille: { type: String, trim: true },
+    couleur: { type: String, trim: true },
+    image: String,
+    articleCatalogue: { type: Boolean, default: false },
     montant: { type: Number, min: 0 }
   }],
   // Statut de la commande
@@ -127,4 +130,3 @@ commandeSchema.pre('save', async function(next) {
 });
 
 export default mongoose.model('Commande', commandeSchema);
-

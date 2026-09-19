@@ -53,7 +53,7 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
         .order('modele', { ascending: true }),
       supabase
         .from('commandes')
-        .select('id, modele, taille, couleur, statut, urgence, created_at, historique')
+        .select('id, modele, taille, couleur, supplements, statut, urgence, created_at, historique')
         .eq('pays_code', req.country)
         .eq('statut', 'validee'),
     ]);
@@ -367,4 +367,3 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
 });
 
 export default router;
-

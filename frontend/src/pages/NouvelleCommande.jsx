@@ -22,6 +22,8 @@ import {
   ShoppingBag,
   Tag,
   Loader2,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 /* ---------- Constantes ---------- */
@@ -140,11 +142,14 @@ function Stepper({ currentStep, onJump, canJump }) {
   );
 }
 
-function RecapCard({ formData, selectedModel }) {
+function RecapCard({ formData, articles, onRemoveArticle, selectedModel }) {
   const { client, modele, taille, couleur, prix, urgence } = formData;
   const hasClient = client.nom || client.contact || client.ville;
   const hasModel = !!selectedModel;
   const hasVariation = !!(taille && couleur);
+  const draftReady = hasModel && hasVariation && Number(prix) > 0;
+  const total = articles.reduce((sum, article) => sum + Number(article.prix), 0)
+    + (draftReady ? Number(prix) : 0);
 
   return (
     <div className="sticky top-4 space-y-3">
@@ -173,39 +178,41 @@ function RecapCard({ formData, selectedModel }) {
             )}
           </div>
 
-          {/* Modèle */}
-          <div className="mb-3 pb-3 border-b border-white/20">
-            <p className="text-[10px] uppercase font-bold opacity-70 mb-1">Modèle</p>
-            {hasModel ? (
-              <p className="font-bold text-sm truncate">{modele.nom}</p>
-            ) : (
-              <p className="text-xs opacity-60 italic">Pas encore choisi</p>
-            )}
-          </div>
-
-          {/* Variation */}
-          <div className="mb-3 pb-3 border-b border-white/20">
-            <p className="text-[10px] uppercase font-bold opacity-70 mb-2">Taille & Couleur</p>
-            {hasVariation ? (
-              <div className="flex items-center gap-2">
-                <ColorSwatch couleur={couleur} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm truncate">{taille}</p>
-                  <p className="text-xs opacity-90 truncate">{couleur}</p>
+          <div className="mb-3 pb-3 border-b border-white/20 space-y-2">
+            <p className="text-[10px] uppercase font-bold opacity-70">
+              Articles ({articles.length + (draftReady ? 1 : 0)})
+            </p>
+            {articles.map((article, index) => (
+              <div key={article.id} className="flex items-center gap-2 rounded-lg bg-white/15 px-2 py-1.5">
+                <ColorSwatch couleur={article.couleur} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold truncate">{index + 1}. {article.modele.nom}</p>
+                  <p className="text-[11px] opacity-90 truncate">{article.taille} · {article.couleur} · {Number(article.prix).toLocaleString('fr-FR')} F</p>
+                </div>
+                <button type="button" onClick={() => onRemoveArticle(article.id)} className="p-1.5 rounded-md hover:bg-white/20" aria-label={`Retirer ${article.modele.nom}`}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            {hasModel && (
+              <div className="flex items-center gap-2 rounded-lg border border-dashed border-white/40 px-2 py-1.5">
+                {hasVariation && <ColorSwatch couleur={couleur} size="sm" />}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">{modele.nom} <span className="font-normal opacity-70">(en cours)</span></p>
+                  <p className="text-[11px] opacity-90 truncate">{hasVariation ? `${taille} · ${couleur} · ${Number(prix).toLocaleString('fr-FR')} F` : 'Choisir taille et couleur'}</p>
                 </div>
               </div>
-            ) : (
-              <p className="text-xs opacity-60 italic">Pas encore choisi</p>
             )}
+            {!articles.length && !hasModel && <p className="text-xs opacity-60 italic">Pas encore choisi</p>}
           </div>
 
           {/* Prix */}
           <div className="flex items-end justify-between gap-2">
             <div>
               <p className="text-[10px] uppercase font-bold opacity-70">Total</p>
-              {prix ? (
+              {total > 0 ? (
                 <p className="font-black text-2xl sm:text-3xl">
-                  {Number(prix).toLocaleString('fr-FR')} <span className="text-sm font-bold opacity-80">F</span>
+                  {total.toLocaleString('fr-FR')} <span className="text-sm font-bold opacity-80">F</span>
                 </p>
               ) : (
                 <p className="text-xs opacity-60 italic">—</p>
@@ -236,6 +243,7 @@ const NouvelleCommande = () => {
   const [loadingStock, setLoadingStock] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
+  const [articles, setArticles] = useState([]);
   const [villeFocused, setVilleFocused] = useState(false);
 
   const [modeBicolore, setModeBicolore] = useState(false);
@@ -403,11 +411,13 @@ const NouvelleCommande = () => {
   const isStep1Valid = formData.client.nom.trim() && formData.client.contact.trim() && formData.client.ville.trim();
   const isStep2Valid = !!selectedModel;
   const isStep3Valid = !!(formData.taille && formData.couleur);
-  const isPriceValid = formData.prix && Number(formData.prix) > 0;
+  const isPriceValid = articles.length > 0 && articles.every(
+    (article) => Number(article.prix) > 0,
+  );
   const canGoNext =
     (currentStep === 1 && isStep1Valid) ||
     (currentStep === 2 && isStep2Valid) ||
-    (currentStep === 3 && isStep3Valid);
+    (currentStep === 3 && isStep3Valid && Number(formData.prix) > 0);
 
   const canJumpToStep = (target) => {
     if (target <= currentStep) return true;
@@ -421,9 +431,51 @@ const NouvelleCommande = () => {
     if (currentStep < 3) {
       setCurrentStep((s) => s + 1);
     } else {
-      // Etape 3 OK : on ouvre le modal de finalisation (note, urgence, prix)
-      setShowFinaliser(true);
+      handleCommitArticle(true);
     }
+  };
+
+  const handleCommitArticle = (finalize = false) => {
+    if (!selectedModel || !isStep3Valid || Number(formData.prix) <= 0) {
+      toast.error('Choisis un modèle, une taille, une couleur et un prix valide');
+      return;
+    }
+    if (articles.length >= 21) {
+      toast.error('Une commande peut contenir au maximum 21 articles');
+      return;
+    }
+    const article = {
+      id: crypto.randomUUID(),
+      modele: { ...formData.modele },
+      taille: formData.taille,
+      couleur: formData.couleur,
+      prix: Number(formData.prix),
+    };
+    setArticles((prev) => [...prev, article]);
+    setSelectedModel(null);
+    setFormData((prev) => ({
+      ...prev,
+      modele: { nom: '', image: '', description: '' },
+      taille: '',
+      couleur: '',
+      prix: '',
+    }));
+    setSearchTerm('');
+    if (finalize) setShowFinaliser(true);
+    else {
+      setCurrentStep(2);
+      toast.success('Article ajouté à la commande');
+    }
+  };
+
+  const handleRemoveArticle = (id) => {
+    setArticles((prev) => prev.filter((article) => article.id !== id));
+  };
+
+  const handleArticlePriceChange = (id, value) => {
+    setArticles((prev) => prev.map((article) => (
+      article.id === id ? { ...article, prix: value } : article
+    )));
   };
 
   const handlePrev = () => {
@@ -432,15 +484,37 @@ const NouvelleCommande = () => {
 
   const handleSubmit = async (e) => {
     if (e?.preventDefault) e.preventDefault();
+    if (!showFinaliser || !isStep1Valid) return;
     if (!isPriceValid) {
-      toast.error('Vérifie le prix avant de créer la commande');
+      toast.error('Vérifie le prix de chaque article avant de créer la commande');
       return;
     }
     setLoading(true);
     try {
-      const payload = { ...formData, statut: 'validee' };
+      const [principal, ...supplementaires] = articles;
+      const total = articles.reduce((sum, article) => sum + Number(article.prix), 0);
+      const payload = {
+        client: formData.client,
+        modele: principal.modele,
+        taille: principal.taille,
+        couleur: principal.couleur,
+        prixBase: Number(principal.prix),
+        prix: total,
+        supplements: supplementaires.map((article) => ({
+          id: article.id,
+          libelle: article.modele.nom,
+          image: article.modele.image,
+          taille: article.taille,
+          couleur: article.couleur,
+          montant: Number(article.prix),
+          articleCatalogue: true,
+        })),
+        urgence: formData.urgence,
+        noteAppelant: formData.noteAppelant,
+        statut: 'validee',
+      };
       const response = await api.post('/commandes', payload);
-      toast.success('Commande créée et validée !', { icon: '✅' });
+      toast.success(`Commande de ${articles.length} article(s) créée et validée !`, { icon: '✅' });
       navigate(`/commandes/${response.data.commande._id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la création');
@@ -829,6 +903,21 @@ const NouvelleCommande = () => {
           )}
         </div>
       )}
+
+      <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+        <label htmlFor="prix-article" className="text-sm font-bold text-gray-700 flex-1">
+          Prix de cet article (FCFA)
+        </label>
+        <input
+          id="prix-article"
+          type="number"
+          min="1"
+          value={formData.prix}
+          onChange={(e) => setFormData((prev) => ({ ...prev, prix: e.target.value }))}
+          className="w-32 px-3 py-2 rounded-lg border border-gray-300 text-right font-bold"
+          placeholder="Prix"
+        />
+      </div>
     </div>
   );
 
@@ -858,38 +947,36 @@ const NouvelleCommande = () => {
 
           {/* Contenu scrollable */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            {/* Prix */}
+            {/* Articles et prix */}
             <div>
               <label className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <Tag size={14} />
-                Prix de vente (FCFA) *
+                Articles et prix (FCFA) *
               </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={formData.prix}
-                  onChange={(e) => setFormData((p) => ({ ...p, prix: e.target.value }))}
-                  min="0"
-                  className="w-full px-4 py-3 pr-20 bg-white border-2 border-emerald-300 rounded-xl text-xl font-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                  placeholder="13000"
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">FCFA</div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {[10000, 13000, 15000, 18000, 20000, 25000].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, prix: p }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      Number(formData.prix) === p
-                        ? 'bg-emerald-500 text-white shadow'
-                        : 'bg-gray-100 text-gray-700 hover:bg-emerald-100'
-                    }`}
-                  >
-                    {p.toLocaleString('fr-FR')} F
-                  </button>
+              <div className="space-y-2">
+                {articles.map((article, index) => (
+                  <div key={article.id} className="rounded-xl border border-gray-200 p-2.5 flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-gray-900 truncate">{index + 1}. {article.modele.nom}</p>
+                      <p className="text-[11px] text-gray-500 truncate">{article.taille} · {article.couleur}</p>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={article.prix}
+                      onChange={(e) => handleArticlePriceChange(article.id, e.target.value)}
+                      className="w-24 sm:w-28 px-2 py-2 border border-emerald-300 rounded-lg text-sm font-bold text-right"
+                      aria-label={`Prix de ${article.modele.nom}`}
+                    />
+                    <button type="button" onClick={() => handleRemoveArticle(article.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" aria-label={`Retirer ${article.modele.nom}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 ))}
+              </div>
+              <div className="mt-3 rounded-xl bg-emerald-50 p-3 flex justify-between font-black text-emerald-900">
+                <span>Total</span>
+                <span>{articles.reduce((sum, article) => sum + (Number(article.prix) || 0), 0).toLocaleString('fr-FR')} F</span>
               </div>
             </div>
 
@@ -986,7 +1073,7 @@ const NouvelleCommande = () => {
       {/* Layout principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Form (2/3) */}
-        <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
+        <form onSubmit={(e) => e.preventDefault()} className="lg:col-span-2 space-y-4">
           <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-5 sm:p-6 border border-white/40 min-h-[400px]">
             {currentStep === 1 && renderStep1()}
             {currentStep === 2 && renderStep2()}
@@ -994,7 +1081,7 @@ const NouvelleCommande = () => {
           </div>
 
           {/* Navigation */}
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 sm:p-4 border border-white/40 flex items-center gap-2 sticky bottom-3">
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-3 sm:p-4 border border-white/40 flex flex-wrap items-center gap-2 sticky bottom-3">
             <button
               type="button"
               onClick={handlePrev}
@@ -1005,12 +1092,21 @@ const NouvelleCommande = () => {
               <span className="hidden sm:inline">Précédent</span>
             </button>
 
-            <div className="flex-1 text-center">
+            <div className="flex-1 text-center min-w-8">
               <span className="text-xs font-bold text-gray-500">
                 {currentStep} / 3
               </span>
             </div>
 
+            {articles.length > 0 && currentStep === 2 && !selectedModel && (
+              <button
+                type="button"
+                onClick={() => setShowFinaliser(true)}
+                className="px-3 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm"
+              >
+                Terminer ({articles.length})
+              </button>
+            )}
             {currentStep < 3 ? (
               <button
                 type="button"
@@ -1022,22 +1118,33 @@ const NouvelleCommande = () => {
                 <ArrowRight size={16} />
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canGoNext || loading}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
-              >
-                <Check size={16} strokeWidth={3} />
-                <span>Valider la commande</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleCommitArticle(false)}
+                  disabled={!canGoNext || loading}
+                  className="px-3 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 font-bold text-sm disabled:opacity-40 flex items-center gap-1"
+                >
+                  <Plus size={16} />
+                  <span>Ajouter un autre</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canGoNext || loading}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                >
+                  <Check size={16} strokeWidth={3} />
+                  <span>Finaliser</span>
+                </button>
+              </>
             )}
           </div>
         </form>
 
         {/* Récap (1/3) */}
         <div className="lg:col-span-1">
-          <RecapCard formData={formData} selectedModel={selectedModel} />
+          <RecapCard formData={formData} articles={articles} onRemoveArticle={handleRemoveArticle} selectedModel={selectedModel} />
         </div>
       </div>
 
@@ -1048,4 +1155,3 @@ const NouvelleCommande = () => {
 };
 
 export default NouvelleCommande;
-

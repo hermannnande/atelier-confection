@@ -51,6 +51,10 @@ export function normalizeOrderSupplements(value) {
       taille,
       couleur,
       montant: Math.round(montant),
+      ...(item?.articleCatalogue === true ? {
+        articleCatalogue: true,
+        image: String(item?.image ?? '').trim().slice(0, 500),
+      } : {}),
     };
   });
 }
@@ -70,4 +74,3 @@ export function resolveStoredOrderBasePrice(order = {}, supplements = []) {
   );
   return Math.max(0, total - supplementTotal);
 }
-
