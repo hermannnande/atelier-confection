@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { normalizeSize } from '../utils/sizeNormalization';
+import { normalizeStockLabel, sameStockLabel } from '../utils/stockVariation';
 import {
   Save,
   ArrowLeft,
@@ -286,10 +287,10 @@ const NouvelleCommande = () => {
 
   const groupedStock = useMemo(() => {
     return stockItems.reduce((acc, item) => {
-      const m = item.modele;
-      if (!acc[m]) {
-        acc[m] = {
-          nom: m,
+      const key = normalizeStockLabel(item.modele);
+      if (!acc[key]) {
+        acc[key] = {
+          nom: item.modele,
           image: item.image,
           variations: [],
           tailles: new Set(),
@@ -299,12 +300,12 @@ const NouvelleCommande = () => {
           prixMax: item.prix,
         };
       }
-      acc[m].variations.push(item);
-      acc[m].tailles.add(item.taille);
-      acc[m].couleurs.add(item.couleur);
-      acc[m].quantiteTotal += item.quantitePrincipale || 0;
-      acc[m].prixMin = Math.min(acc[m].prixMin, item.prix);
-      acc[m].prixMax = Math.max(acc[m].prixMax, item.prix);
+      acc[key].variations.push(item);
+      acc[key].tailles.add(item.taille);
+      acc[key].couleurs.add(item.couleur);
+      acc[key].quantiteTotal += item.quantitePrincipale || 0;
+      acc[key].prixMin = Math.min(acc[key].prixMin, item.prix);
+      acc[key].prixMax = Math.max(acc[key].prixMax, item.prix);
       return acc;
     }, {});
   }, [stockItems]);
@@ -316,9 +317,10 @@ const NouvelleCommande = () => {
     libraryModels.forEach((lm) => {
       const nom = lm.nom;
       if (!nom) return;
-      if (!merged[nom]) {
+      const key = normalizeStockLabel(nom);
+      if (!merged[key]) {
         const prixBase = Number(lm.prix_base ?? lm.prixBase ?? 0) || 0;
-        merged[nom] = {
+        merged[key] = {
           nom,
           image: lm.image || '',
           variations: [],
@@ -336,11 +338,16 @@ const NouvelleCommande = () => {
   }, [groupedStock, libraryModels, searchTerm]);
 
   const couleursDispo = useMemo(() => {
-    const set = new Set(COULEURS_DE_BASE);
+    const colorsByKey = new Map();
+    COULEURS_DE_BASE.forEach((couleur) => colorsByKey.set(normalizeStockLabel(couleur), couleur));
     if (selectedModel) {
-      selectedModel.variations.forEach((v) => v.couleur && set.add(v.couleur));
+      selectedModel.variations.forEach((variation) => {
+        if (!variation.couleur) return;
+        const key = normalizeStockLabel(variation.couleur);
+        if (!colorsByKey.has(key)) colorsByKey.set(key, variation.couleur);
+      });
     }
-    return Array.from(set);
+    return Array.from(colorsByKey.values());
   }, [selectedModel]);
 
   const villesFiltrees = useMemo(() => {
@@ -351,7 +358,15 @@ const NouvelleCommande = () => {
 
   const getVariationStock = (taille, couleur) => {
     if (!selectedModel) return null;
-    return selectedModel.variations.find((v) => normalizeSize(v.taille) === normalizeSize(taille) && v.couleur === couleur);
+    const matches = selectedModel.variations.filter((variation) => (
+      normalizeSize(variation.taille) === normalizeSize(taille)
+      && sameStockLabel(variation.couleur, couleur)
+    ));
+    if (!matches.length) return null;
+    return {
+      ...matches[0],
+      quantitePrincipale: matches.reduce((total, item) => total + Number(item.quantitePrincipale || 0), 0),
+    };
   };
 
   const variationActuelle = useMemo(() => {

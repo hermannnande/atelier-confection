@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, X, RefreshCw, Plus, Search, Pin, PinOff, Pencil, Save, Tag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
+import { sameStockLabel } from '../utils/stockVariation';
 import {
   getOrderBasePrice,
   getOrderTotal,
@@ -202,14 +203,13 @@ const Appel = () => {
       stockLength: stock.length
     });
     
-    // Dans Supabase, chaque ligne du stock est une variation individuelle (modele + taille + couleur)
-    // Chercher une ligne qui correspond exactement
+    // Les anciennes différences de casse ou d'accent ne changent pas l'article.
     const variationEnStock = stock.find(s => {
       const stockModeleNom = typeof s.modele === 'string' ? s.modele : (s.modele?.nom || '');
       
-      const modeleMatch = stockModeleNom.toLowerCase() === modeleNom.toLowerCase();
+      const modeleMatch = sameStockLabel(stockModeleNom, modeleNom);
       const tailleMatch = normalizeSize(s.taille) === normalizeSize(taille);
-      const couleurMatch = s.couleur === couleur;
+      const couleurMatch = sameStockLabel(s.couleur, couleur);
       const quantiteMatch = (s.quantitePrincipale || 0) > 0;
       
       console.log('  📦 Comparaison:', {

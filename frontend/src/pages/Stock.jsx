@@ -3,6 +3,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
+import { normalizeStockLabel, summarizeStockVariations } from '../utils/stockVariation';
 import {
   AlertTriangle,
   Boxes,
@@ -127,12 +128,11 @@ const Stock = () => {
 
   // Grouper le stock par modèle
   const groupedStock = stock.reduce((acc, item) => {
-    const key = item.modele;
+    const key = normalizeStockLabel(item.modele);
     if (!acc[key]) {
       // Chercher l'image depuis la bibliothèque de modèles si elle n'existe pas dans le stock
-      const normalizedModelName = String(key || '').trim().toLocaleLowerCase('fr');
       const modeleCorrespondant = modeles.find((modele) => (
-        String(modele.nom || '').trim().toLocaleLowerCase('fr') === normalizedModelName
+        normalizeStockLabel(modele.nom) === key
       ));
       let imageUrl = item.image;
       if (!imageUrl) {
@@ -140,7 +140,7 @@ const Stock = () => {
       }
       
       acc[key] = {
-        modele: key,
+        modele: item.modele,
         modeleId: modeleCorrespondant?.id || modeleCorrespondant?._id || null,
         epingleStock: modeleCorrespondant?.epingle_stock === true || modeleCorrespondant?.epingleStock === true,
         image: imageUrl,
@@ -539,13 +539,14 @@ const Stock = () => {
       ) : (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {stockGroupe.map((item) => {
-            const usefulVariations = item.variations.filter((variation) => (
+            const logicalVariations = summarizeStockVariations(item.variations);
+            const usefulVariations = logicalVariations.filter((variation) => (
               (variation.quantitePrincipale || variation.quantite || 0) > 0
               || (variation.quantiteReservee || 0) > 0
               || (variation.quantiteEnLivraison || 0) > 0
             ));
-            const previewVariations = (usefulVariations.length > 0 ? usefulVariations : item.variations).slice(0, 4);
-            const hiddenCount = item.variations.length - previewVariations.length;
+            const previewVariations = (usefulVariations.length > 0 ? usefulVariations : logicalVariations).slice(0, 4);
+            const hiddenCount = logicalVariations.length - previewVariations.length;
             const usagePercent = item.quantiteTotal > 0
               ? Math.min(100, Math.round((item.quantiteReservee / item.quantiteTotal) * 100))
               : 0;
@@ -606,7 +607,7 @@ const Stock = () => {
                         </span>
                       )}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${status.className}`}>{status.label}</span>
-                      <span className="text-[10px] font-bold text-gray-400">{item.variations.length} variation(s)</span>
+                      <span className="text-[10px] font-bold text-gray-400">{logicalVariations.length} variation(s)</span>
                     </div>
                   </div>
                 </div>
@@ -682,7 +683,7 @@ const Stock = () => {
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-black text-white sm:text-2xl">{selectedModeleDetails.modele}</h2>
-                  <p className="text-xs text-white/80 sm:text-sm">{selectedModeleDetails.variations.length} variations</p>
+                  <p className="text-xs text-white/80 sm:text-sm">{summarizeStockVariations(selectedModeleDetails.variations).length} variations</p>
                 </div>
               </div>
               <button
@@ -733,6 +734,11 @@ const Stock = () => {
               </div>
 
               {/* Boutons action */}
+              {selectedModeleDetails.variations.length > summarizeStockVariations(selectedModeleDetails.variations).length && (
+                <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                  Certaines anciennes lignes correspondent au même article. Elles restent séparées ici pour conserver leurs mouvements et permettre leur modification.
+                </p>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-base font-black text-gray-900 sm:text-lg">Variations du modèle</h3>
                 {!editMode ? (

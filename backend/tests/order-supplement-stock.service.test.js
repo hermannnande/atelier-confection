@@ -23,7 +23,8 @@ function emptyStockClient() {
         select() { return this; },
         eq() { return this; },
         in() { return this; },
-        then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); },
+        order() { return this; },
+        range() { return Promise.resolve({ data: [], error: null }); },
         async insert(row) {
           inserted.push(row);
           return { error: null };
