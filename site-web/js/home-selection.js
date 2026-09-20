@@ -2,7 +2,7 @@
   'use strict';
 
   const HOME_PRODUCTS_LIMIT = 12;
-  const HOME_PRODUCTS_API = 'https://atelier-confection.vercel.app/api/ecommerce/products';
+  const HOME_PRODUCTS_API = 'https://nousunique.com/api/ecommerce/products';
   const HOME_FALLBACK_PRODUCTS = [
     { id: 'robe-elegante-marron', name: 'Robe Élégante Marron', category: 'elegant', price: 15000, image: 'https://obrille.com/wp-content/uploads/2026/01/ChatGPT-Image-19-janv.-2026-18_33_27.png' },
     { id: 'robe-blanche-elegante', name: 'Robe Blanche Élégante', category: 'perle-rare', price: 16500, image: 'https://obrille.com/wp-content/uploads/2026/01/A1.png' },

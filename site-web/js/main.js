@@ -321,7 +321,7 @@ const renderHomeBestsellers = async () => {
   // SOURCE DE VÉRITÉ: le serveur. Cache local seulement si l'API échoue.
   let products = [];
   try {
-    const origin = 'https://atelier-confection.vercel.app';
+    const origin = 'https://nousunique.com';
     const res = await fetch(`${origin}/api/ecommerce/products?view=card&limit=8`);
     if (res.ok) {
       const data = await res.json();

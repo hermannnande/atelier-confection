@@ -836,7 +836,7 @@ const mapApiProduct = (row) => ({
 
 const fetchProductFromApi = async (id) => {
   try {
-    const origin = 'https://atelier-confection.vercel.app';
+    const origin = 'https://nousunique.com';
     const res = await fetch(`${origin}/api/ecommerce/products/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
     const data = await res.json();
@@ -858,7 +858,7 @@ const fetchProductFromApi = async (id) => {
 // ===== PRODUITS SIMILAIRES (réels, depuis l'API) =====
 const fetchAllProductsFromApi = async () => {
   try {
-    const res = await fetch('https://atelier-confection.vercel.app/api/ecommerce/products?view=card');
+    const res = await fetch('https://nousunique.com/api/ecommerce/products?view=card');
     if (!res.ok) throw new Error('http');
     const data = await res.json();
     const rows = Array.isArray(data) ? data : (data.products || []);

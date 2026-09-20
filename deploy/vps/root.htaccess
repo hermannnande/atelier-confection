@@ -1,0 +1,71 @@
+# Atelier API and management application on the VPS
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^api/(.*)$ http://127.0.0.1:15818/api/$1 [P,L]
+RewriteRule ^atelier(?:/|$) - [L]
+</IfModule>
+ErrorDocument 503 /atelier-runtime.php
+
+# ===== PERFORMANCE : compression + cache des ressources versionnées =====
+<IfModule mod_deflate.c>
+AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType image/jpeg "access plus 1 year"
+ExpiresByType image/png "access plus 1 year"
+ExpiresByType image/webp "access plus 1 year"
+ExpiresByType image/avif "access plus 1 year"
+ExpiresByType image/svg+xml "access plus 1 year"
+ExpiresByType video/mp4 "access plus 1 year"
+ExpiresByType video/webm "access plus 1 year"
+ExpiresByType audio/mpeg "access plus 1 year"
+ExpiresByType font/woff2 "access plus 1 year"
+ExpiresByType text/css "access plus 1 month"
+ExpiresByType application/javascript "access plus 1 month"
+ExpiresByType text/html "access plus 5 minutes"
+</IfModule>
+
+<IfModule mod_headers.c>
+<FilesMatch "\.(?:jpg|jpeg|png|gif|webp|avif|svg|ico|woff2|woff|ttf|mp4|webm|mp3)$">
+Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+<FilesMatch "\.(?:css|js)$">
+Header set Cache-Control "public, max-age=2592000"
+</FilesMatch>
+<FilesMatch "\.html$">
+Header set Cache-Control "public, max-age=300, stale-while-revalidate=86400"
+</FilesMatch>
+</IfModule>
+# ===== FIN PERFORMANCE =====
+
+# ===== BOUTIQUE E-COMMERCE (Atelier Confection) =====
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^$ index.html [L]
+RewriteRule ^gestion/?$ gestion/index.html [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^(.+)$ $1.html [L]
+</IfModule>
+# ===== FIN BOUTIQUE =====
+
+
+# BEGIN WordPress
+# Les directives (lignes) entre « BEGIN WordPress » et « END WordPress » sont générées
+# dynamiquement, et doivent être modifiées uniquement via les filtres WordPress.
+# Toute modification des directives situées entre ces marqueurs sera surchargée.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+# END WordPress

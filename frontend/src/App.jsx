@@ -54,7 +54,7 @@ function App() {
   const { user } = useAuthStore();
 
   return (
-    <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={import.meta.env.BASE_URL} future={{ v7_relativeSplatPath: true }}>
       <Toaster 
         position="top-right"
         toastOptions={{

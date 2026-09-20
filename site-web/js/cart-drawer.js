@@ -16,7 +16,7 @@ const readCartFromStorage = () => {
 };
 
 // ---- Checkout (commande dans une modale, sans changer de page) ----
-const CHECKOUT_API_URL = 'https://atelier-confection.vercel.app/api/commandes/public';
+const CHECKOUT_API_URL = 'https://nousunique.com/api/commandes/public';
 const CHECKOUT_API_TOKEN = 'NOUSUNIQUE123';
 
 const parsePriceSafe = (v) => {

@@ -251,7 +251,7 @@ const hydrateCategoryFilterOptions = () => {
 
 // L'API (backend) est hébergée sur Vercel. Le site peut être servi depuis
 // nousunique.com ou ailleurs : on appelle donc toujours l'API Vercel (CORS *).
-const API_ORIGIN = 'https://atelier-confection.vercel.app';
+const API_ORIGIN = 'https://nousunique.com';
 const API_URL = API_ORIGIN + '/api/ecommerce/products?view=card&sort=recent';
 const CATEGORIES_API_URL = API_ORIGIN + '/api/ecommerce/categories';
 

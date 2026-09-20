@@ -100,7 +100,7 @@ function loadCartSummary() {
 
 // URL de l'API (backend hébergé sur Vercel, appelé depuis n'importe quel domaine)
 const resolveApiUrl = () => {
-  return 'https://atelier-confection.vercel.app/api/commandes/public';
+  return 'https://nousunique.com/api/commandes/public';
 };
 
 const API_URL = resolveApiUrl();

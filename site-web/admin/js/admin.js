@@ -9,11 +9,11 @@ const AdminStore = (() => {
   // Sync catalogue e-commerce vers backend (Supabase via API Vercel)
   // Important: si l'admin est ouvert en local (localhost), on synchronise vers la prod Vercel
   // afin que le catalogue soit visible sur mobile / autres appareils.
-  const DEFAULT_ECOMMERCE_SYNC_ORIGIN = 'https://atelier-confection.vercel.app';
+  const DEFAULT_ECOMMERCE_SYNC_ORIGIN = 'https://nousunique.com';
   const resolveEcommerceSyncUrl = () => {
     try {
       const forcedOrigin = localStorage.getItem('atelier-ecom-sync-origin');
-      const origin = forcedOrigin || DEFAULT_ECOMMERCE_SYNC_ORIGIN;
+      const origin = forcedOrigin && !/^https:\/\/atelier-confection(?:-[^.]+)?\.vercel\.app\/?$/.test(forcedOrigin) ? forcedOrigin : DEFAULT_ECOMMERCE_SYNC_ORIGIN;
       return origin.replace(/\/$/, '') + '/api/ecommerce/products/sync';
     } catch (e) {
       return '/api/ecommerce/products/sync';

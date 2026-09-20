@@ -85,7 +85,7 @@ if (USE_SUPABASE) {
 }
 app.use('/api', systemRoutes);
 
-if (!IS_VERCEL) {
+if (!IS_VERCEL && process.env.ATELIER_MANAGED_START !== 'true') {
   if (USE_SUPABASE) {
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur le port ${PORT}`);

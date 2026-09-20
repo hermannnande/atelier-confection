@@ -8,51 +8,27 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "site-web/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/site-web/?$",
-      "dest": "/site-web/index.html"
+      "src": "/site-web/admin(?:/(.*))?",
+      "status": 307,
+      "headers": { "Location": "https://nousunique.com/gestion/$1", "Cache-Control": "no-store" }
     },
     {
-      "src": "/site-web/pages/([^/.]+)$",
-      "dest": "/site-web/pages/$1.html"
-    },
-    {
-      "src": "/site-web/admin/?$",
-      "dest": "/site-web/admin/index.html"
-    },
-    {
-      "src": "/site-web/admin/([^/.]+)$",
-      "dest": "/site-web/admin/$1.html"
-    },
-    {
-      "src": "/site-web/(.*)",
-      "dest": "/site-web/$1"
+      "src": "/site-web(?:/(.*))?",
+      "status": 307,
+      "headers": { "Location": "https://nousunique.com/$1", "Cache-Control": "no-store" }
     },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.js"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/frontend/assets/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/frontend/index.html"
+      "status": 307,
+      "headers": { "Location": "https://nousunique.com/atelier/$1", "Cache-Control": "no-store" }
     }
   ],
   "crons": [
