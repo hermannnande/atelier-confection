@@ -142,6 +142,7 @@ const Appel = () => {
     if (isAutoRefreshing) {
       intervalRef.current = setInterval(() => {
         fetchCommandesAppel(true); // true = silent refresh
+        fetchStock();
       }, 10000); // 10 secondes
 
       return () => {
@@ -158,7 +159,7 @@ const Appel = () => {
 
   const fetchStock = async () => {
     try {
-      const response = await api.get('/stock');
+      const response = await api.get('/stock/suivi-commandes');
       const stockData = response.data.stock || [];
       console.log('📦 Stock chargé:', stockData.length, 'modèles');
       console.log('📦 Détail du stock:', stockData.map(s => ({
@@ -210,13 +211,15 @@ const Appel = () => {
       const modeleMatch = sameStockLabel(stockModeleNom, modeleNom);
       const tailleMatch = normalizeSize(s.taille) === normalizeSize(taille);
       const couleurMatch = sameStockLabel(s.couleur, couleur);
-      const quantiteMatch = (s.quantitePrincipale || 0) > 0;
+      const quantiteMatch = Number(s.quantiteDisponible ?? s.quantitePrincipale ?? 0) > 0;
       
       console.log('  📦 Comparaison:', {
         stockModele: stockModeleNom,
         stockTaille: s.taille,
         stockCouleur: s.couleur,
         stockQuantite: s.quantitePrincipale,
+        stockReserve: s.quantiteReservee,
+        stockDisponible: s.quantiteDisponible,
         modeleMatch,
         tailleMatch,
         couleurMatch,

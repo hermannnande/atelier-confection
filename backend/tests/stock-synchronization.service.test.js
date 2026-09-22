@@ -50,17 +50,30 @@ test('seules les commandes qui dépassent le stock deviennent des besoins de con
   assert.deepEqual(result.uncoveredOrders.map((order) => order.id), ['3']);
 });
 
-test('les articles déjà en préparation colis ne comptent plus dans les réservations', () => {
+test('les articles déjà en préparation colis restent réservés jusqu’au livreur', () => {
   const result = buildStockSynchronization({
     orders: [davichi('1', 'en_stock'), davichi('2', 'validee')],
     stock: [stockDavichi(2)],
   });
 
-  assert.equal(result.totals.reservePreparation, 0);
+  assert.equal(result.totals.reservePreparation, 1);
   assert.equal(result.totals.reserveCommandes, 1);
-  assert.equal(result.totals.quantiteReservee, 1);
-  assert.equal(result.totals.quantiteDisponible, 1);
+  assert.equal(result.totals.quantiteReservee, 2);
+  assert.equal(result.totals.quantiteDisponible, 0);
   assert.equal(result.uncoveredOrders.length, 0);
+});
+
+test('la préparation utilise le stock avant une nouvelle commande validée', () => {
+  const result = buildStockSynchronization({
+    orders: [davichi('1', 'en_stock'), davichi('2', 'validee')],
+    stock: [stockDavichi(1)],
+  });
+
+  assert.equal(result.totals.reservePreparation, 1);
+  assert.equal(result.totals.reserveCommandes, 0);
+  assert.equal(result.totals.quantiteDisponible, 0);
+  assert.equal(result.couvertureCommandes['2'].couvertParStock, false);
+  assert.deepEqual(result.uncoveredOrders.map((order) => order.id), ['2']);
 });
 
 test('une urgence est couverte avant une commande normale de la même variation', () => {
@@ -111,7 +124,7 @@ test('chaque tenue ajoutée à une commande réserve sa propre variation', () =>
   assert.equal(result.couvertureCommandes['1'].couvertParStock, false);
 });
 
-test('les tenues supplémentaires ne restent pas réservées après l’envoi en préparation', () => {
+test('les tenues supplémentaires restent réservées pendant la préparation', () => {
   const result = buildStockSynchronization({
     orders: [davichi('1', 'en_stock', {
       supplements: [{
@@ -126,7 +139,10 @@ test('les tenues supplémentaires ne restent pas réservées après l’envoi en
     stock: [stockDavichi(1)],
   });
 
+  assert.equal(result.totals.reservePreparation, 2);
   assert.equal(result.totals.reserveCommandes, 0);
+  assert.equal(result.totals.quantiteReservee, 1);
+  assert.equal(result.totals.quantiteDisponible, 0);
   assert.equal(result.totals.aConfectionner, 0);
 });
 

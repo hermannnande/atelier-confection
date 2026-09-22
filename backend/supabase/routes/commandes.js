@@ -22,7 +22,10 @@ import {
 } from '../../services/order-supplements.service.js';
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
-import { buildStockSynchronization } from '../../services/stock-synchronization.service.js';
+import {
+  buildStockSynchronization,
+  fetchStockSynchronizationOrders,
+} from '../../services/stock-synchronization.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 
@@ -258,12 +261,10 @@ router.get(
       const now = new Date();
 
       const [ordersResult, stockResult] = await Promise.all([
-        supabase
-          .from('commandes')
-          .select('id, numero_commande, modele, taille, couleur, supplements, statut, urgence, created_at, updated_at, historique')
-          .eq('pays_code', req.country)
-          .eq('statut', 'validee')
-          .order('created_at', { ascending: false }),
+        fetchStockSynchronizationOrders(supabase, {
+          country: req.country,
+          select: 'id, numero_commande, modele, taille, couleur, supplements, statut, urgence, created_at, updated_at, historique',
+        }),
         supabase
           .from('stock')
           .select('modele, taille, couleur, quantite_principale, quantite_en_livraison, image')
@@ -579,11 +580,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     if (existing.statut === 'validee' && req.body.statut === 'en_stock' && !directPreparation) {
       const [stockResult, ordersResult] = await Promise.all([
         supabase.from('stock').select('*').eq('pays_code', req.country),
-        supabase
-          .from('commandes')
-          .select('id, modele, taille, couleur, supplements, statut, urgence, created_at, historique')
-          .eq('pays_code', req.country)
-          .eq('statut', 'validee'),
+        fetchStockSynchronizationOrders(supabase, { country: req.country }),
       ]);
       if (stockResult.error || ordersResult.error) {
         return res.status(500).json({ message: 'Impossible de vérifier la réservation du stock' });

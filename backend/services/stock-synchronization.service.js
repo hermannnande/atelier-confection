@@ -1,6 +1,9 @@
 import { normalizeSize } from './size-normalization.service.js';
 
 const PENDING_STATUS = 'validee';
+const PREPARATION_STATUS = 'en_stock';
+export const STOCK_SYNCHRONIZATION_STATUSES = [PENDING_STATUS, PREPARATION_STATUS];
+const DEFAULT_PAGE_SIZE = 1000;
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
 const asQuantity = (value) => {
@@ -82,6 +85,31 @@ export function stockVariationKey(source) {
   return [nom, source?.couleur, normalizeSize(source?.taille)].map(normalizePart).join('::');
 }
 
+export async function fetchStockSynchronizationOrders(supabase, {
+  country,
+  select = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique',
+  pageSize = DEFAULT_PAGE_SIZE,
+} = {}) {
+  const rows = [];
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from('commandes')
+      .select(select)
+      .eq('pays_code', country)
+      .in('statut', STOCK_SYNCHRONIZATION_STATUSES)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) return { data: null, error };
+    rows.push(...(data || []));
+    if ((data || []).length < pageSize) break;
+  }
+
+  return { data: rows, error: null };
+}
+
 export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   const variationsByKey = new Map();
 
@@ -119,10 +147,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   }
 
   for (const order of orders) {
-    // Une commande déjà envoyée en Préparation colis n'est plus une
-    // réservation du stock. Seules les commandes encore validées et visibles
-    // dans « Commandes » participent au calcul des réservations.
-    if (order?.statut === PENDING_STATUS) {
+    if (order?.statut === PENDING_STATUS || order?.statut === PREPARATION_STATUS) {
       orderStockArticles(order).forEach((article, index) => {
         const id = orderId(order);
         const itemOrder = index === 0 ? order : {
@@ -134,7 +159,16 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
           couleur: article.couleur,
           sourceOrderId: id,
         };
-        ensureVariation(itemOrder).commandesValidees.push(itemOrder);
+        const variation = ensureVariation(itemOrder);
+
+        // Une commande validée attend encore son affectation. Une commande
+        // « en_stock » est déjà dans Préparation Colis : la pièce reste
+        // physiquement au stock jusqu'au livreur, mais elle n'est plus libre.
+        if (order.statut === PREPARATION_STATUS) {
+          variation.reservePreparation += 1;
+        } else {
+          variation.commandesValidees.push(itemOrder);
+        }
       });
     }
   }

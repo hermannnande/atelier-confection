@@ -6,6 +6,7 @@ import { mapStock } from '../map.js';
 import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
+  fetchStockSynchronizationOrders,
 } from '../../services/stock-synchronization.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
@@ -45,8 +46,9 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
   }
 });
 
-// Vue du stock physique avec les pièces réservées par les commandes encore validées.
-// La réservation est calculée : elle ne retire pas physiquement l'article avant son envoi.
+// Vue du stock physique avec les pièces réservées par les commandes validées
+// et celles déjà dans Préparation Colis. La réservation est calculée : elle
+// ne retire pas physiquement l'article avant son assignation au livreur.
 router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
@@ -56,11 +58,7 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
         .select('*')
         .eq('pays_code', req.country)
         .order('modele', { ascending: true }),
-      supabase
-        .from('commandes')
-        .select('id, modele, taille, couleur, supplements, statut, urgence, created_at, historique')
-        .eq('pays_code', req.country)
-        .eq('statut', 'validee'),
+      fetchStockSynchronizationOrders(supabase, { country: req.country }),
     ]);
 
     if (stockResult.error) {
