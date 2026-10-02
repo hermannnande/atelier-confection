@@ -1,4 +1,5 @@
-import { History, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, History, ShieldAlert } from 'lucide-react';
 import { clientProfileSummary, orderOutcomeLabel } from '../utils/clientHistory';
 
 const formatHistoryDate = (value) => {
@@ -21,7 +22,9 @@ export function ClientProfileBadge({ history }) {
 }
 
 // Historique du client dans la fenêtre de traitement, pour savoir à qui l'on parle.
-export function ClientHistoryPanel({ history }) {
+// La liste des commandes précédentes est repliée par défaut pour rester lisible sur mobile.
+export function ClientHistoryPanel({ history, defaultOpen = false }) {
+  const [listeOuverte, setListeOuverte] = useState(defaultOpen);
   const summary = clientProfileSummary(history);
   if (!summary) return null;
   return (
@@ -61,30 +64,45 @@ export function ClientHistoryPanel({ history }) {
             Client depuis le {formatHistoryDate(history.clientDepuis)}
             {history.montantLivre > 0 ? ` · ${history.montantLivre.toLocaleString('fr-FR')} F déjà livrés` : ''}
           </p>
-          <ul className="max-h-40 space-y-1 overflow-y-auto">
-            {history.commandes.map((commande) => {
-              const outcome = orderOutcomeLabel(commande.issue);
-              return (
-                <li key={commande.id} className="rounded-md border border-gray-100 bg-white px-2 py-1 text-[11px]">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 font-semibold text-gray-800">
-                      {formatHistoryDate(commande.date)} · {commande.modele}
-                      {commande.taille ? ` · ${commande.taille}` : ''}
-                      {commande.couleur ? ` · ${commande.couleur}` : ''}
-                    </span>
-                    <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${outcome.className}`}>
-                      {outcome.label}
-                    </span>
-                  </div>
-                  {commande.motif && <p className="mt-0.5 text-gray-600">Motif : {commande.motif}</p>}
-                </li>
-              );
-            })}
-          </ul>
-          {history.total > history.commandes.length && (
-            <p className="text-[10px] text-gray-500">
-              {history.commandes.length} commandes les plus récentes affichées sur {history.total}.
-            </p>
+          <button
+            type="button"
+            onClick={() => setListeOuverte((ouverte) => !ouverte)}
+            aria-expanded={listeOuverte}
+            className="flex w-full items-center justify-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-bold text-gray-700 active:bg-gray-100"
+          >
+            {listeOuverte ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {listeOuverte
+              ? 'Masquer les commandes précédentes'
+              : `Voir ${history.total > 1 ? `les ${history.total} commandes précédentes` : 'la commande précédente'}`}
+          </button>
+          {listeOuverte && (
+            <>
+              <ul className="max-h-48 space-y-1 overflow-y-auto overscroll-contain">
+                {history.commandes.map((commande) => {
+                  const outcome = orderOutcomeLabel(commande.issue);
+                  return (
+                    <li key={commande.id} className="rounded-md border border-gray-100 bg-white px-2 py-1 text-[11px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 font-semibold text-gray-800">
+                          {formatHistoryDate(commande.date)} · {commande.modele}
+                          {commande.taille ? ` · ${commande.taille}` : ''}
+                          {commande.couleur ? ` · ${commande.couleur}` : ''}
+                        </span>
+                        <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${outcome.className}`}>
+                          {outcome.label}
+                        </span>
+                      </div>
+                      {commande.motif && <p className="mt-0.5 text-gray-600">Motif : {commande.motif}</p>}
+                    </li>
+                  );
+                })}
+              </ul>
+              {history.total > history.commandes.length && (
+                <p className="text-[10px] text-gray-500">
+                  {history.commandes.length} commandes les plus récentes affichées sur {history.total}.
+                </p>
+              )}
+            </>
           )}
         </>
       )}
