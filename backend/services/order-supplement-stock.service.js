@@ -1,5 +1,7 @@
 // Déplace uniquement les tenues supplémentaires créées depuis le catalogue.
 // La tenue principale reste gérée par les routes de livraison existantes.
+// Retourne les repères (« supplement-1 »…) des tenues déplacées ; avec dryRun,
+// ceux qui le seraient, sans rien écrire.
 import { normalizeSize } from './size-normalization.service.js';
 import { findStockVariation } from './stock-variation.service.js';
 
@@ -11,10 +13,12 @@ export async function moveOrderSupplementStock({
   action,
   commentaire = '',
   suivis,
+  dryRun = false,
 }) {
   const supplements = Array.isArray(commande?.supplements)
     ? commande.supplements.filter((item) => item?.articleCatalogue === true)
     : [];
+  const moved = [];
 
   for (const [index, article] of supplements.entries()) {
     if ((action === 'livree' || action === 'retour') && suivis?.[`supplement-${index + 1}`] === false) continue;
@@ -41,6 +45,8 @@ export async function moveOrderSupplementStock({
     if (isAssign && (!stockItem || Number(stockItem.quantite_principale) < 1)) continue;
     if (isDelivered && (!stockItem || Number(stockItem.quantite_en_livraison) < 1)) continue;
     if (action === 'retour' && (!stockItem || Number(stockItem.quantite_en_livraison) < 1)) continue;
+    moved.push(`supplement-${index + 1}`);
+    if (dryRun) continue;
 
     const mouvement = {
       type: isAssign ? 'transfert' : isDelivered ? 'sortie' : isProduction ? 'entree' : 'retour',
@@ -100,4 +106,5 @@ export async function moveOrderSupplementStock({
     }).eq('id', concurrentStock.id);
     if (retryError) throw retryError;
   }
+  return moved;
 }

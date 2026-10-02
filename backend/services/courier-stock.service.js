@@ -97,8 +97,10 @@ export function courierSynchronizationOrders({ orders, stock, deliveries, countr
   const applied = new Set(stock.flatMap(row => (row.mouvements || []).map(m => m.operation).filter(Boolean)));
   const inTransit = heldPieces(deliveries, country).filter(p => p.statut === 'en_transfert'
     && !applied.has(p.stockMovementOperation));
+  // Une tenue en transfert est déjà prise pour une réattribution : elle reste réservée.
   return [...orders, ...inTransit.map(p => ({ id: `${p.operation}:${p.id}`, pays_code: country,
-    statut: 'en_stock', modele: p.modele, couleur: p.couleur, taille: p.taille }))];
+    statut: 'en_stock', modele: p.modele, couleur: p.couleur, taille: p.taille,
+    historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] }))];
 }
 
 export function selectMatchingPieces(articles, pieces, courierId) {

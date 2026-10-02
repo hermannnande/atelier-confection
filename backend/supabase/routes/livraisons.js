@@ -385,6 +385,18 @@ router.post(
       }
 
       const nowIso = new Date().toISOString();
+      const suivis = livraison.adresse_livraison?.stockAffectation?.suivis;
+      const { data: stockItem } = await findStockVariation(supabase, {
+        country: livraisonCountry, modele: commande.modele?.nom,
+        taille: commande.taille, couleur: commande.couleur,
+        preferQuantity: 'quantite_en_livraison',
+      });
+      const principalRevient = Boolean(stockItem && (stockItem.quantite_en_livraison || 0) >= 1
+        && suivis?.principal !== false);
+      const supplementsRevenant = await moveOrderSupplementStock({
+        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'retour',
+        suivis, dryRun: true,
+      });
 
       // 1) Restaurer la commande : statut en_stock, libérer le livreur, tracer l'historique
       const historique = Array.isArray(commande.historique) ? commande.historique : [];
@@ -394,6 +406,8 @@ router.post(
         utilisateur: req.userId,
         date: nowIso,
         commentaire: motif || null,
+        // Seules les tenues revenues au stock restent réservées à ce colis.
+        reservationStock: [...(principalRevient ? ['principal'] : []), ...supplementsRevenant],
       });
 
       const { error: e3 } = await supabase
@@ -409,13 +423,7 @@ router.post(
       }
 
       // 2) Restaurer le stock : en livraison → principal (si une ligne existe)
-      const { data: stockItem } = await findStockVariation(supabase, {
-        country: livraisonCountry, modele: commande.modele?.nom,
-        taille: commande.taille, couleur: commande.couleur,
-        preferQuantity: 'quantite_en_livraison',
-      });
-
-      if (stockItem && (stockItem.quantite_en_livraison || 0) >= 1 && livraison.adresse_livraison?.stockAffectation?.suivis?.principal !== false) {
+      if (principalRevient) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
         mouvements.push({
           type: 'retour',
@@ -440,7 +448,7 @@ router.post(
 
       await moveOrderSupplementStock({
         supabase, commande, country: livraisonCountry, userId: req.userId, action: 'retour',
-        suivis: livraison.adresse_livraison?.stockAffectation?.suivis,
+        suivis,
         commentaire: `Renvoi en préparation${motif ? ` : ${motif}` : ''}`,
       });
 

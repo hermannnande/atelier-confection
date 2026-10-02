@@ -82,7 +82,8 @@ test('ni autre pays ni livreur inactif ; une pièce proposée une seule fois', (
 });
 
 test('la préparation réserve le stock ; colis multiarticle chez un seul livreur', () => {
-  assert.deepEqual(buildCourierOffers(context({ orders: [order(), order('prep', { statut: 'en_stock' })] })), {});
+  const prep = order('prep', { statut: 'en_stock', historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] });
+  assert.deepEqual(buildCourierOffers(context({ orders: [order(), prep] })), {});
   const multi = order('new', { supplements: [{ id: 's1', articleCatalogue: true, libelle: 'AICHA', taille: 'L', couleur: 'Blanc', montant: 10000 }] });
   const otherStock = stock('stock2', { modele: 'AICHA', taille: 'L', couleur: 'Blanc' });
   const otherPiece = returned('ret2', { adresse_livraison: { stockRetour: { articles: [{ ...snapshotArticles(multi)[1], statut: 'disponible' }] } } });

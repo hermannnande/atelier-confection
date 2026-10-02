@@ -4,6 +4,10 @@ const PENDING_STATUS = 'validee';
 const PREPARATION_STATUS = 'en_stock';
 export const STOCK_SYNCHRONIZATION_STATUSES = [PENDING_STATUS, PREPARATION_STATUS];
 const DEFAULT_PAGE_SIZE = 1000;
+// Les envois en préparation antérieurs à l'enregistrement des pièces réservées
+// n'indiquent pas leurs pièces : seuls les plus récents peuvent encore être de
+// vrais colis en cours. Les anciens (déjà attribués ou annulés) ne réservent rien.
+const LEGACY_PREPARATION_WINDOW = 7 * 24 * 60 * 60 * 1000;
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
 const asQuantity = (value) => {
@@ -74,6 +78,36 @@ export function orderStockArticles(order) {
   return articles;
 }
 
+// Même repère que le suivi livreur : « principal », puis « supplement-1 », etc.
+export function stockArticleKey(index) {
+  return index === 0 ? 'principal' : `supplement-${index}`;
+}
+
+export function orderStockArticleKeys(order) {
+  return orderStockArticles(order).map((_, index) => stockArticleKey(index));
+}
+
+// Une commande en Préparation Colis ne garde que les pièces qui lui étaient
+// déjà réservées à son entrée, enregistrées dans l'historique. Envoyée sans
+// pièce, elle n'absorbe pas les entrées destinées aux commandes validées.
+// Retourne null quand toutes ses pièces restent réservées (envoi ancien récent).
+function preparationHeldArticles(order, now) {
+  const statusEntries = (Array.isArray(order?.historique) ? order.historique : [])
+    .filter((entry) => entry?.statut);
+  let entry = null;
+  for (let index = statusEntries.length - 1; index >= 0; index -= 1) {
+    if (statusEntries[index].statut !== PREPARATION_STATUS) break;
+    entry = statusEntries[index];
+  }
+
+  // Statut posé sans trace (anciennes clôtures de caisse) : aucune pièce suivie.
+  if (statusEntries.length > 0 && !entry) return new Set();
+  if (Array.isArray(entry?.reservationStock)) return new Set(entry.reservationStock);
+
+  const enteredAt = asTimestamp(entry?.date ?? order?.created_at ?? order?.createdAt);
+  return now - enteredAt <= LEGACY_PREPARATION_WINDOW ? null : new Set();
+}
+
 export function comparePendingOrders(a, b) {
   return Number(Boolean(b?.urgence)) - Number(Boolean(a?.urgence))
     || validationTimestamp(a) - validationTimestamp(b)
@@ -110,8 +144,10 @@ export async function fetchStockSynchronizationOrders(supabase, {
   return { data: rows, error: null };
 }
 
-export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
+export function buildStockSynchronization({ orders = [], stock = [], now = Date.now() } = {}) {
+  const currentTime = asTimestamp(now) || Date.now();
   const variationsByKey = new Map();
+  const articleKeys = new Map();
 
   const ensureVariation = (source) => {
     const key = stockVariationKey(source);
@@ -148,8 +184,13 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
 
   for (const order of orders) {
     if (order?.statut === PENDING_STATUS || order?.statut === PREPARATION_STATUS) {
+      const id = orderId(order);
+      const held = order.statut === PREPARATION_STATUS
+        ? preparationHeldArticles(order, currentTime)
+        : null;
       orderStockArticles(order).forEach((article, index) => {
-        const id = orderId(order);
+        const articleKey = stockArticleKey(index);
+        if (held && !held.has(articleKey)) return;
         const itemOrder = index === 0 ? order : {
           ...order,
           _id: `${id}::${article.supplementId || index}`,
@@ -161,12 +202,13 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
         };
         const variation = ensureVariation(itemOrder);
 
-        // Une commande validée attend encore son affectation. Une commande
-        // « en_stock » est déjà dans Préparation Colis : la pièce reste
-        // physiquement au stock jusqu'au livreur, mais elle n'est plus libre.
+        // Une commande validée attend encore son affectation. Une pièce déjà
+        // affectée à un colis de Préparation Colis reste physiquement au stock
+        // jusqu'au livreur, mais elle n'est plus libre pour un autre client.
         if (order.statut === PREPARATION_STATUS) {
           variation.reservePreparation += 1;
         } else {
+          articleKeys.set(itemOrder, articleKey);
           variation.commandesValidees.push(itemOrder);
         }
       });
@@ -175,6 +217,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
 
   const uncoveredOrders = [];
   const couvertureCommandes = {};
+  const articlesReserves = {};
 
   const variations = Array.from(variationsByKey.values()).map((variation) => {
     const pendingOrders = variation.commandesValidees.sort(comparePendingOrders);
@@ -200,6 +243,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
           stockPhysique: variation.stockPhysique,
           quantiteDisponible,
         };
+        (articlesReserves[id] ||= []).push(articleKeys.get(order));
       }
     });
 
@@ -261,6 +305,9 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     totals,
     uncoveredOrders,
     couvertureCommandes,
+    // Pièces de chaque commande validée couvertes par le stock : elles la
+    // suivent si elle est envoyée en Préparation Colis.
+    articlesReserves,
   };
 }
 

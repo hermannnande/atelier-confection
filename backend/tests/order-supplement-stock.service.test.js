@@ -43,11 +43,21 @@ test('un article sans stock ne bloque pas son assignation', async () => {
   assert.equal(inserted.length, 0);
 });
 
+test('une simulation indique les tenues concernées sans modifier le stock', async () => {
+  const { client, inserted } = emptyStockClient();
+  const moved = await moveOrderSupplementStock({
+    supabase: client, commande, country: 'CI', userId: 'u1', action: 'refusee', dryRun: true,
+  });
+  assert.deepEqual(moved, ['supplement-1']);
+  assert.equal(inserted.length, 0);
+});
+
 test('un article refusé sans ligne de stock crée sa variation en stock', async () => {
   const { client, inserted } = emptyStockClient();
-  await moveOrderSupplementStock({
+  const moved = await moveOrderSupplementStock({
     supabase: client, commande, country: 'CI', userId: 'u1', action: 'refusee',
   });
+  assert.deepEqual(moved, ['supplement-1']);
   assert.equal(inserted.length, 1);
   assert.equal(inserted[0].modele, 'Chic Dress');
   assert.equal(inserted[0].taille, 'XL');

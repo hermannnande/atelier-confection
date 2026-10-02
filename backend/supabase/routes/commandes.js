@@ -25,7 +25,9 @@ import { groupPendingModels, recentVisibilityThreshold } from '../../services/pe
 import {
   buildStockSynchronization,
   fetchStockSynchronizationOrders,
+  orderStockArticleKeys,
 } from '../../services/stock-synchronization.service.js';
+import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 
@@ -577,23 +579,29 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     // signal explicite, on conserve le garde-fou de réservation du stock.
     const directPreparation = req.body.directPreparation === true
       && ['gestionnaire', 'administrateur'].includes(req.user.role);
-    if (existing.statut === 'validee' && req.body.statut === 'en_stock' && !directPreparation) {
-      const [stockResult, ordersResult] = await Promise.all([
-        supabase.from('stock').select('*').eq('pays_code', req.country),
-        fetchStockSynchronizationOrders(supabase, { country: req.country }),
-      ]);
-      if (stockResult.error || ordersResult.error) {
+    const entersPreparation = req.body.statut === 'en_stock' && existing.statut !== 'en_stock';
+    let reservationStock;
+    if (entersPreparation) {
+      let synchronization;
+      try {
+        const context = await courierContext(supabase, req.country);
+        synchronization = buildStockSynchronization({
+          orders: courierSynchronizationOrders(context),
+          stock: context.stock,
+        });
+      } catch {
         return res.status(500).json({ message: 'Impossible de vérifier la réservation du stock' });
       }
-      const synchronization = buildStockSynchronization({
-        orders: ordersResult.data || [],
-        stock: stockResult.data || [],
-      });
-      if (!synchronization.couvertureCommandes[String(existing.id)]?.couvertParStock) {
+      const commandeId = String(existing.id);
+      if (existing.statut === 'validee' && !directPreparation
+        && !synchronization.couvertureCommandes[commandeId]?.couvertParStock) {
         return res.status(409).json({
           message: 'Cette variation n’est plus disponible. Envoyez la commande à l’atelier.',
         });
       }
+      // Seules les pièces déjà réservées à cette commande la suivent en
+      // préparation ; un envoi sans pièce ne prend pas celles des autres clients.
+      reservationStock = synchronization.articlesReserves[commandeId] || [];
     }
 
     // Les appelants peuvent modifier toutes les commandes en attente (pour traiter les appels)
@@ -655,6 +663,7 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
           : directPreparation
             ? 'Envoi direct en Préparation Colis (stock disponible ou non)'
           : 'Modification des détails de la commande',
+      ...(reservationStock ? { reservationStock } : {}),
     });
     update.historique = historique;
 
@@ -880,6 +889,8 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
       statut: 'en_stock',
       utilisateur: req.userId,
       date: new Date().toISOString(),
+      // Les tenues confectionnées entrent au stock pour cette commande.
+      reservationStock: orderStockArticleKeys(existing),
     });
 
     const { data: updatedCommande, error: e2 } = await supabase
