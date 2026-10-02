@@ -11,6 +11,7 @@ import {
   getOrderTotal,
   normalizeOrderSupplements,
 } from '../utils/orderSupplements';
+import { ClientHistoryPanel, ClientProfileBadge } from '../components/ClientHistory';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
 const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'Taille Standard'];
@@ -243,7 +244,7 @@ const Appel = () => {
 
   const fetchCommandesAppel = async (silent = false) => {
     try {
-      const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement');
+      const response = await api.get('/commandes?statut=en_attente_validation,en_attente_paiement&historiqueClient=1');
       const newCommandes = response.data.commandes || [];
       
       console.log('📞 Commandes chargées:', newCommandes.length);
@@ -327,7 +328,10 @@ const Appel = () => {
     const updatedId = updatedCommande._id || updatedCommande.id;
     setCommandesAppel((prev) =>
       prev.map((commande) =>
-        (commande._id || commande.id) === updatedId ? updatedCommande : commande,
+        (commande._id || commande.id) === updatedId
+          // La réponse d'enregistrement ne contient pas l'historique : on garde celui déjà chargé.
+          ? { ...updatedCommande, historiqueClient: commande.historiqueClient }
+          : commande,
       ),
     );
   };
@@ -342,7 +346,7 @@ const Appel = () => {
       const { data } = await api.put(`/commandes/${commandeId}`, payload);
       const updated = data.commande;
       updateCommandeInList(updated);
-      setSelectedCommande(updated);
+      setSelectedCommande({ ...updated, historiqueClient: selectedCommande.historiqueClient });
       toast.success('Commande et suppléments enregistrés');
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Erreur lors de la modification');
@@ -716,7 +720,10 @@ const Appel = () => {
             // (la couleur ne change PAS si la carte est epinglee : badge + icone suffisent)
             let cardStyle = 'relative stat-card !rounded-xl !p-3 sm:!rounded-2xl sm:!p-5 xl:!p-6 sm:hover:scale-[1.02] transition-all cursor-pointer group';
 
-            if (estEnAttentePaiement) {
+            if (commande.historiqueClient?.carteGrise) {
+              // Client ayant déjà refusé un colis à la livraison : carte grise, quel que soit le statut.
+              cardStyle += ' border-4 border-gray-500 bg-gradient-to-br from-gray-200 to-gray-300 shadow-xl shadow-gray-500/30';
+            } else if (estEnAttentePaiement) {
               // Commande en attente de paiement = bordure orange + fond orange clair
               cardStyle += ' border-4 border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 shadow-xl shadow-orange-500/30';
             } else if (enStock) {
@@ -807,6 +814,7 @@ const Appel = () => {
                   <MapPin className="text-emerald-600" size={14} />
                   <p className="break-words text-xs font-medium text-gray-700">{getVille(commande)}</p>
                 </div>
+                <ClientProfileBadge history={commande.historiqueClient} />
                 </div>
                 
                 {/* Image du produit - Petite à droite */}
@@ -1104,6 +1112,8 @@ const Appel = () => {
                       </div>
                     )}
                   </div>
+
+                  <ClientHistoryPanel history={selectedCommande.historiqueClient} />
 
                   <div className="bg-blue-50 rounded-lg p-2.5 border border-blue-200">
                     <p className="text-[10px] text-gray-500 uppercase font-semibold mb-1">📦 Détails de la commande</p>

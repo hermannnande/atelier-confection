@@ -29,10 +29,12 @@ import {
 } from '../../services/stock-synchronization.service.js';
 import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
 import { fetchRowsUpTo, parseOrderListLimit } from '../../services/order-list.service.js';
+import { createClientHistoryLoader } from '../../services/client-history.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 
 const router = express.Router();
+const loadClientHistories = createClientHistoryLoader();
 
 async function hydrateUsersForCommandes(supabase, rows) {
   const ids = new Set();
@@ -119,6 +121,20 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
     const rows = data || [];
     const usersById = await hydrateUsersForCommandes(supabase, rows);
     const commandes = rows.map((r) => mapCommande(attachUsers(r, usersById)));
+
+    // ?historiqueClient=1 (page Appel) : profil et commandes précédentes de chaque client.
+    if (['1', 'true'].includes(String(req.query.historiqueClient))
+      && ['appelant', 'gestionnaire', 'administrateur'].includes(req.user.role)) {
+      try {
+        const histories = await loadClientHistories(supabase, req.country, rows);
+        commandes.forEach((commande, index) => {
+          commande.historiqueClient = histories.get(rows[index].id) || null;
+        });
+      } catch (historyError) {
+        // L'historique éclaire l'appel mais ne doit jamais empêcher de traiter les commandes.
+        console.error('Historique client indisponible (non bloquant):', historyError.message);
+      }
+    }
 
     return res.json({ commandes });
   } catch (error) {
