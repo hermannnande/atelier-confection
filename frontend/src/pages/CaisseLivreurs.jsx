@@ -322,6 +322,29 @@ const Livreurs = () => {
     }
   };
 
+  const handleStockLivreur = async (livraison, action) => {
+    const id = livraison._id || livraison.id;
+    if (action === 'atelier' && !confirm('Les tenues encore disponibles de ce colis sont-elles bien revenues physiquement à l’atelier ? Le stock ne sera pas compté une deuxième fois.')) return;
+    setProcessing(true);
+    try {
+      if (action === 'affectation') {
+        await api.post('/livraisons/assigner', {
+          commandeId: livraison.commande?._id || livraison.commande_id,
+          livreurId: livraison.livreur?._id || livraison.livreur_id,
+          resumeDeliveryId: id,
+        });
+      } else {
+        await api.post(`/livraisons/${id}/${action === 'atelier' ? 'retour-atelier' : 'refusee'}`, {
+          motifRefus: livraison.motifRefus,
+        });
+      }
+      toast.success(action === 'atelier' ? 'Retour physique confirmé' : 'Opération finalisée');
+      await fetchData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de finaliser cette opération');
+    } finally { setProcessing(false); }
+  };
+
   const handleReprendre = async (livraisonId) => {
     if (!confirm("Reprendre cette livraison reportée ?\n\nElle basculera dans la tournée d'aujourd'hui pour ce livreur.")) {
       return;
@@ -589,6 +612,7 @@ const Livreurs = () => {
           onReprendre={handleReprendre}
           onSupprimerOrpheline={handleSupprimerOrpheline}
           onRenvoyerEnPreparation={handleRenvoyerEnPreparation}
+          onStockLivreur={handleStockLivreur}
           processing={processing}
           userRole={user?.role}
         />
@@ -692,6 +716,7 @@ function TourneeDetailModal({
   onReprendre,
   onSupprimerOrpheline,
   onRenvoyerEnPreparation,
+  onStockLivreur,
   processing,
   userRole,
 }) {
@@ -752,6 +777,7 @@ function TourneeDetailModal({
                     key={l._id || l.id}
                     livraison={l}
                     variant="en_cours"
+                    onStockLivreur={onStockLivreur}
                     onSupprimerOrpheline={onSupprimerOrpheline}
                     onRenvoyerEnPreparation={
                       canRenvoyer ? () => onRenvoyerEnPreparation(l) : undefined
@@ -937,6 +963,7 @@ function TourneeDetailModal({
                     key={l._id || l.id}
                     livraison={l}
                     variant="retournee"
+                    onStockLivreur={onStockLivreur}
                     onSupprimerOrpheline={onSupprimerOrpheline}
                     processing={processing}
                     userRole={userRole}
@@ -973,11 +1000,16 @@ function LivraisonRow({
   onReprendre,
   onSupprimerOrpheline,
   onRenvoyerEnPreparation,
+  onStockLivreur,
   processing,
   userRole,
 }) {
   const commande = livraison.commande;
   const isOrphan = !commande || !commande.numeroCommande;
+  const custody = livraison.adresseLivraison?.stockRetour;
+  const held = custody?.articles?.filter(a => a.statut === 'disponible') || [];
+  const refusalPending = custody?.articles?.some(a => a.statut === 'retour_en_cours');
+  const assignmentPending = livraison.adresseLivraison?.stockAffectation?.etat === 'nouvelle';
 
   // Cas orpheline
   if (isOrphan) {
@@ -1084,6 +1116,21 @@ function LivraisonRow({
               ❌ REFUS CLIENT · RETOURNÉ AU STOCK
             </span>
           )}
+          {custody && (
+            <div className="text-[11px] font-semibold text-blue-800 mt-1 space-y-0.5">
+              {custody.articles.map(a => (
+                <p key={a.id}>
+                  {a.modele} · {a.taille} · {a.couleur} — {({
+                    disponible: 'Disponible chez ce livreur',
+                    en_transfert: 'Réattribution en cours',
+                    reaffectee: 'Réattribuée à une autre commande',
+                    atelier: 'Revenue physiquement à l’atelier',
+                    retour_en_cours: 'Retour au stock à finaliser',
+                  })[a.statut]}
+                </p>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-gray-700 truncate">
             <span className="font-semibold">{clientNom}</span>
             {clientVille && (
@@ -1141,7 +1188,7 @@ function LivraisonRow({
       )}
 
       {/* Renvoyer en préparation : réservé gestionnaire / admin sur en_cours et reportee */}
-      {(variant === 'en_cours' || variant === 'reportee') && onRenvoyerEnPreparation && (
+      {(variant === 'en_cours' || variant === 'reportee') && !assignmentPending && onRenvoyerEnPreparation && (
         <button
           type="button"
           onClick={onRenvoyerEnPreparation}
@@ -1152,6 +1199,23 @@ function LivraisonRow({
           <Undo2 size={12} />
           Renvoyer en préparation (réassigner)
         </button>
+      )}
+      {onStockLivreur && ['administrateur', 'gestionnaire'].includes(userRole) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {held.length > 0 && !refusalPending && (
+            <button type="button" disabled={processing} onClick={() => onStockLivreur(livraison, 'atelier')}
+              className="rounded-lg border border-blue-200 bg-white text-blue-800 text-xs font-bold px-3 py-2 disabled:opacity-50">
+              Confirmer le retour à l’atelier
+            </button>
+          )}
+          {(refusalPending || assignmentPending) && (
+            <button type="button" disabled={processing}
+              onClick={() => onStockLivreur(livraison, assignmentPending ? 'affectation' : 'refus')}
+              className="rounded-lg bg-amber-100 text-amber-900 text-xs font-bold px-3 py-2 disabled:opacity-50">
+              Finaliser {assignmentPending ? 'l’affectation' : 'le retour au stock'}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

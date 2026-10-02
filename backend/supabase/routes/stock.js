@@ -6,10 +6,10 @@ import { mapStock } from '../map.js';
 import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
-  fetchStockSynchronizationOrders,
 } from '../../services/stock-synchronization.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
+import { courierContext, buildCourierOffers, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
 
 const router = express.Router();
 
@@ -52,27 +52,18 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
 router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const [stockResult, ordersResult] = await Promise.all([
-      supabase
-        .from('stock')
-        .select('*')
-        .eq('pays_code', req.country)
-        .order('modele', { ascending: true }),
-      fetchStockSynchronizationOrders(supabase, { country: req.country }),
-    ]);
-
-    if (stockResult.error) {
-      return res.status(500).json({ message: 'Erreur lors du chargement du stock', error: stockResult.error.message });
-    }
-    if (ordersResult.error) {
-      return res.status(500).json({ message: 'Erreur lors du chargement des réservations', error: ordersResult.error.message });
-    }
-
-    const stock = (stockResult.data || []).map(mapStock);
+    const context = await courierContext(supabase, req.country);
+    const stock = context.stock.map(mapStock);
     const synchronization = buildStockSynchronization({
-      orders: ordersResult.data || [],
+      orders: courierSynchronizationOrders(context),
       stock,
     });
+    const offers = buildCourierOffers(context);
+    for (const [id, offer] of Object.entries(offers)) {
+      synchronization.couvertureCommandes[id].disponibleChezLivreur = {
+        livreurId: offer.livreurId, livreurNom: offer.livreurNom,
+      };
+    }
     const valeurTotale = stock.reduce(
       (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
       0,

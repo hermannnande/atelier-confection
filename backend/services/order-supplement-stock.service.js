@@ -10,12 +10,14 @@ export async function moveOrderSupplementStock({
   userId,
   action,
   commentaire = '',
+  suivis,
 }) {
   const supplements = Array.isArray(commande?.supplements)
     ? commande.supplements.filter((item) => item?.articleCatalogue === true)
     : [];
 
-  for (const article of supplements) {
+  for (const [index, article] of supplements.entries()) {
+    if ((action === 'livree' || action === 'retour') && suivis?.[`supplement-${index + 1}`] === false) continue;
     const modele = String(article.libelle || '').trim();
     const taille = normalizeSize(article.taille);
     const couleur = String(article.couleur || '').trim();

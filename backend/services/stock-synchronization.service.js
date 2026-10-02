@@ -74,7 +74,7 @@ export function orderStockArticles(order) {
   return articles;
 }
 
-function comparePendingOrders(a, b) {
+export function comparePendingOrders(a, b) {
   return Number(Boolean(b?.urgence)) - Number(Boolean(a?.urgence))
     || validationTimestamp(a) - validationTimestamp(b)
     || orderId(a).localeCompare(orderId(b));

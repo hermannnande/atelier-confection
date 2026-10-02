@@ -5,10 +5,11 @@ import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapCommande, mapLivraison, mapUser } from '../map.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
-import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
+import { assignWithCourierStock, recordRefusal, confirmCustody } from '../../services/courier-stock.service.js';
 
 const router = express.Router();
+const stockAssignmentPending = livraison => livraison.adresse_livraison?.stockAffectation?.etat === 'nouvelle';
 
 // 🔧 Paginer les .in() pour éviter de dépasser la limite Supabase/PostgREST
 // (longueur d'URL ~8KB → ~200 UUID max par requête en pratique)
@@ -65,130 +66,58 @@ async function hydrateLivraisons(supabase, livRows) {
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    let q = supabase
-      .from('livraisons')
-      .select('*')
-      .eq('pays_code', req.country)
-      .order('date_assignation', { ascending: false });
-    if (req.user.role === 'livreur') q = q.eq('livreur_id', req.userId);
-
-    const { data, error } = await q;
-    if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
-
-    const livraisons = await hydrateLivraisons(supabase, data || []);
+    const rows = [];
+    for (let offset = 0; ; offset += 1000) {
+      let q = supabase.from('livraisons').select('*').eq('pays_code', req.country)
+        .order('date_assignation', { ascending: false }).order('id', { ascending: true });
+      if (req.user.role === 'livreur') q = q.eq('livreur_id', req.userId);
+      const { data, error } = await q.range(offset, offset + 999);
+      if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
+      rows.push(...(data || []));
+      if ((data || []).length < 1000) break;
+    }
+    const livraisons = await hydrateLivraisons(supabase, rows);
     return res.json({ livraisons });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
   }
 });
 
-router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'), async (req, res) => {
+async function assignDelivery(req, res, direct = false) {
   try {
-    const { commandeId, livreurId, instructions } = req.body;
-    const supabase = getSupabaseAdmin();
-
-    const { data: commande, error: e1 } = await supabase.from('commandes').select('*').eq('id', commandeId).single();
-    if (e1 || !commande) return res.status(404).json({ message: 'Commande non trouvée' });
-    if (!ensureCountryAccess(commande, req, res)) return;
-    if (commande.statut !== 'en_stock') {
-      return res.status(400).json({ message: 'La commande doit être en stock pour être assignée à un livreur' });
-    }
-
-    const commandeCountry = commande.pays_code || 'CI';
-
-    const { data: livreur, error: livreurError } = await supabase
-      .from('users')
-      .select('id, nom, telephone, role, actif, pays_code')
-      .eq('id', livreurId)
-      .maybeSingle();
-    if (livreurError || !livreur || livreur.role !== 'livreur') {
-      return res.status(404).json({ message: 'Livreur non trouvé' });
-    }
-    if (livreur.pays_code && livreur.pays_code !== commandeCountry) {
-      return res.status(400).json({ message: 'Le livreur et la commande doivent appartenir au même pays' });
-    }
-
-    // Vérifier le stock dans le pays de la commande (optionnel, ne bloque pas)
-    const { data: stockItem, error: e2 } = await findStockVariation(supabase, {
-      country: commandeCountry, modele: commande.modele?.nom,
-      taille: commande.taille, couleur: commande.couleur,
+    const result = await assignWithCourierStock(getSupabaseAdmin(), {
+      commandeId: req.body.commandeId, courierId: req.body.livreurId,
+      country: req.country, userId: req.userId, direct, instructions: req.body.instructions,
+      resumeDeliveryId: req.body.resumeDeliveryId,
     });
-
-    // Créer livraison (même si stock vide)
-    const nowIso = new Date().toISOString();
-    const { data: livraison, error: e3 } = await supabase
-      .from('livraisons')
-      .insert({
-        pays_code: commandeCountry,
-        commande_id: commandeId,
-        livreur_id: livreurId,
-        statut: 'en_cours',
-        adresse_livraison: { ville: commande.client?.ville, details: '' },
-        instructions: instructions || commande.note_appelant,
-        date_assignation: nowIso,
-        date_tournee: nowIso, // sera aussi mis par le trigger BD, mais on l'écrit explicitement pour la clarté
-      })
-      .select('*')
-      .single();
-    if (e3) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e3.message });
-
-    // Mettre à jour commande
-    const historique = Array.isArray(commande.historique) ? commande.historique : [];
-    historique.push({
-      action: 'Assigné au livreur',
-      statut: 'en_livraison',
-      utilisateur: req.userId,
-      date: new Date().toISOString(),
-    });
-
-    const { error: e4 } = await supabase
-      .from('commandes')
-      .update({ statut: 'en_livraison', livreur_id: livreurId, historique })
-      .eq('id', commandeId);
-    if (e4) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e4.message });
-
-    // Transférer stock principal -> en livraison (SI disponible)
-    if (stockItem && (stockItem.quantite_principale || 0) >= 1) {
-      const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
-      mouvements.push({
-        type: 'transfert',
-        quantite: 1,
-        source: 'Stock principal',
-        destination: 'Stock en livraison',
-        commande: commandeId,
-        utilisateur: req.userId,
-        date: new Date().toISOString(),
-        commentaire: 'Assignation au livreur',
-      });
-
-      const { error: e5 } = await supabase
-        .from('stock')
-        .update({
-          quantite_principale: (stockItem.quantite_principale || 0) - 1,
-          quantite_en_livraison: (stockItem.quantite_en_livraison || 0) + 1,
-          mouvements,
-        })
-        .eq('id', stockItem.id);
-      if (e5) return res.status(500).json({ message: "Erreur lors de l'assignation", error: e5.message });
+    if (!result.resumed) {
+      try {
+        await customerSmsService.sendCommandeNotification(
+          CUSTOMER_SMS_EVENT_CODES.LIVREUR_ASSIGNE, result.order,
+          { livreur: result.courier, userId: req.userId }
+        );
+      } catch (error) { console.error('SMS livreur assigné (non bloquant):', error.message); }
     }
-    await moveOrderSupplementStock({
-      supabase, commande, country: commandeCountry, userId: req.userId, action: 'assigner',
-      commentaire: 'Assignation au livreur',
-    });
-
-    try {
-      await customerSmsService.sendCommandeNotification(
-        CUSTOMER_SMS_EVENT_CODES.LIVREUR_ASSIGNE,
-        { ...commande, statut: 'en_livraison', livreur_id: livreurId },
-        { livreur, userId: req.userId }
-      );
-    } catch (smsError) {
-      console.error('Erreur SMS client livreur assigné (non bloquant):', smsError.message);
-    }
-
-    return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(livraison) });
+    return res.status(201).json({ message: 'Livraison assignée avec succès', livraison: mapLivraison(result.delivery) });
   } catch (error) {
-    return res.status(500).json({ message: "Erreur lors de l'assignation", error: error.message });
+    return res.status(error.status || 500).json({ message: error.message || "Erreur lors de l'assignation" });
+  }
+}
+
+router.post('/assigner', authenticate, resolveCountry, authorize('appelant', 'gestionnaire', 'administrateur'),
+  (req, res) => assignDelivery(req, res));
+router.post('/reaffecter-stock', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'),
+  (req, res) => assignDelivery(req, res, true));
+
+router.post('/:id/retour-atelier', authenticate, resolveCountry, authorize('gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.from('livraisons').select('*').eq('id', req.params.id).eq('pays_code', req.country).single();
+    if (error || !data) return res.status(404).json({ message: 'Livraison non trouvée' });
+    const delivery = await confirmCustody(supabase, { delivery: data, country: req.country, userId: req.userId, location: 'atelier' });
+    return res.json({ message: 'Retour physique à l’atelier confirmé, sans doubler le stock', livraison: mapLivraison(delivery) });
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 
@@ -204,6 +133,9 @@ router.delete('/:id', authenticate, resolveCountry, authorize('administrateur'),
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
 
+    if (livraison.adresse_livraison?.stockRetour || stockAssignmentPending(livraison)) {
+      return res.status(409).json({ message: 'Cette livraison conserve le suivi d’une tenue. Son historique doit rester disponible.' });
+    }
     const { error: e2 } = await supabase.from('livraisons').delete().eq('id', req.params.id);
     if (e2) return res.status(500).json({ message: 'Erreur lors de la suppression', error: e2.message });
 
@@ -263,6 +195,9 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
     const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    if (stockAssignmentPending(livraison)) {
+      return res.status(409).json({ message: 'Finalisez d’abord l’affectation dans Caisse Livreurs.' });
+    }
     if (['retournee', 'livree'].includes(livraison.statut)) {
       return res.status(400).json({ message: 'Cette livraison a déjà été traitée' });
     }
@@ -292,7 +227,7 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
         preferQuantity: 'quantite_en_livraison',
       });
 
-      if (stockItem) {
+      if (stockItem && livraison.adresse_livraison?.stockAffectation?.suivis?.principal !== false) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
         mouvements.push({
           type: 'sortie',
@@ -315,6 +250,7 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
     if (commande) {
       await moveOrderSupplementStock({
         supabase, commande, country: livraisonCountry, userId: req.userId, action: 'livree',
+        suivis: livraison.adresse_livraison?.stockAffectation?.suivis,
         commentaire: 'Livraison réussie',
       });
     }
@@ -326,128 +262,23 @@ router.post('/:id/livree', authenticate, resolveCountry, authorize('livreur', 'g
 
 router.post('/:id/refusee', authenticate, resolveCountry, authorize('livreur', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
-    const { motifRefus } = req.body;
     const supabase = getSupabaseAdmin();
-    const { data: livraison, error: e1 } = await supabase.from('livraisons').select('*').eq('id', req.params.id).single();
-    if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
-    if (!ensureCountryAccess(livraison, req, res)) return;
-    if (['retournee', 'livree'].includes(livraison.statut)) {
-      return res.status(400).json({ message: 'Cette livraison a déjà été traitée' });
+    const { data: livraison, error } = await supabase.from('livraisons').select('*').eq('id', req.params.id).eq('pays_code', req.country).single();
+    if (error || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
+    if (req.user.role === 'livreur' && livraison.livreur_id !== req.userId) {
+      return res.status(403).json({ message: 'Cette livraison appartient à un autre livreur' });
     }
-    const livraisonCountry = livraison.pays_code || 'CI';
-
-    // Marquer la livraison comme retournée directement (retour stock automatique)
-    const { data: updatedLivraison, error: updateLivraisonError } = await supabase
-      .from('livraisons')
-      .update({
-        statut: 'retournee',
-        motif_refus: motifRefus,
-        date_livraison: new Date().toISOString(),
-        date_retour: new Date().toISOString(),
-        verifie_par_gestionnaire: true,
-        gestionnaire_id: req.userId,
-        commentaire_gestionnaire: 'Retour automatique au stock après refus',
-      })
-      .eq('id', req.params.id)
-      .select()
-      .single();
-    if (updateLivraisonError) {
-      return res.status(500).json({ message: 'Impossible d’enregistrer le refus', error: updateLivraisonError.message });
+    if (livraison.adresse_livraison?.stockAffectation?.etat === 'nouvelle') {
+      return res.status(409).json({ message: 'Finalisez d’abord l’affectation dans Caisse Livreurs.' });
     }
-
-    const { data: commande } = await supabase.from('commandes').select('*').eq('id', livraison.commande_id).single();
-    if (commande) {
-      const historique = Array.isArray(commande.historique) ? commande.historique : [];
-      historique.push({
-        action: 'Livraison refusée par le client (retour stock automatique)',
-        statut: 'refusee',
-        utilisateur: req.userId,
-        date: new Date().toISOString(),
-        commentaire: motifRefus,
-      });
-
-      await supabase
-        .from('commandes')
-        .update({ statut: 'refusee', motif_refus: motifRefus, historique })
-        .eq('id', commande.id);
-
-      // Retour automatique au stock principal
-      const { data: stockItem } = await findStockVariation(supabase, {
-        country: livraisonCountry, modele: commande.modele?.nom,
-        taille: commande.taille, couleur: commande.couleur,
-        preferQuantity: 'quantite_en_livraison',
-      });
-
-      const nowIso = new Date().toISOString();
-      const mouvement = {
-        type: 'retour',
-        quantite: 1,
-        source: 'Stock en livraison',
-        destination: 'Stock principal',
-        commande: commande.id,
-        utilisateur: req.userId,
-        date: nowIso,
-        commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
-      };
-
-      if (stockItem) {
-        const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
-        mouvements.push(mouvement);
-
-        await supabase
-          .from('stock')
-          .update({
-            quantite_en_livraison: Math.max(0, (stockItem.quantite_en_livraison || 0) - 1),
-            quantite_principale: (stockItem.quantite_principale || 0) + 1,
-            mouvements,
-          })
-          .eq('id', stockItem.id);
-      } else {
-        // Un envoi direct peut partir sans aucune ligne de stock. Le refus
-        // doit tout de même créer la variation pour conserver la tenue reçue.
-        const { error: insertStockError } = await supabase.from('stock').insert({
-          pays_code: livraisonCountry,
-          modele: commande.modele?.nom || commande.modele || 'Modèle inconnu',
-          taille: normalizeSize(commande.taille),
-          couleur: commande.couleur,
-          quantite_principale: 1,
-          quantite_en_livraison: 0,
-          prix: Number(commande.prix_base ?? commande.prix ?? 0),
-          image: commande.modele?.image || null,
-          mouvements: [mouvement],
-        });
-
-        // Une ligne a pu être créée entre la lecture et l'insertion : dans ce
-        // cas on la recharge et on applique le retour sur la ligne existante.
-        if (insertStockError?.code === '23505') {
-          const { data: concurrentStock } = await findStockVariation(supabase, {
-            country: livraisonCountry,
-            modele: commande.modele?.nom || commande.modele || 'Modèle inconnu',
-            taille: commande.taille, couleur: commande.couleur,
-            preferQuantity: 'quantite_en_livraison',
-          });
-          if (concurrentStock) {
-            const mouvements = Array.isArray(concurrentStock.mouvements) ? concurrentStock.mouvements : [];
-            mouvements.push(mouvement);
-            await supabase.from('stock').update({
-              quantite_en_livraison: Math.max((concurrentStock.quantite_en_livraison || 0) - 1, 0),
-              quantite_principale: (concurrentStock.quantite_principale || 0) + 1,
-              mouvements,
-            }).eq('id', concurrentStock.id);
-          }
-        }
-      }
-    }
-
-    if (commande) {
-      await moveOrderSupplementStock({
-        supabase, commande, country: livraisonCountry, userId: req.userId, action: 'refusee',
-        commentaire: `Retour automatique après refus: ${motifRefus || 'sans motif'}`,
-      });
-    }
-    return res.json({ message: 'Refus enregistré et stock mis à jour', livraison: mapLivraison(updatedLivraison || livraison) });
+    const { data: commande, error: orderError } = await supabase.from('commandes').select('*')
+      .eq('id', livraison.commande_id).eq('pays_code', req.country).single();
+    if (orderError || !commande) return res.status(404).json({ message: 'Commande non trouvée' });
+    const updated = await recordRefusal(supabase, { delivery: livraison, order: commande,
+      country: req.country, userId: req.userId, motif: req.body.motifRefus });
+    return res.json({ message: 'Refus enregistré : tenue en stock, disponible chez le livreur', livraison: mapLivraison(updated) });
   } catch (error) {
-    return res.status(500).json({ message: 'Erreur', error: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 
@@ -463,6 +294,9 @@ router.post('/:id/reportee', authenticate, resolveCountry, authorize('livreur', 
       .single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    if (stockAssignmentPending(livraison) || !['en_cours', 'assignee', 'reportee'].includes(livraison.statut)) {
+      return res.status(409).json({ message: 'Cette livraison ne peut pas être reportée dans son état actuel.' });
+    }
 
     const { data: updated, error: e2 } = await supabase
       .from('livraisons')
@@ -526,6 +360,9 @@ router.post(
       if (!ensureCountryAccess(livraison, req, res)) return;
 
       const STATUTS_RENVOYABLES = ['assignee', 'en_cours', 'reportee'];
+      if (stockAssignmentPending(livraison)) {
+        return res.status(409).json({ message: 'Finalisez d’abord l’affectation dans Caisse Livreurs.' });
+      }
       if (!STATUTS_RENVOYABLES.includes(livraison.statut)) {
         return res.status(400).json({
           message:
@@ -578,7 +415,7 @@ router.post(
         preferQuantity: 'quantite_en_livraison',
       });
 
-      if (stockItem && (stockItem.quantite_en_livraison || 0) >= 1) {
+      if (stockItem && (stockItem.quantite_en_livraison || 0) >= 1 && livraison.adresse_livraison?.stockAffectation?.suivis?.principal !== false) {
         const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
         mouvements.push({
           type: 'retour',
@@ -603,6 +440,7 @@ router.post(
 
       await moveOrderSupplementStock({
         supabase, commande, country: livraisonCountry, userId: req.userId, action: 'retour',
+        suivis: livraison.adresse_livraison?.stockAffectation?.suivis,
         commentaire: `Renvoi en préparation${motif ? ` : ${motif}` : ''}`,
       });
 
@@ -637,6 +475,9 @@ router.post('/:id/reprendre', authenticate, resolveCountry, authorize('livreur',
       .single();
     if (e1 || !livraison) return res.status(404).json({ message: 'Livraison non trouvée' });
     if (!ensureCountryAccess(livraison, req, res)) return;
+    if (stockAssignmentPending(livraison)) {
+      return res.status(409).json({ message: 'Finalisez d’abord l’affectation dans Caisse Livreurs.' });
+    }
     if (livraison.statut !== 'reportee') {
       return res.status(400).json({ message: 'Seules les livraisons reportées peuvent être reprises' });
     }

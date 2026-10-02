@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing, Truck } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 import { isConfirmedAfterReminder } from '../utils/orderReminderHighlight';
@@ -46,6 +46,7 @@ const Commandes = () => {
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [sendingToReminder, setSendingToReminder] = useState(null);
+  const [assigningCourierId, setAssigningCourierId] = useState(null);
   const [stockDisponible, setStockDisponible] = useState({});
   const [savingColorId, setSavingColorId] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -190,6 +191,21 @@ const Commandes = () => {
       console.error(error);
     } finally {
       setSendingToReminder(null);
+    }
+  };
+
+  const attribuerStockLivreur = async (commande, courier) => {
+    const commandeId = commande._id || commande.id;
+    if (!window.confirm(`Attribuer ${commande.numeroCommande} à ${courier.livreurNom} avec la tenue déjà disponible chez ce livreur ?`)) return;
+    setAssigningCourierId(commandeId);
+    try {
+      await api.post('/livraisons/reaffecter-stock', { commandeId, livreurId: courier.livreurId });
+      toast.success(`Commande attribuée à ${courier.livreurNom}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de réattribuer cette tenue');
+    } finally {
+      await fetchCommandes(true);
+      setAssigningCourierId(null);
     }
   };
 
@@ -486,6 +502,7 @@ const Commandes = () => {
           {filteredCommandes.map((commande) => {
             const commandeId = commande._id || commande.id;
             const stockReservation = stockDisponible[commandeId];
+            const stockLivreur = stockReservation?.disponibleChezLivreur;
             const isMarked = isCardMarked(commande);
             const isReminderConfirmed = isConfirmedAfterReminder(commande);
             const isAgedValidated = isValidatedForAtLeastDays(commande, AGED_VALIDATED_DAYS);
@@ -502,7 +519,7 @@ const Commandes = () => {
                   <button
                     type="button"
                     onClick={() => envoyerEnRappel(commande)}
-                    disabled={sendingToReminder === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId}
+                    disabled={assigningCourierId === commandeId || sendingToReminder === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId}
                     className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full border-2 border-orange-300 bg-orange-100 text-orange-700 shadow-sm flex items-center justify-center transition-all hover:bg-orange-200 active:scale-90 disabled:opacity-50"
                     title="Envoyer dans les rappels clients"
                     aria-label={`Envoyer ${commande.numeroCommande} dans les rappels clients`}
@@ -568,6 +585,11 @@ const Commandes = () => {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
                             <Package size={10} className="mr-1" />
                             Réservée sur stock
+                          </span>
+                        )}
+                        {stockLivreur && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            <Truck size={12} /> Disponible chez {stockLivreur.livreurNom}
                           </span>
                         )}
                       </div>
@@ -647,9 +669,20 @@ const Commandes = () => {
                   {/* Boutons d'action - visibles seulement pour gestionnaire/admin et commandes validées */}
                   {peutEnvoyerAAtelier() && commande.statut === 'validee' && (
                     <>
+                      {stockLivreur && (
+                        <button
+                          type="button"
+                          onClick={() => attribuerStockLivreur(commande, stockLivreur)}
+                          disabled={assigningCourierId === commandeId || sendingToAtelier === commandeId || sendingToPreparation === commandeId || sendingToReminder === commandeId}
+                          className="btn btn-sm bg-blue-100 text-blue-800 hover:bg-blue-200 inline-flex items-center justify-center gap-1 disabled:opacity-50 text-xs w-full sm:w-auto"
+                          title="Utiliser la tenue refusée conservée chez ce livreur"
+                        >
+                          <Truck size={14} /> {assigningCourierId === commandeId ? 'Attribution...' : `Attribuer à ${stockLivreur.livreurNom}`}
+                        </button>
+                      )}
                       <button
                         onClick={() => envoyerAAtelier(commande._id)}
-                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
+                        disabled={assigningCourierId === commandeId || sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-primary btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer à l'atelier styliste"
                       >
@@ -659,7 +692,7 @@ const Commandes = () => {
                       
                       <button
                         onClick={() => envoyerEnPreparationColis(commande._id)}
-                        disabled={sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
+                        disabled={assigningCourierId === commandeId || sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-success btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
                         title="Envoyer directement en Préparation Colis, même sans stock disponible"
                       >
