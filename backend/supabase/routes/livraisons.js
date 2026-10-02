@@ -9,8 +9,11 @@ import { findStockVariation } from '../../services/stock-variation.service.js';
 import { assignWithCourierStock, recordRefusal, confirmCustody } from '../../services/courier-stock.service.js';
 import {
   DELIVERY_ORDER_COLUMNS,
+  deliveryWindowFilter,
   fetchByIdsInParallel,
   keepDeliveryReportEvents,
+  loadDeliveryTotals,
+  parseDeliveryWindowStart,
   readPagesInParallel,
 } from '../../services/delivery-list.service.js';
 
@@ -70,21 +73,33 @@ async function hydrateLivraisons(supabase, livRows) {
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const scoped = (q) => (req.user.role === 'livreur' ? q.eq('livreur_id', req.userId) : q);
-    const { count, error: countError } = await scoped(
-      supabase.from('livraisons').select('id', { count: 'exact', head: true }).eq('pays_code', req.country),
-    );
-    if (countError) return res.status(500).json({ message: 'Erreur lors de la récupération', error: countError.message });
-    // Pages lues plusieurs à la fois, dans le même ordre qu'avant.
-    const { data: rows, error } = await readPagesInParallel(
-      (from, to) => scoped(supabase.from('livraisons').select('*').eq('pays_code', req.country))
-        .order('date_assignation', { ascending: false }).order('id', { ascending: true })
-        .range(from, to),
-      count,
-    );
-    if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
-    const livraisons = await hydrateLivraisons(supabase, rows);
-    return res.json({ livraisons });
+    // Sans ?depuis, toute la liste (Livraisons, Comptabilité, « Tout » de Livreurs) ; avec,
+    // les tournées récentes à l'ouverture de Livreurs et les totaux de toutes les livraisons.
+    const { since, error: windowError } = parseDeliveryWindowStart(req.query.depuis);
+    if (windowError) return res.status(400).json({ message: windowError });
+    const own = (q) => (req.user.role === 'livreur' ? q.eq('livreur_id', req.userId) : q);
+    const scoped = (q) => (since ? own(q).or(deliveryWindowFilter(since)) : own(q));
+    const readLivraisons = async () => {
+      const { count, error: countError } = await scoped(
+        supabase.from('livraisons').select('id', { count: 'exact', head: true }).eq('pays_code', req.country),
+      );
+      if (countError) throw countError;
+      // Pages lues plusieurs à la fois, dans le même ordre qu'avant.
+      const { data, error } = await readPagesInParallel(
+        (from, to) => scoped(supabase.from('livraisons').select('*').eq('pays_code', req.country))
+          .order('date_assignation', { ascending: false }).order('id', { ascending: true })
+          .range(from, to),
+        count,
+      );
+      if (error) throw error;
+      return hydrateLivraisons(supabase, data);
+    };
+    // La liste et les totaux sont lus en même temps.
+    const [livraisons, totaux] = await Promise.all([
+      readLivraisons(),
+      since ? loadDeliveryTotals(supabase, req.country, own) : null,
+    ]);
+    return res.json(totaux ? { livraisons, totaux } : { livraisons });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
   }

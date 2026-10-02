@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -7,6 +7,11 @@ import {
   buildDeliveryRouteEntries,
   getDeliveryRouteDayKey as getJourKey,
 } from '../utils/deliveryRouteHistory';
+import {
+  deliveryLoadStart,
+  deliveryWindowStart,
+  needsFullDeliveryHistory,
+} from '../utils/deliveryWindow';
 import OrderSupplementTags from '../components/OrderSupplementTags';
 import {
   Users,
@@ -88,6 +93,14 @@ const Livreurs = () => {
   const [dateFilter, setDateFilter] = useState('today'); // today | yesterday | week | all | custom
   const [customDate, setCustomDate] = useState('');
   const [sortOrder, setSortOrder] = useState('desc'); // desc | asc
+  const [historiqueComplet, setHistoriqueComplet] = useState(false); // tout l'historique est chargé
+  const [totauxServeur, setTotauxServeur] = useState(null); // totaux de toutes les livraisons
+  const historiqueDemandeRef = useRef(false); // prochaine lecture : tout l'historique ou 60 jours
+  const lectureRef = useRef({ numero: 0, enCours: false }); // seule la dernière lecture est affichée
+
+  // À l'ouverture, 60 derniers jours ; « Tout » ou une date plus ancienne charge tout l'historique.
+  const debutFenetreKey = getJourKey(deliveryWindowStart());
+  const besoinHistorique = needsFullDeliveryHistory(dateFilter, customDate, debutFenetreKey);
 
   useEffect(() => {
     if (user && !['gestionnaire', 'administrateur'].includes(user.role)) {
@@ -96,26 +109,46 @@ const Livreurs = () => {
       return;
     }
     fetchData();
-    const interval = setInterval(() => fetchData(true), 15000);
+    const interval = setInterval(() => fetchData(true, true), 15000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
-  const fetchData = async (silent = false) => {
+  useEffect(() => {
+    if (historiqueDemandeRef.current === besoinHistorique) return;
+    historiqueDemandeRef.current = besoinHistorique;
+    fetchData(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [besoinHistorique]);
+
+  const fetchData = async (silent = false, periodique = false) => {
+    const lecture = lectureRef.current;
+    // Le rafraîchissement automatique attend la fin d'une lecture en cours.
+    if (periodique && lecture.enCours) return;
+    const numero = ++lecture.numero;
+    const complet = historiqueDemandeRef.current;
+    lecture.enCours = true;
     try {
       if (!silent) setLoading(true);
       const [usersRes, livraisonsRes] = await Promise.all([
         api.get('/users?role=livreur'),
-        api.get('/livraisons'),
+        api.get('/livraisons', complet ? undefined : { params: { depuis: deliveryLoadStart().toISOString() } }),
       ]);
+      if (numero !== lecture.numero) return;
       const livreursActifs = (usersRes.data.users || []).filter((u) => u.actif);
       setLivreurs(livreursActifs);
       setLivraisons(livraisonsRes.data.livraisons || []);
+      setTotauxServeur(livraisonsRes.data.totaux || null);
+      setHistoriqueComplet(complet);
     } catch (error) {
+      if (numero !== lecture.numero) return;
       if (!silent) toast.error('Erreur lors du chargement');
       console.error(error);
     } finally {
-      setLoading(false);
+      if (numero === lecture.numero) {
+        lecture.enCours = false;
+        setLoading(false);
+      }
     }
   };
 
@@ -175,7 +208,9 @@ const Livreurs = () => {
   };
 
   // ─── stats globales ────────────────────────────────────────────────────────
+  // Avec les 60 jours chargés, le serveur donne les totaux de toutes les livraisons.
   const statsGlobales = useMemo(() => {
+    if (totauxServeur) return totauxServeur;
     let colisDehors = 0;
     let argentDu = 0;
     for (const liv of livraisons) {
@@ -183,7 +218,7 @@ const Livreurs = () => {
       if (liv.statut === 'livree' && !liv.paiementRecu) argentDu += liv.commande?.prix || 0;
     }
     return { colisDehors, argentDu };
-  }, [livraisons]);
+  }, [livraisons, totauxServeur]);
 
   // ─── filtres date + recherche ──────────────────────────────────────────────
   const tourneesFiltres = useMemo(() => {
@@ -549,7 +584,12 @@ const Livreurs = () => {
       </div>
 
       {/* Liste des tournées */}
-      {tourneesFiltres.length === 0 ? (
+      {besoinHistorique && !historiqueComplet ? (
+        <div className="stat-card text-center py-12">
+          <Loader2 className="mx-auto animate-spin text-indigo-600 mb-3" size={40} />
+          <p className="text-sm text-gray-600">Chargement de l'historique complet…</p>
+        </div>
+      ) : tourneesFiltres.length === 0 ? (
         <div className="stat-card text-center py-12">
           <CalendarDays className="mx-auto text-gray-400 mb-3" size={40} />
           <h3 className="text-lg font-bold text-gray-900 mb-1">Aucune tournée trouvée</h3>

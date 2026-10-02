@@ -1,9 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  amountDue,
+  deliveryWindowFilter,
   fetchByIdsInParallel,
   isDeliveryReportEvent,
   keepDeliveryReportEvents,
+  loadDeliveryTotals,
+  parseDeliveryWindowStart,
   readPagesInParallel,
 } from '../services/delivery-list.service.js';
 import {
@@ -72,6 +76,68 @@ test('toutes les pages sont lues, y compris si la liste a grandi depuis le compt
   assert.deepEqual(vide.data, []);
   const panne = await readPagesInParallel(async () => ({ data: null, error: new Error('hors ligne') }), 10);
   assert.equal(panne.error.message, 'hors ligne');
+});
+
+test('la page Livreurs peut limiter la liste à partir d’une date', () => {
+  assert.deepEqual(parseDeliveryWindowStart(undefined), { since: null });
+  assert.deepEqual(parseDeliveryWindowStart(''), { since: null });
+  assert.deepEqual(parseDeliveryWindowStart('2026-08-03T00:00:00.000Z'), { since: '2026-08-03T00:00:00.000Z' });
+  assert.deepEqual(parseDeliveryWindowStart('2026-08-03T00:00:00+02:00'), { since: '2026-08-02T22:00:00.000Z' });
+  assert.deepEqual(parseDeliveryWindowStart('2026-08-03'), { since: '2026-08-03T00:00:00.000Z' });
+  for (const invalide of ['hier', '8', '2026-13-45', '2026-08-03",statut.eq.livree', ['2026-08-03']]) {
+    assert.equal(parseDeliveryWindowStart(invalide).error, 'Date de début invalide');
+  }
+  assert.equal(
+    deliveryWindowFilter('2026-08-03T00:00:00.000Z'),
+    'date_tournee.gte."2026-08-03T00:00:00.000Z",and(date_tournee.is.null,date_assignation.gte."2026-08-03T00:00:00.000Z")',
+  );
+});
+
+// Base factice : applique les filtres utilisés par loadDeliveryTotals.
+function fakeSupabase(tables) {
+  return {
+    from(table) {
+      const filters = [];
+      let options = {};
+      let range = null;
+      const builder = {
+        select(columns, opts = {}) { options = opts; return builder; },
+        eq(column, value) { filters.push((row) => row[column] === value); return builder; },
+        in(column, values) { filters.push((row) => values.includes(row[column])); return builder; },
+        not(column, operator, value) { filters.push((row) => !(operator === 'is' && row[column] === value)); return builder; },
+        order() { return builder; },
+        range(from, to) { range = [from, to]; return builder; },
+        then(resolve, reject) {
+          const rows = tables[table].filter((row) => filters.every((filter) => filter(row)));
+          const result = options.head
+            ? { data: null, count: rows.length, error: null }
+            : { data: range ? rows.slice(range[0], range[1] + 1) : rows, count: null, error: null };
+          return Promise.resolve(result).then(resolve, reject);
+        },
+      };
+      return builder;
+    },
+  };
+}
+
+test('les totaux de la page Livreurs comptent toutes les livraisons du pays', async () => {
+  const livraisons = [
+    { pays_code: 'CI', statut: 'en_cours', livreur_id: 'a' },
+    { pays_code: 'CI', statut: 'reportee', livreur_id: 'b' },
+    { pays_code: 'CI', statut: 'livree', paiement_recu: false, commande_id: 'c1', livreur_id: 'a' },
+    { pays_code: 'CI', statut: 'livree', paiement_recu: false, commande_id: 'c1', livreur_id: 'b' },
+    { pays_code: 'CI', statut: 'livree', paiement_recu: null, commande_id: 'c3', livreur_id: 'b' },
+    { pays_code: 'CI', statut: 'livree', paiement_recu: true, commande_id: 'c2', livreur_id: 'a' },
+    { pays_code: 'CI', statut: 'livree', paiement_recu: false, commande_id: 'absente', livreur_id: 'a' },
+    { pays_code: 'CI', statut: 'refusee', livreur_id: 'a' },
+    { pays_code: 'BF', statut: 'en_cours', livreur_id: 'a' },
+  ];
+  const commandes = [{ id: 'c1', prix: 15000 }, { id: 'c2', prix: 9000 }, { id: 'c3', prix: 7000 }];
+  const db = fakeSupabase({ livraisons, commandes });
+
+  assert.deepEqual(await loadDeliveryTotals(db, 'CI'), { colisDehors: 2, argentDu: 37000 });
+  assert.deepEqual(await loadDeliveryTotals(db, 'CI', (q) => q.eq('livreur_id', 'a')), { colisDehors: 1, argentDu: 15000 });
+  assert.equal(amountDue([{ commande_id: 'c1' }, { commande_id: 'c1' }, { commande_id: null }], commandes), 30000);
 });
 
 test('Préparation Colis garde les mêmes commandes que la page', () => {
