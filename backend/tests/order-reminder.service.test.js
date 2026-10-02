@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ORDER_REMINDER_SENDER_ROLES,
   ORDER_REMINDER_STATUS,
   assertCanConfirmOrderReminder,
   assertCanSendOrderToReminder,
 } from '../services/order-reminder.service.js';
+
+test('le gestionnaire principal et l’administrateur peuvent envoyer en rappel, pas le gestionnaire de stock', () => {
+  assert.deepEqual([...ORDER_REMINDER_SENDER_ROLES].sort(), ['administrateur', 'gestionnaire']);
+  assert.equal(ORDER_REMINDER_SENDER_ROLES.includes('gestionnaire_stock'), false);
+  assert.equal(ORDER_REMINDER_SENDER_ROLES.includes('appelant'), false);
+});
 
 test('une commande nouvelle ou validée peut être envoyée en rappel', () => {
   assert.equal(assertCanSendOrderToReminder('nouvelle'), ORDER_REMINDER_STATUS);

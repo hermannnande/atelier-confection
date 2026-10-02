@@ -1,5 +1,7 @@
 export const ORDER_REMINDER_STATUS = 'a_rappeler';
 export const ORDER_STATUSES_ALLOWED_FOR_REMINDER = ['nouvelle', 'validee'];
+// Rôles qui peuvent envoyer une commande de « Commandes » vers « Rappels ».
+export const ORDER_REMINDER_SENDER_ROLES = ['gestionnaire', 'administrateur'];
 
 export function assertCanSendOrderToReminder(status) {
   if (!ORDER_STATUSES_ALLOWED_FOR_REMINDER.includes(status)) {

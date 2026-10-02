@@ -213,7 +213,8 @@ const Commandes = () => {
     return user?.role === 'administrateur' || user?.role === 'gestionnaire';
   };
 
-  const peutEnvoyerEnRappel = user?.role === 'administrateur';
+  // Le gestionnaire principal et l'administrateur, pas le gestionnaire de stock.
+  const peutEnvoyerEnRappel = ['administrateur', 'gestionnaire'].includes(user?.role);
 
   const canEditNote = ['administrateur', 'gestionnaire', 'appelant'].includes(user?.role);
 

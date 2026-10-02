@@ -7,6 +7,7 @@ import smsService from '../../services/sms.service.js';
 import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/customer-sms.service.js';
 import { parseOrderOrganizationColor } from '../../services/order-organization.service.js';
 import {
+  ORDER_REMINDER_SENDER_ROLES,
   assertCanConfirmOrderReminder,
   assertCanSendOrderToReminder,
 } from '../../services/order-reminder.service.js';
@@ -466,7 +467,7 @@ router.patch('/:id/note', authenticate, resolveCountry, authorize('appelant', 'g
 });
 
 // Placer une commande de la page Commandes dans la file des rappels clients.
-router.post('/:id/envoyer-rappel', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
+router.post('/:id/envoyer-rappel', authenticate, resolveCountry, authorize(...ORDER_REMINDER_SENDER_ROLES), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: existingError } = await supabase
