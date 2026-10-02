@@ -175,7 +175,8 @@ const PreparationColis = () => {
   const fetchCommandes = async () => {
     try {
       const [cmdRes, livRes] = await Promise.all([
-        api.get('/commandes'),
+        // Une commande ne reste pas plus d'une semaine en préparation : 1 500 suffisent.
+        api.get('/commandes', { params: { limite: 1500 } }),
         api.get('/livraisons').catch(() => ({ data: { livraisons: [] } })),
       ]);
 

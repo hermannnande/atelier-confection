@@ -28,6 +28,7 @@ import {
   orderStockArticleKeys,
 } from '../../services/stock-synchronization.service.js';
 import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
+import { fetchRowsUpTo, parseOrderListLimit } from '../../services/order-list.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 
@@ -78,35 +79,41 @@ function attachUsers(row, usersById) {
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const { statut, urgence } = req.query;
+    const limite = parseOrderListLimit(req.query.limite);
     const supabase = getSupabaseAdmin();
 
-    let q = supabase.from('commandes').select('*').eq('pays_code', req.country);
+    const buildQuery = () => {
+      let q = supabase.from('commandes').select('*').eq('pays_code', req.country);
 
-    // Filtres selon rôle
-    if (req.user.role === 'appelant') {
-      // Les appelants voient toutes les commandes en attente (pour traiter les appels)
-      // Ne pas filtrer par appelant_id
-    } else if (req.user.role === 'styliste') {
-      q = q.in('statut', ['validee', 'en_decoupe', 'en_couture']);
-    } else if (req.user.role === 'couturier') {
-      q = q.eq('statut', 'en_couture');
-    } else if (req.user.role === 'livreur') {
-      q = q.eq('livreur_id', req.userId).eq('statut', 'en_livraison');
-    }
+      // Filtres selon rôle
+      if (req.user.role === 'appelant') {
+        // Les appelants voient toutes les commandes en attente (pour traiter les appels)
+        // Ne pas filtrer par appelant_id
+      } else if (req.user.role === 'styliste') {
+        q = q.in('statut', ['validee', 'en_decoupe', 'en_couture']);
+      } else if (req.user.role === 'couturier') {
+        q = q.eq('statut', 'en_couture');
+      } else if (req.user.role === 'livreur') {
+        q = q.eq('livreur_id', req.userId).eq('statut', 'en_livraison');
+      }
 
-    if (statut) {
-      // Supporte: ?statut=a,b,c
-      const parts = String(statut)
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      q = parts.length > 1 ? q.in('statut', parts) : q.eq('statut', parts[0]);
-    }
-    if (urgence !== undefined) q = q.eq('urgence', urgence === 'true');
+      if (statut) {
+        // Supporte: ?statut=a,b,c
+        const parts = String(statut)
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        q = parts.length > 1 ? q.in('statut', parts) : q.eq('statut', parts[0]);
+      }
+      if (urgence !== undefined) q = q.eq('urgence', urgence === 'true');
 
-    q = q.order('urgence', { ascending: false }).order('created_at', { ascending: false });
+      return q.order('urgence', { ascending: false }).order('created_at', { ascending: false });
+    };
 
-    const { data, error } = await q;
+    // ?limite=1500 lit la liste par pages ; sans limite, une seule lecture comme avant.
+    const { data, error } = limite
+      ? await fetchRowsUpTo(() => buildQuery().order('id', { ascending: true }), limite)
+      : await buildQuery();
     if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
 
     const rows = data || [];
