@@ -360,14 +360,29 @@ const Commandes = () => {
   const availableSizes = Array.from(sizeCounts.keys()).sort(compareSizes);
   const availableModels = Array.from(modelLabels, ([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label, 'fr', { numeric: true }));
-  // Même source que le badge « Réservée sur stock » des cartes.
+  // Même source que les badges « Réservée sur stock » et « Disponible chez … » des cartes.
   const isReservedOnStock = (commande) => Boolean(stockDisponible[String(commande._id || commande.id)]);
+  const courierHolding = (commande) => stockDisponible[String(commande._id || commande.id)]?.disponibleChezLivreur;
   const stockFilterBase = commandes.filter((commande) => (
     commande.statut === 'validee'
     && (!filterModele || normalizeModel(commande) === filterModele)
     && (!filterTaille || normalizeSize(commande.taille) === filterTaille)
   ));
   const reservedOnStockTotal = stockFilterBase.filter(isReservedOnStock).length;
+  const atCourierTotal = stockFilterBase.filter(courierHolding).length;
+  const couriersHolding = Array.from(stockFilterBase.reduce((couriers, commande) => {
+    const courier = courierHolding(commande);
+    if (!courier) return couriers;
+    const entry = couriers.get(courier.livreurId) || { id: courier.livreurId, nom: courier.livreurNom, total: 0 };
+    entry.total += 1;
+    return couriers.set(courier.livreurId, entry);
+  }, new Map()).values()).sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'));
+  const matchesStockFilter = (commande) => {
+    if (!filterStock) return true;
+    if (filterStock === 'reservee') return isReservedOnStock(commande);
+    if (filterStock === 'livreur') return Boolean(courierHolding(commande));
+    return courierHolding(commande)?.livreurId === filterStock.slice('livreur:'.length);
+  };
 
   const filteredCommandes = commandes.filter((commande) => {
     const matchSearch =
@@ -376,9 +391,7 @@ const Commandes = () => {
       commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTaille = !filterTaille || normalizeSize(commande.taille) === filterTaille;
     const matchModele = !filterModele || normalizeModel(commande) === filterModele;
-    const matchStock = filterStock !== 'reservee' || isReservedOnStock(commande);
-
-    return matchSearch && matchTaille && matchModele && matchStock;
+    return matchSearch && matchTaille && matchModele && matchesStockFilter(commande);
   });
 
   if (loading) {
@@ -523,6 +536,38 @@ const Commandes = () => {
               <Package size={14} />
               Réservée sur stock <span className="opacity-80">({reservedOnStockTotal})</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setFilterStock('livreur')}
+              className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold border transition-all active:scale-95 ${
+                filterStock === 'livreur'
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+              }`}
+              aria-pressed={filterStock === 'livreur'}
+            >
+              <Truck size={14} />
+              Disponible chez un livreur <span className="opacity-80">({atCourierTotal})</span>
+            </button>
+            {couriersHolding.map((courier) => {
+              const value = `livreur:${courier.id}`;
+              return (
+                <button
+                  key={courier.id}
+                  type="button"
+                  onClick={() => setFilterStock(value)}
+                  className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold border transition-all active:scale-95 ${
+                    filterStock === value
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                      : 'bg-blue-50 border-blue-200 text-blue-800 hover:border-blue-300'
+                  }`}
+                  aria-pressed={filterStock === value}
+                >
+                  <Truck size={14} />
+                  Chez {courier.nom} <span className="opacity-80">({courier.total})</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
