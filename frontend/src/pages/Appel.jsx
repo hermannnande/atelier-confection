@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Phone, CheckCircle, XCircle, Clock, AlertTriangle, User, MapPin, Package, X, RefreshCw, Plus, Search, Pin, PinOff, Pencil, Save, Tag } from 'lucide-react';
+import { Phone, CheckCircle, Clock, User, MapPin, Package, X, RefreshCw, Plus, Search, Pin, PinOff, Pencil, Save, Tag } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
 import { sameStockLabel } from '../utils/stockVariation';
@@ -12,6 +12,7 @@ import {
   normalizeOrderSupplements,
 } from '../utils/orderSupplements';
 import { ClientHistoryPanel, ClientProfileBadge } from '../components/ClientHistory';
+import AppelActionBar from '../components/AppelActionBar';
 
 const EPINGLES_STORAGE_KEY = 'appel_commandes_epinglees';
 const TAILLES_COMMANDES = ['Standard', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'Taille Standard'];
@@ -90,6 +91,7 @@ const Appel = () => {
   const [supplementModeleId, setSupplementModeleId] = useState('');
   const [supplementTaille, setSupplementTaille] = useState('');
   const [supplementCouleur, setSupplementCouleur] = useState('');
+  const [showSupplementForm, setShowSupplementForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [epingles, setEpingles] = useState(() => loadEpingles());
   const intervalRef = useRef(null);
@@ -135,6 +137,7 @@ const Appel = () => {
       setSupplementModeleId('');
       setSupplementTaille('');
       setSupplementCouleur('');
+      setShowSupplementForm(false);
     }
   }, [selectedCommande]);
 
@@ -940,7 +943,7 @@ const Appel = () => {
             </div>
 
             {/* Contenu compact */}
-            <div className="space-y-2 overflow-y-auto overscroll-contain p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:p-3">
+            <div className="space-y-2 overflow-y-auto overscroll-contain p-2.5 sm:p-3">
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -1154,26 +1157,31 @@ const Appel = () => {
                 <textarea
                   value={noteAppelant}
                   onChange={(e) => setNoteAppelant(e.target.value)}
-                  placeholder="Ajouter des précisions pour l'atelier (optionnel)..."
+                  placeholder="Précisions pour l'atelier, visibles par toute l'équipe (optionnel)..."
                   className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows="1"
                   disabled={processing}
                 />
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  Cette note sera visible par toute l'équipe de production
-                </p>
               </div>
 
               {/* Articles et suppléments sous forme d'étiquettes */}
               <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-2 space-y-1.5">
-                <div>
+                <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-black text-violet-900 flex items-center gap-1.5">
                     <Tag size={12} />
-                    Articles / suppléments ajoutés
+                    Articles ajoutés{(orderDraft?.supplements?.length || 0) > 0 ? ` (${orderDraft.supplements.length})` : ''}
                   </p>
-                  <p className="text-[10px] text-violet-700 mt-0.5">
-                    Choisis le modèle, la taille et la couleur : le prix catalogue s’ajoute au total.
-                  </p>
+                  {/* Le formulaire d'ajout reste replié pour laisser la place à la validation. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplementForm((value) => !value)}
+                    disabled={processing}
+                    aria-expanded={showSupplementForm}
+                    className="inline-flex items-center gap-1 rounded-md border border-violet-200 bg-white px-2 py-1 text-[11px] font-bold text-violet-700 disabled:opacity-50"
+                  >
+                    {showSupplementForm ? <X size={12} /> : <Plus size={12} />}
+                    {showSupplementForm ? 'Fermer' : 'Ajouter'}
+                  </button>
                 </div>
 
                 {(orderDraft?.supplements?.length || 0) > 0 && (
@@ -1198,6 +1206,11 @@ const Appel = () => {
                   </div>
                 )}
 
+                {showSupplementForm && (
+                <>
+                <p className="text-[10px] text-violet-700">
+                  Choisis le modèle, la taille et la couleur : le prix catalogue s’ajoute au total.
+                </p>
                 <div className="grid grid-cols-[82px_minmax(0,1fr)_32px] gap-1.5">
                   <select
                     value={supplementModeleId}
@@ -1264,6 +1277,8 @@ const Appel = () => {
                     Aucun modèle actif n’est disponible dans le catalogue.
                   </p>
                 )}
+                </>
+                )}
               </div>
 
               <div className="flex justify-end">
@@ -1278,49 +1293,15 @@ const Appel = () => {
                 </button>
               </div>
 
-              {/* Actions - Compact en grille 2x2 */}
-              <div className="grid grid-cols-2 gap-1 pt-0.5 sm:gap-1.5">
-                <button
-                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'confirmer')}
-                  disabled={processing}
-                  className="flex items-center justify-center gap-1 rounded-md bg-green-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-green-700 disabled:opacity-50 sm:px-2 sm:text-xs"
-                >
-                  <CheckCircle size={15} />
-                  <span>CONFIRMER</span>
-                </button>
-
-                <button
-                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'urgent')}
-                  disabled={processing}
-                  className="flex items-center justify-center gap-1 rounded-md bg-red-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-red-700 disabled:opacity-50 sm:px-2 sm:text-xs"
-                >
-                  <AlertTriangle size={15} />
-                  <span>URGENT</span>
-                </button>
-
-                <button
-                  onClick={() => handleAction(selectedCommande._id || selectedCommande.id, 'attente')}
-                  disabled={processing}
-                  className="flex items-center justify-center gap-1 rounded-md bg-orange-600 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-orange-700 disabled:opacity-50 sm:px-2 sm:text-xs"
-                >
-                  <Clock size={15} />
-                  <span>EN ATTENTE</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (confirm('Êtes-vous sûr de vouloir annuler cette commande ?')) {
-                      handleAction(selectedCommande._id || selectedCommande.id, 'annuler');
-                    }
-                  }}
-                  disabled={processing}
-                  className="flex items-center justify-center gap-1 rounded-md bg-gray-500 px-1 py-2 text-[10px] font-bold text-white transition-all hover:bg-gray-600 disabled:opacity-50 sm:px-2 sm:text-xs"
-                >
-                  <XCircle size={15} />
-                  <span>ANNULER</span>
-                </button>
-              </div>
             </div>
+
+            <AppelActionBar
+              disabled={processing}
+              onAction={(action) => {
+                if (action === 'annuler' && !confirm('Êtes-vous sûr de vouloir annuler cette commande ?')) return;
+                handleAction(selectedCommande._id || selectedCommande.id, action);
+              }}
+            />
           </div>
         </div>
       )}
