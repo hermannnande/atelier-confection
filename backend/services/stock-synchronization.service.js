@@ -4,10 +4,6 @@ const PENDING_STATUS = 'validee';
 const PREPARATION_STATUS = 'en_stock';
 export const STOCK_SYNCHRONIZATION_STATUSES = [PENDING_STATUS, PREPARATION_STATUS];
 const DEFAULT_PAGE_SIZE = 1000;
-// Les envois en préparation antérieurs à l'enregistrement des pièces réservées
-// n'indiquent pas leurs pièces : seuls les plus récents peuvent encore être de
-// vrais colis en cours. Les anciens (déjà attribués ou annulés) ne réservent rien.
-const LEGACY_PREPARATION_WINDOW = 7 * 24 * 60 * 60 * 1000;
 const asText = (value, fallback = '') => String(value ?? fallback).trim();
 
 const asQuantity = (value) => {
@@ -89,9 +85,9 @@ export function orderStockArticleKeys(order) {
 
 // Une commande en Préparation Colis ne garde que les pièces qui lui étaient
 // déjà réservées à son entrée, enregistrées dans l'historique. Envoyée sans
-// pièce, elle n'absorbe pas les entrées destinées aux commandes validées.
-// Retourne null quand toutes ses pièces restent réservées (envoi ancien récent).
-function preparationHeldArticles(order, now) {
+// pièce, ou avant cet enregistrement (un bilan du stock réajustera ces colis),
+// elle n'absorbe pas les entrées destinées aux commandes validées.
+function preparationHeldArticles(order) {
   const statusEntries = (Array.isArray(order?.historique) ? order.historique : [])
     .filter((entry) => entry?.statut);
   let entry = null;
@@ -99,13 +95,7 @@ function preparationHeldArticles(order, now) {
     if (statusEntries[index].statut !== PREPARATION_STATUS) break;
     entry = statusEntries[index];
   }
-
-  // Statut posé sans trace (anciennes clôtures de caisse) : aucune pièce suivie.
-  if (statusEntries.length > 0 && !entry) return new Set();
-  if (Array.isArray(entry?.reservationStock)) return new Set(entry.reservationStock);
-
-  const enteredAt = asTimestamp(entry?.date ?? order?.created_at ?? order?.createdAt);
-  return now - enteredAt <= LEGACY_PREPARATION_WINDOW ? null : new Set();
+  return new Set(Array.isArray(entry?.reservationStock) ? entry.reservationStock : []);
 }
 
 export function comparePendingOrders(a, b) {
@@ -144,8 +134,7 @@ export async function fetchStockSynchronizationOrders(supabase, {
   return { data: rows, error: null };
 }
 
-export function buildStockSynchronization({ orders = [], stock = [], now = Date.now() } = {}) {
-  const currentTime = asTimestamp(now) || Date.now();
+export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   const variationsByKey = new Map();
   const articleKeys = new Map();
 
@@ -185,9 +174,7 @@ export function buildStockSynchronization({ orders = [], stock = [], now = Date.
   for (const order of orders) {
     if (order?.statut === PENDING_STATUS || order?.statut === PREPARATION_STATUS) {
       const id = orderId(order);
-      const held = order.statut === PREPARATION_STATUS
-        ? preparationHeldArticles(order, currentTime)
-        : null;
+      const held = order.statut === PREPARATION_STATUS ? preparationHeldArticles(order) : null;
       orderStockArticles(order).forEach((article, index) => {
         const articleKey = stockArticleKey(index);
         if (held && !held.has(articleKey)) return;

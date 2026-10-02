@@ -16,9 +16,6 @@ const davichi = (id, statut = 'validee', overrides = {}) => ({
   ...overrides,
 });
 
-const NOW = Date.parse('2026-10-02T12:00:00Z');
-const DAY = 24 * 60 * 60 * 1000;
-
 // Colis envoyé en Préparation Colis avec les pièces qui lui étaient réservées.
 const enPreparation = (id, reservationStock, overrides = {}) => davichi(id, 'en_stock', {
   historique: [
@@ -34,13 +31,7 @@ const enPreparation = (id, reservationStock, overrides = {}) => davichi(id, 'en_
 });
 
 // Envoi antérieur à l'enregistrement des pièces réservées.
-const ancienEnvoi = (id, joursEnPreparation) => davichi(id, 'en_stock', {
-  historique: [{
-    action: 'Commande modifiée',
-    statut: 'en_stock',
-    date: new Date(NOW - joursEnPreparation * DAY).toISOString(),
-  }],
-});
+const ancienEnvoi = (id) => enPreparation(id);
 
 const stockDavichi = (quantity = 2) => ({
   id: 'stock-1',
@@ -81,7 +72,6 @@ test('les articles déjà en préparation colis restent réservés jusqu’au li
   const result = buildStockSynchronization({
     orders: [enPreparation('1', ['principal']), davichi('2', 'validee')],
     stock: [stockDavichi(2)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 1);
@@ -95,7 +85,6 @@ test('une pièce affectée à un colis en préparation n’est pas proposée à 
   const result = buildStockSynchronization({
     orders: [enPreparation('1', ['principal']), davichi('2', 'validee')],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 1);
@@ -109,7 +98,6 @@ test('un envoi direct sans pièce n’absorbe pas une nouvelle entrée en stock'
   const result = buildStockSynchronization({
     orders: [enPreparation('1', []), davichi('2', 'validee')],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 0);
@@ -122,11 +110,11 @@ test('une entrée en stock diminue les modèles en attente malgré d’anciens c
   const stockBlancL = (quantitePrincipale) => ({
     id: 'stock-blanc-l', modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', quantitePrincipale,
   });
-  const ancienColis = { ...ancienEnvoi('9', 40), couleur: 'Blanc', taille: 'L' };
+  const ancienColis = { ...ancienEnvoi('9'), couleur: 'Blanc', taille: 'L' };
   const orders = [blancL('1'), blancL('2'), blancL('3'), blancL('4'), ancienColis];
 
-  const avant = buildStockSynchronization({ orders, stock: [], now: NOW });
-  const apres = buildStockSynchronization({ orders, stock: [stockBlancL(3)], now: NOW });
+  const avant = buildStockSynchronization({ orders, stock: [] });
+  const apres = buildStockSynchronization({ orders, stock: [stockBlancL(3)] });
 
   assert.equal(avant.totals.aConfectionner, 4);
   assert.equal(apres.totals.reservePreparation, 0);
@@ -135,9 +123,8 @@ test('une entrée en stock diminue les modèles en attente malgré d’anciens c
 
 test('une commande en Préparation Colis n’apparaît jamais dans Modèles en attente', () => {
   const result = buildStockSynchronization({
-    orders: [enPreparation('1', []), ancienEnvoi('2', 40), davichi('3', 'validee')],
+    orders: [enPreparation('1', []), ancienEnvoi('2'), davichi('3', 'validee')],
     stock: [],
-    now: NOW,
   });
   const groupes = groupPendingModels(result.uncoveredOrders);
 
@@ -146,22 +133,10 @@ test('une commande en Préparation Colis n’apparaît jamais dans Modèles en a
   assert.equal(groupes[0].total, 1);
 });
 
-test('un envoi récent antérieur à l’enregistrement garde sa pièce pendant la transition', () => {
+test('un colis envoyé avant l’enregistrement des pièces ne réserve plus de pièce', () => {
   const result = buildStockSynchronization({
-    orders: [ancienEnvoi('1', 2), davichi('2', 'validee')],
+    orders: [ancienEnvoi('1'), davichi('2', 'validee')],
     stock: [stockDavichi(1)],
-    now: NOW,
-  });
-
-  assert.equal(result.totals.reservePreparation, 1);
-  assert.equal(result.couvertureCommandes['2'].couvertParStock, false);
-});
-
-test('un ancien envoi en préparation ne réserve plus de pièce', () => {
-  const result = buildStockSynchronization({
-    orders: [ancienEnvoi('1', 8), davichi('2', 'validee')],
-    stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 0);
@@ -177,7 +152,6 @@ test('un statut de préparation posé sans trace ne réserve aucune pièce', () 
       davichi('2', 'validee'),
     ],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 0);
@@ -190,7 +164,6 @@ test('une modification pendant la préparation conserve la pièce réservée à 
   const result = buildStockSynchronization({
     orders: [colis, davichi('2', 'validee')],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 1);
@@ -258,7 +231,6 @@ test('les tenues supplémentaires restent réservées pendant la préparation', 
       }],
     })],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
 
   assert.equal(result.totals.reservePreparation, 2);
@@ -280,7 +252,6 @@ test('seules les tenues réservées d’une commande multiarticle la suivent en 
   const validee = buildStockSynchronization({
     orders: [davichi('1', 'validee', { supplements })],
     stock: [stockDavichi(1)],
-    now: NOW,
   });
   assert.deepEqual(validee.articlesReserves['1'], ['principal']);
 
@@ -289,7 +260,6 @@ test('seules les tenues réservées d’une commande multiarticle la suivent en 
     stock: [stockDavichi(1), {
       id: 'stock-chic', modele: 'Chic Dress', couleur: 'Blanc', taille: 'XL', quantitePrincipale: 1,
     }],
-    now: NOW,
   });
   assert.equal(preparation.totals.reservePreparation, 1);
   assert.equal(preparation.variations.find((v) => v.modele === 'Chic Dress').quantiteDisponible, 1);
