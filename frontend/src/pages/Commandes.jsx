@@ -43,6 +43,7 @@ const Commandes = () => {
   const [filterUrgence, setFilterUrgence] = useState('');
   const [filterTaille, setFilterTaille] = useState('');
   const [filterModele, setFilterModele] = useState('');
+  const [filterStock, setFilterStock] = useState('');
   const [sendingToAtelier, setSendingToAtelier] = useState(null);
   const [sendingToPreparation, setSendingToPreparation] = useState(null);
   const [sendingToReminder, setSendingToReminder] = useState(null);
@@ -359,16 +360,25 @@ const Commandes = () => {
   const availableSizes = Array.from(sizeCounts.keys()).sort(compareSizes);
   const availableModels = Array.from(modelLabels, ([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label, 'fr', { numeric: true }));
+  // Même source que le badge « Réservée sur stock » des cartes.
+  const isReservedOnStock = (commande) => Boolean(stockDisponible[String(commande._id || commande.id)]);
+  const stockFilterBase = commandes.filter((commande) => (
+    commande.statut === 'validee'
+    && (!filterModele || normalizeModel(commande) === filterModele)
+    && (!filterTaille || normalizeSize(commande.taille) === filterTaille)
+  ));
+  const reservedOnStockTotal = stockFilterBase.filter(isReservedOnStock).length;
 
   const filteredCommandes = commandes.filter((commande) => {
-    const matchSearch = 
+    const matchSearch =
       commande.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commande.client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTaille = !filterTaille || normalizeSize(commande.taille) === filterTaille;
     const matchModele = !filterModele || normalizeModel(commande) === filterModele;
+    const matchStock = filterStock !== 'reservee' || isReservedOnStock(commande);
 
-    return matchSearch && matchTaille && matchModele;
+    return matchSearch && matchTaille && matchModele && matchStock;
   });
 
   if (loading) {
@@ -482,6 +492,38 @@ const Commandes = () => {
               </button>
             ))}
           </div>
+
+          <div className="flex items-center gap-2 mb-2 mt-4">
+            <Package size={17} className="text-emerald-600 flex-shrink-0" />
+            <p className="text-sm font-bold text-gray-800">Trier par stock <span className="font-medium text-gray-500">· commandes validées</span></p>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Filtrer les commandes réservées sur stock">
+            <button
+              type="button"
+              onClick={() => setFilterStock('')}
+              className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-bold border transition-all active:scale-95 ${
+                !filterStock
+                  ? 'bg-primary-600 border-primary-600 text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-primary-300'
+              }`}
+              aria-pressed={!filterStock}
+            >
+              Toutes <span className="ml-1 opacity-80">({stockFilterBase.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStock('reservee')}
+              className={`flex-shrink-0 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-bold border transition-all active:scale-95 ${
+                filterStock === 'reservee'
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                  : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300'
+              }`}
+              aria-pressed={filterStock === 'reservee'}
+            >
+              <Package size={14} />
+              Réservée sur stock <span className="opacity-80">({reservedOnStockTotal})</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -493,7 +535,7 @@ const Commandes = () => {
             Aucune commande trouvée
           </h3>
           <p className="text-gray-600">
-            {searchTerm || filterStatut || filterUrgence || filterTaille || filterModele
+            {searchTerm || filterStatut || filterUrgence || filterTaille || filterModele || filterStock
               ? 'Essayez de modifier vos filtres'
               : 'Créez votre première commande'}
           </p>
