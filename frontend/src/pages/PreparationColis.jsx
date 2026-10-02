@@ -30,16 +30,6 @@ function isCommandeEmballe(commande) {
   return !!(commande?.emballeAt || commande?.emballe_at);
 }
 
-function getCommandeIdFromLivraison(l) {
-  return (
-    l?.commande?._id ||
-    l?.commande?.id ||
-    l?.commande_id ||
-    (typeof l?.commande === 'string' ? l.commande : null) ||
-    null
-  );
-}
-
 function getCommandeKey(c) {
   return String(c?._id || c?.id || '');
 }
@@ -174,28 +164,12 @@ const PreparationColis = () => {
 
   const fetchCommandes = async () => {
     try {
-      const [cmdRes, livRes] = await Promise.all([
-        // Une commande ne reste pas plus d'une semaine en préparation : 1 500 suffisent.
-        api.get('/commandes', { params: { limite: 1500 } }),
-        api.get('/livraisons').catch(() => ({ data: { livraisons: [] } })),
-      ]);
-
-      const livraisons = livRes?.data?.livraisons || [];
-      const idsAvecLivraison = new Set();
-      for (const l of livraisons) {
-        const id = getCommandeIdFromLivraison(l);
-        if (!id) continue;
-        // Toute livraison existante = colis sorti de la préparation
-        // (assignee, en_cours, reportee, livree, refusee, retournee)
-        idsAvecLivraison.add(String(id));
-      }
-
-      const filtered = (cmdRes?.data?.commandes || []).filter((c) => {
-        if (!STATUTS_PREPARATION.includes(c.statut)) return false;
-        if (hasLivreur(c)) return false;
-        if (idsAvecLivraison.has(getCommandeKey(c))) return false;
-        return true;
-      });
+      // Le serveur ne renvoie que les colis en préparation : parmi les 1 500 commandes
+      // les plus récentes, sans livreur et sans livraison enregistrée.
+      const response = await api.get('/commandes/preparation-colis');
+      const filtered = (response?.data?.commandes || []).filter((c) => (
+        STATUTS_PREPARATION.includes(c.statut) && !hasLivreur(c)
+      ));
       setCommandes(filtered);
     } catch (error) {
       console.error(error);

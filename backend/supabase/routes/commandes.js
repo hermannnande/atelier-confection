@@ -31,6 +31,7 @@ import {
 import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
 import { fetchRowsUpTo, parseOrderListLimit } from '../../services/order-list.service.js';
 import { createClientHistoryLoader } from '../../services/client-history.service.js';
+import { loadPreparationOrders } from '../../services/preparation-orders.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 
@@ -339,6 +340,26 @@ router.post(
       return res.json({ updated: false, recentWindowMinutes: 60 });
     } catch (error) {
       return res.status(500).json({ message: 'Erreur lors de l’enregistrement de la consultation', error: error.message });
+    }
+  },
+);
+
+// Préparation Colis : seulement les colis réellement en préparation, triés par le
+// serveur, au lieu de 1 500 commandes et de toutes les livraisons.
+router.get(
+  '/preparation-colis',
+  authenticate,
+  resolveCountry,
+  authorize('appelant', 'gestionnaire', 'administrateur'),
+  async (req, res) => {
+    try {
+      const supabase = getSupabaseAdmin();
+      const rows = await loadPreparationOrders(supabase, req.country);
+      const usersById = await hydrateUsersForCommandes(supabase, rows);
+      const commandes = rows.map((r) => mapCommande(attachUsers(r, usersById)));
+      return res.json({ commandes });
+    } catch (error) {
+      return res.status(500).json({ message: 'Erreur lors du chargement de la préparation', error: error.message });
     }
   },
 );

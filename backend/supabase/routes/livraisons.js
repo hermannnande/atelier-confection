@@ -7,6 +7,12 @@ import customerSmsService, { CUSTOMER_SMS_EVENT_CODES } from '../../services/cus
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 import { assignWithCourierStock, recordRefusal, confirmCustody } from '../../services/courier-stock.service.js';
+import {
+  DELIVERY_ORDER_COLUMNS,
+  fetchByIdsInParallel,
+  keepDeliveryReportEvents,
+  readPagesInParallel,
+} from '../../services/delivery-list.service.js';
 
 const router = express.Router();
 const stockAssignmentPending = livraison => livraison.adresse_livraison?.stockAffectation?.etat === 'nouvelle';
@@ -37,15 +43,13 @@ async function hydrateLivraisons(supabase, livRows) {
     if (l.gestionnaire_id) userIds.add(l.gestionnaire_id);
   }
 
-  const commandesRows = await fetchInChunks(supabase, 'commandes', commandeIds, '*');
-  const commandesById = new Map(commandesRows.map((c) => [c.id, mapCommande(c)]));
-
-  for (const c of commandesById.values()) {
-    if (c.appelant_id) userIds.add(c.appelant_id);
-    if (c.styliste_id) userIds.add(c.styliste_id);
-    if (c.couturier_id) userIds.add(c.couturier_id);
-    if (c.livreur_id) userIds.add(c.livreur_id);
-  }
+  // Seules les informations de commande affichées, lues 6 morceaux à la fois.
+  const commandesRows = await fetchByIdsInParallel(
+    (slice) => supabase.from('commandes').select(DELIVERY_ORDER_COLUMNS).in('id', slice),
+    commandeIds,
+    { onError: (error, from, size) => console.error(`[hydrate] commandes chunk ${from}-${from + size}:`, error.message) },
+  );
+  const commandesById = new Map(commandesRows.map((c) => [c.id, mapCommande(keepDeliveryReportEvents(c))]));
 
   const usersRows = await fetchInChunks(
     supabase,
@@ -66,16 +70,19 @@ async function hydrateLivraisons(supabase, livRows) {
 router.get('/', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const rows = [];
-    for (let offset = 0; ; offset += 1000) {
-      let q = supabase.from('livraisons').select('*').eq('pays_code', req.country)
-        .order('date_assignation', { ascending: false }).order('id', { ascending: true });
-      if (req.user.role === 'livreur') q = q.eq('livreur_id', req.userId);
-      const { data, error } = await q.range(offset, offset + 999);
-      if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
-      rows.push(...(data || []));
-      if ((data || []).length < 1000) break;
-    }
+    const scoped = (q) => (req.user.role === 'livreur' ? q.eq('livreur_id', req.userId) : q);
+    const { count, error: countError } = await scoped(
+      supabase.from('livraisons').select('id', { count: 'exact', head: true }).eq('pays_code', req.country),
+    );
+    if (countError) return res.status(500).json({ message: 'Erreur lors de la récupération', error: countError.message });
+    // Pages lues plusieurs à la fois, dans le même ordre qu'avant.
+    const { data: rows, error } = await readPagesInParallel(
+      (from, to) => scoped(supabase.from('livraisons').select('*').eq('pays_code', req.country))
+        .order('date_assignation', { ascending: false }).order('id', { ascending: true })
+        .range(from, to),
+      count,
+    );
+    if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
     const livraisons = await hydrateLivraisons(supabase, rows);
     return res.json({ livraisons });
   } catch (error) {
