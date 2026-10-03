@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { DEFAULT_REMUNERATION_RULE } from '../utils/team';
 import {
   Banknote,
   CalendarDays,
@@ -25,7 +26,6 @@ const localToday = () => {
 const money = (value) => `${Number(value || 0).toLocaleString('fr-FR')} FCFA`;
 const productionTotal = (item) => Number(item?.montant_total || 0) + Number(item?.montant_bonus || 0);
 
-const getBonusRule = () => ({ group: 'toutes_tenues', quota: 6, bonus: 250 });
 
 const statusStyles = {
   en_attente: 'bg-amber-100 text-amber-800',
@@ -61,6 +61,8 @@ const MesGains = () => {
   const [lignes, setLignes] = useState([{ modeleId: '', quantite: 1 }]);
   const [montantDemande, setMontantDemande] = useState('');
   const [notePaiement, setNotePaiement] = useState('');
+  // Règle de paie de mon équipe : tarif (+100 FCFA la nuit) et bonus dès la 7ᵉ tenue.
+  const [regle, setRegle] = useState(DEFAULT_REMUNERATION_RULE);
 
   const loadData = async (silent = false) => {
     try {
@@ -71,6 +73,7 @@ const MesGains = () => {
         api.get(`/remunerations/me/resume?today=${today}`),
       ]);
       setTarifs((tarifsResponse.data.tarifs || []).filter((item) => item.configured && item.actif));
+      setRegle(tarifsResponse.data.regles?.[tarifsResponse.data.equipe || 'jour'] || DEFAULT_REMUNERATION_RULE);
       setResume(resumeResponse.data.resume || {});
       setProductions(resumeResponse.data.productions || []);
       setPaiements(resumeResponse.data.paiements || []);
@@ -93,26 +96,22 @@ const MesGains = () => {
       .filter(Boolean),
   ), [productions, dateProduction]);
   const calculSaisie = useMemo(() => {
-    const quantitiesByGroup = new Map();
-    productions
+    let quantiteDuJour = productions
       .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
-      .forEach((item) => {
-        const rule = getBonusRule();
-        quantitiesByGroup.set(rule.group, Number(quantitiesByGroup.get(rule.group) || 0) + Number(item.quantite || 0));
-      });
+      .reduce((sum, item) => sum + Number(item.quantite || 0), 0);
 
     const details = lignes.map((ligne) => {
-      const tarif = Number(tarifMap.get(ligne.modeleId)?.montantUnitaire || 0);
+      const tarif = tarifMap.has(ligne.modeleId)
+        ? Number(tarifMap.get(ligne.modeleId).montantUnitaire || 0) + regle.supplementTenue
+        : 0;
       const quantite = Number(ligne.quantite || 0);
       const montantBase = tarif * quantite;
-      const rule = getBonusRule();
 
-      const previousQuantity = Number(quantitiesByGroup.get(rule.group) || 0);
-      const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);
+      const remainingWithoutBonus = Math.max(0, regle.quota - quantiteDuJour);
       const quantiteBonus = Math.max(0, quantite - remainingWithoutBonus);
-      quantitiesByGroup.set(rule.group, previousQuantity + quantite);
-      const montantBonus = quantiteBonus * rule.bonus;
-      return { montantBase, quantiteBonus, bonusUnitaire: rule.bonus, montantBonus, total: montantBase + montantBonus };
+      quantiteDuJour += quantite;
+      const montantBonus = quantiteBonus * regle.bonusUnitaire;
+      return { montantBase, quantiteBonus, bonusUnitaire: regle.bonusUnitaire, montantBonus, total: montantBase + montantBonus };
     });
 
     return {
@@ -121,7 +120,7 @@ const MesGains = () => {
       montantBonus: details.reduce((sum, item) => sum + item.montantBonus, 0),
       total: details.reduce((sum, item) => sum + item.total, 0),
     };
-  }, [dateProduction, lignes, productions, tarifMap]);
+  }, [dateProduction, lignes, productions, tarifMap, regle]);
 
   const updateLigne = (index, key, value) => {
     setLignes((current) => current.map((ligne, i) => (i === index ? { ...ligne, [key]: value } : ligne)));
@@ -230,8 +229,11 @@ const MesGains = () => {
         ) : (
           <>
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 mb-5">
-              <p className="font-black text-emerald-900">Bonus de productivité · toutes les tenues</p>
-              <p className="text-sm text-emerald-800 mt-1">Les 6 premières pièces de la journée sont au tarif normal. La 7ᵉ pièce et chacune des suivantes reçoivent <strong>+250 FCFA</strong>, tous modèles et tous tarifs confondus.</p>
+              <p className="font-black text-emerald-900">Bonus de productivité · toutes les tenues{regle.equipe === 'nuit' ? ' · équipe de nuit' : ''}</p>
+              <p className="text-sm text-emerald-800 mt-1">
+                {regle.supplementTenue > 0 && <>Chaque tenue est payée <strong>+{money(regle.supplementTenue)}</strong> de plus que son tarif. </>}
+                Les {regle.quota} premières pièces de la {regle.equipe === 'nuit' ? 'nuit' : 'journée'} sont au tarif normal. La {regle.quota + 1}ᵉ pièce et chacune des suivantes reçoivent <strong>+{money(regle.bonusUnitaire)}</strong>, tous modèles et tous tarifs confondus.
+              </p>
             </div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Journée de production</label>
             <input type="date" max={localToday()} value={dateProduction} onChange={(event) => setDateProduction(event.target.value)} className="input max-w-xs mb-5" />
@@ -249,7 +251,7 @@ const MesGains = () => {
                         {tarifs.map((item) => {
                           const selectedElsewhere = lignes.some((other, otherIndex) => otherIndex !== index && other.modeleId === item.modeleId);
                           const alreadySubmitted = modelesDejaDeclares.has(item.modeleId);
-                          return <option key={item.modeleId} value={item.modeleId} disabled={selectedElsewhere || alreadySubmitted}>{item.nom} — {money(item.montantUnitaire)}{alreadySubmitted ? ' · Déjà déclaré pour cette journée' : selectedElsewhere ? ' · Déjà sélectionné' : ''}</option>;
+                          return <option key={item.modeleId} value={item.modeleId} disabled={selectedElsewhere || alreadySubmitted}>{item.nom} — {money(Number(item.montantUnitaire || 0) + regle.supplementTenue)}{alreadySubmitted ? ' · Déjà déclaré pour cette journée' : selectedElsewhere ? ' · Déjà sélectionné' : ''}</option>;
                         })}
                       </select>
                     </div>

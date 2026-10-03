@@ -13,7 +13,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { inTeam, teamLabel } from '../utils/team';
+import { DEFAULT_REMUNERATION_RULE, inTeam, teamLabel } from '../utils/team';
 
 const localToday = () => {
   const now = new Date();
@@ -33,6 +33,7 @@ const RemunerationsCouturiers = () => {
   const [productions, setProductions] = useState([]);
   const [paiements, setPaiements] = useState([]);
   const [equipe, setEquipe] = useState(''); // '' = toutes les équipes, sinon jour ou nuit
+  const [regles, setRegles] = useState({ jour: DEFAULT_REMUNERATION_RULE }); // règles de paie de chaque équipe
 
   const loadData = async (silent = false) => {
     try {
@@ -46,6 +47,7 @@ const RemunerationsCouturiers = () => {
       ]);
       const loadedTarifs = tarifsRes.data.tarifs || [];
       setTarifs(loadedTarifs);
+      if (tarifsRes.data.regles) setRegles(tarifsRes.data.regles);
       setDraftTarifs(Object.fromEntries(loadedTarifs.map((item) => [item.modeleId, item.montantUnitaire ?? ''])));
       setSelectedTarifId((current) => (
         loadedTarifs.some((item) => item.modeleId === current) ? current : ''
@@ -234,7 +236,8 @@ const RemunerationsCouturiers = () => {
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
         <p className="font-black">Règle du bonus de productivité</p>
-        <p className="mt-1 text-sm">Les 6 premières tenues de chaque journée sont au tarif normal. De la 7ᵉ tenue jusqu’aux suivantes : <strong>+250 FCFA par tenue</strong>, tous modèles et tous tarifs confondus.</p>
+        <p className="mt-1 text-sm">☀️ Équipe de jour : les {regles.jour.quota} premières tenues de chaque journée sont au tarif normal. De la {regles.jour.quota + 1}ᵉ tenue jusqu’aux suivantes : <strong>+{money(regles.jour.bonusUnitaire)} par tenue</strong>, tous modèles et tous tarifs confondus.</p>
+        {regles.nuit && <p className="mt-1 text-sm">🌙 Équipe de nuit : chaque tenue est payée <strong>+{money(regles.nuit.supplementTenue)}</strong> de plus que son tarif, et <strong>+{money(regles.nuit.bonusUnitaire)} par tenue</strong> à partir de la {regles.nuit.quota + 1}ᵉ tenue de la nuit.</p>}
       </div>
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
@@ -291,6 +294,9 @@ const RemunerationsCouturiers = () => {
                       </div>
                       <button type="button" onClick={() => saveTarif(selectedTarif)} disabled={processingId === `tarif-${selectedTarif.modeleId}`} className="btn btn-primary px-4 disabled:opacity-50">{processingId === `tarif-${selectedTarif.modeleId}` ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}<span className="hidden sm:inline">Enregistrer</span></button>
                     </div>
+                    {regles.nuit?.supplementTenue > 0 && String(draftTarifs[selectedTarif.modeleId] ?? '') !== '' && (
+                      <span className="block mt-1.5 text-xs font-bold text-indigo-700">🌙 Équipe de nuit : {money(Number(draftTarifs[selectedTarif.modeleId] || 0) + regles.nuit.supplementTenue)} par tenue (+{money(regles.nuit.supplementTenue)})</span>
+                    )}
                   </label>
                 </div>
               </div>

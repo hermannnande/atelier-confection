@@ -63,20 +63,32 @@ export function parseMoney(value, { allowZero = false } = {}) {
   return Math.round(amount * 100) / 100;
 }
 
-export function getProductionBonusRule() {
-  return { groupe: 'toutes_tenues', quota: 6, bonusUnitaire: 250 };
+// Règles de paie par équipe (décisions du 03/10/2026) : l'équipe de nuit reçoit 100 FCFA
+// de plus sur chaque tenue, et un bonus de 300 FCFA au lieu de 250 par tenue dès la 7ᵉ.
+const REMUNERATION_RULES = {
+  jour: { equipe: 'jour', supplementTenue: 0, quota: 6, bonusUnitaire: 250 },
+  nuit: { equipe: 'nuit', supplementTenue: 100, quota: 6, bonusUnitaire: 300 },
+};
+
+export function getRemunerationRule(equipe) {
+  return { ...(REMUNERATION_RULES[equipe] || REMUNERATION_RULES.jour) };
 }
 
-export function calculateProductionBonusAllocations({ items = [], existingProductions = [] }) {
+export function getProductionBonusRule(equipe) {
+  const { quota, bonusUnitaire } = getRemunerationRule(equipe);
+  return { groupe: 'toutes_tenues', quota, bonusUnitaire };
+}
+
+export function calculateProductionBonusAllocations({ items = [], existingProductions = [], equipe } = {}) {
   const quantitiesByGroup = new Map();
 
   existingProductions.forEach((item) => {
-    const rule = getProductionBonusRule();
+    const rule = getProductionBonusRule(equipe);
     quantitiesByGroup.set(rule.groupe, Number(quantitiesByGroup.get(rule.groupe) || 0) + Number(item.quantite || 0));
   });
 
   return items.map((item) => {
-    const rule = getProductionBonusRule();
+    const rule = getProductionBonusRule(equipe);
 
     const previousQuantity = Number(quantitiesByGroup.get(rule.groupe) || 0);
     const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);

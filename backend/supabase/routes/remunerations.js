@@ -6,6 +6,7 @@ import {
   calculateAdminRemunerationAlerts,
   calculateProductionBonusAllocations,
   calculateRemunerationSummary,
+  getRemunerationRule,
   normalizeDateKey,
   parseMoney,
   validateProductionIds,
@@ -32,6 +33,12 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}
 
 function isCouturier(req) {
   return req.user?.role === 'couturier';
+}
+
+// Équipe actuelle du couturier (jour ou nuit) : elle fixe son tarif et son bonus.
+async function couturierTeam(supabase, userId) {
+  const { data } = await supabase.from('users').select('role, stats').eq('id', userId).maybeSingle();
+  return userTeam(data) || 'jour';
 }
 
 function mapTarif(modele, tarif) {
@@ -101,7 +108,10 @@ router.get('/tarifs', async (req, res) => {
 
     const tarifByModele = new Map((tarifsResult.data || []).map((item) => [item.modele_id, item]));
     const tarifs = (modelesResult.data || []).map((modele) => mapTarif(modele, tarifByModele.get(modele.id)));
-    return res.json({ tarifs });
+    // Règles de chaque équipe, et l'équipe du couturier qui consulte ses tarifs.
+    const regles = { jour: getRemunerationRule('jour'), nuit: getRemunerationRule('nuit') };
+    const equipe = isCouturier(req) ? await couturierTeam(supabase, req.userId) : undefined;
+    return res.json({ tarifs, regles, equipe });
   } catch (error) {
     return res.status(500).json({ message: 'Impossible de charger les tarifs', error: error.message });
   }
@@ -230,10 +240,14 @@ router.post('/me/productions', authorize('couturier'), async (req, res) => {
       return res.status(409).json({ message: 'Une tenue sélectionnée a déjà été déclarée pour cette journée' });
     }
 
+    // Tarif et bonus de l'équipe du couturier au moment de la déclaration, figés sur chaque ligne.
+    const equipe = await couturierTeam(supabase, req.userId);
+    const regle = getRemunerationRule(equipe);
     const itemsWithBonus = calculateProductionBonusAllocations({
       items,
       tarifByModele: tarifMap,
       existingProductions: existing || [],
+      equipe,
     });
     const rows = itemsWithBonus.map((item) => ({
       pays_code: req.country,
@@ -241,7 +255,7 @@ router.post('/me/productions', authorize('couturier'), async (req, res) => {
       modele_id: item.modeleId,
       date_production: dateProduction,
       quantite: item.quantite,
-      tarif_unitaire: Number(tarifMap.get(item.modeleId).montant_unitaire),
+      tarif_unitaire: Number(tarifMap.get(item.modeleId).montant_unitaire) + regle.supplementTenue,
       quantite_bonus: item.quantiteBonus,
       bonus_unitaire: item.bonusUnitaire,
       statut: 'en_attente',

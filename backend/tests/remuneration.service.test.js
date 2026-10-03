@@ -5,6 +5,7 @@ import {
   calculateProductionBonusAllocations,
   calculateRemunerationSummary,
   getProductionBonusRule,
+  getRemunerationRule,
   normalizeDateKey,
   parseMoney,
   validateProductionIds,
@@ -45,6 +46,28 @@ test('applique 250 FCFA à chaque tenue à partir de la septième de la journée
     bonusUnitaire: 250,
     montantBonus: 500,
   });
+});
+
+test('l’équipe de nuit reçoit 100 FCFA de plus par tenue et 300 FCFA de bonus dès la septième', () => {
+  assert.deepEqual(getRemunerationRule('jour'), { equipe: 'jour', supplementTenue: 0, quota: 6, bonusUnitaire: 250 });
+  assert.deepEqual(getRemunerationRule('nuit'), { equipe: 'nuit', supplementTenue: 100, quota: 6, bonusUnitaire: 300 });
+  assert.deepEqual(getRemunerationRule(undefined), getRemunerationRule('jour'));
+  assert.deepEqual(getProductionBonusRule('nuit'), { groupe: 'toutes_tenues', quota: 6, bonusUnitaire: 300 });
+
+  const modeleId = '33333333-3333-4333-8333-333333333333';
+  const [nuit] = calculateProductionBonusAllocations({
+    items: [{ modeleId, quantite: 5 }],
+    existingProductions: [{ quantite: 4 }],
+    equipe: 'nuit',
+  });
+  // 4 tenues déjà déclarées cette nuit : les 2 suivantes restent sans bonus, les 3 dernières à +300.
+  assert.deepEqual(nuit, { modeleId, quantite: 5, quantiteBonus: 3, bonusUnitaire: 300, montantBonus: 900 });
+
+  const [jour] = calculateProductionBonusAllocations({
+    items: [{ modeleId, quantite: 5 }],
+    existingProductions: [{ quantite: 4 }],
+  });
+  assert.deepEqual(jour, { modeleId, quantite: 5, quantiteBonus: 3, bonusUnitaire: 250, montantBonus: 750 });
 });
 
 test('tient compte des tenues déjà déclarées pendant la même journée', () => {

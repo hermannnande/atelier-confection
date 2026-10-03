@@ -17,6 +17,9 @@ export function teamLabel(equipe) {
   return '';
 }
 
+// Règle de paie de l'équipe de jour, utilisée tant que le serveur n'a pas répondu.
+export const DEFAULT_REMUNERATION_RULE = { equipe: 'jour', supplementTenue: 0, quota: 6, bonusUnitaire: 250 };
+
 // Couturiers d'une équipe : '' = toutes les équipes. Sans équipe notée : jour.
 export function inTeam(equipeChoisie, equipe) {
   return !equipeChoisie || (equipe || 'jour') === equipeChoisie;
