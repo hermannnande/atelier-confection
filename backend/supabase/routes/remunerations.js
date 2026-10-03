@@ -7,12 +7,15 @@ import {
   calculateProductionBonusAllocations,
   calculateRemunerationSummary,
   getRemunerationRule,
+  calculatePeriodEarnings,
   normalizeDateKey,
   parseMoney,
+  parsePeriod,
   validateProductionIds,
   validateProductionItems,
 } from '../../services/remuneration.service.js';
 import { userTeam } from '../../services/team.service.js';
+import { readCountryRows } from '../../services/courier-stock.service.js';
 
 const router = express.Router();
 
@@ -304,22 +307,20 @@ router.post('/me/paiements', authorize('couturier'), async (req, res) => {
 router.get('/admin/resume', authorize('administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const [usersResult, productionsResult, paymentsResult] = await Promise.all([
+    // Productions et paiements lus en entier, par pages de 1 000 lignes.
+    const [usersResult, productions, paiements] = await Promise.all([
       supabase
         .from('users')
         .select('id, nom, email, telephone, actif, role, stats')
         .eq('pays_code', req.country)
         .eq('role', 'couturier')
         .order('nom', { ascending: true }),
-      supabase.from('productions_couturiers').select('*').eq('pays_code', req.country),
-      supabase.from('paiements_couturiers').select('*').eq('pays_code', req.country),
+      readCountryRows(supabase, 'productions_couturiers', req.country),
+      readCountryRows(supabase, 'paiements_couturiers', req.country),
     ]);
-    const error = usersResult.error || productionsResult.error || paymentsResult.error;
-    if (error) return res.status(500).json({ message: 'Impossible de charger les rémunérations', error: error.message });
+    if (usersResult.error) return res.status(500).json({ message: 'Impossible de charger les rémunérations', error: usersResult.error.message });
 
     const today = normalizeDateKey(req.query.today);
-    const productions = productionsResult.data || [];
-    const paiements = paymentsResult.data || [];
     const couturiers = (usersResult.data || []).map(({ role, stats, ...couturier }) => ({
       ...couturier,
       equipe: userTeam({ role, stats }),
@@ -332,6 +333,38 @@ router.get('/admin/resume', authorize('administrateur'), async (req, res) => {
     return res.json({ couturiers });
   } catch (error) {
     return res.status(500).json({ message: 'Impossible de charger les rémunérations', error: error.message });
+  }
+});
+
+// Gains de chaque couturier sur une période (journées de production du … au …).
+router.get('/admin/periode', authorize('administrateur'), async (req, res) => {
+  try {
+    const { du, au, error: periodError } = parsePeriod(req.query.du, req.query.au);
+    if (periodError) return res.status(400).json({ message: periodError });
+    const supabase = getSupabaseAdmin();
+    const [usersResult, productions] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, nom, telephone, actif, role, stats')
+        .eq('pays_code', req.country)
+        .eq('role', 'couturier')
+        .order('nom', { ascending: true }),
+      readCountryRows(
+        supabase,
+        'productions_couturiers',
+        req.country,
+        (query) => query.gte('date_production', du).lte('date_production', au).in('statut', ['validee', 'en_attente']),
+        'couturier_id, date_production, quantite, montant_total, montant_bonus, statut',
+      ),
+    ]);
+    if (usersResult.error) return res.status(500).json({ message: 'Impossible de calculer les gains', error: usersResult.error.message });
+    const couturiers = (usersResult.data || []).map(({ role, stats, ...couturier }) => ({
+      ...couturier,
+      equipe: userTeam({ role, stats }),
+    }));
+    return res.json({ du, au, couturiers: calculatePeriodEarnings({ couturiers, productions }) });
+  } catch (error) {
+    return res.status(500).json({ message: 'Impossible de calculer les gains', error: error.message });
   }
 });
 

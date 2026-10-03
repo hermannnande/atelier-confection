@@ -122,6 +122,55 @@ export function calculateAdminRemunerationAlerts({ productions = [], paiements =
   };
 }
 
+// Période demandée par l'administrateur (dates de production, bornes incluses).
+export function parsePeriod(du, au) {
+  const valide = (value) => typeof value === 'string' && DATE_PATTERN.test(value) && normalizeDateKey(value) === value;
+  if (!valide(du) || !valide(au)) return { error: 'Période invalide' };
+  if (du > au) return { error: 'La date de début doit précéder la date de fin' };
+  return { du, au };
+}
+
+// Gains de chaque couturier sur une période : seules les productions validées sont
+// « gagnées » ; celles encore en attente de validation sont comptées à part.
+export function calculatePeriodEarnings({ couturiers = [], productions = [] }) {
+  const lignes = new Map(couturiers.map((couturier) => [couturier.id, {
+    ...couturier,
+    piecesValidees: 0,
+    montantValide: 0,
+    bonusValide: 0,
+    piecesEnAttente: 0,
+    montantEnAttente: 0,
+    jours: new Map(),
+  }]));
+
+  productions.forEach((item) => {
+    const ligne = lignes.get(item.couturier_id);
+    if (!ligne) return;
+    const pieces = Number(item.quantite || 0);
+    const montant = productionAmount(item);
+    if (item.statut === 'validee') {
+      const bonus = Number(item.montant_bonus || 0);
+      ligne.piecesValidees += pieces;
+      ligne.montantValide += montant;
+      ligne.bonusValide += bonus;
+      const date = String(item.date_production || '').slice(0, 10);
+      const jour = ligne.jours.get(date) || { date, pieces: 0, montant: 0, bonus: 0 };
+      jour.pieces += pieces;
+      jour.montant += montant;
+      jour.bonus += bonus;
+      ligne.jours.set(date, jour);
+    } else if (item.statut === 'en_attente') {
+      ligne.piecesEnAttente += pieces;
+      ligne.montantEnAttente += montant;
+    }
+  });
+
+  return [...lignes.values()].map(({ jours, ...ligne }) => ({
+    ...ligne,
+    jours: [...jours.values()].sort((a, b) => a.date.localeCompare(b.date)),
+  }));
+}
+
 function mondayOf(dateKey) {
   const date = new Date(`${dateKey}T12:00:00Z`);
   const day = date.getUTCDay();

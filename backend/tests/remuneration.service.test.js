@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   calculateAdminRemunerationAlerts,
+  calculatePeriodEarnings,
   calculateProductionBonusAllocations,
   calculateRemunerationSummary,
   getProductionBonusRule,
   getRemunerationRule,
   normalizeDateKey,
   parseMoney,
+  parsePeriod,
   validateProductionIds,
   validateProductionItems,
 } from '../services/remuneration.service.js';
@@ -157,4 +159,34 @@ test('normalise les dates et montants financiers', () => {
   assert.equal(normalizeDateKey('2026-02-28'), '2026-02-28');
   assert.equal(parseMoney('1250.456'), 1250.46);
   assert.throws(() => parseMoney(0), /supérieur à zéro/);
+});
+
+test('une période se lit du … au …, bornes incluses', () => {
+  assert.deepEqual(parsePeriod('2026-10-01', '2026-10-31'), { du: '2026-10-01', au: '2026-10-31' });
+  assert.deepEqual(parsePeriod('2026-10-03', '2026-10-03'), { du: '2026-10-03', au: '2026-10-03' });
+  assert.equal(parsePeriod('2026-10-31', '2026-10-01').error, 'La date de début doit précéder la date de fin');
+  assert.equal(parsePeriod('2026-02-30', '2026-03-01').error, 'Période invalide');
+  assert.equal(parsePeriod(undefined, '2026-03-01').error, 'Période invalide');
+});
+
+test('les gains d’une période ne comptent que les productions validées, jour par jour', () => {
+  const couturiers = [
+    { id: 'c1', nom: 'Aya', equipe: 'jour' },
+    { id: 'c2', nom: 'Bamba', equipe: 'nuit' },
+  ];
+  const productions = [
+    { couturier_id: 'c1', date_production: '2026-10-01', quantite: 4, montant_total: 4000, montant_bonus: 0, statut: 'validee' },
+    { couturier_id: 'c1', date_production: '2026-10-01', quantite: 3, montant_total: 3000, montant_bonus: 250, statut: 'validee' },
+    { couturier_id: 'c1', date_production: '2026-10-02', quantite: 2, montant_total: 1600, montant_bonus: 0, statut: 'en_attente' },
+    { couturier_id: 'c2', date_production: '2026-10-02', quantite: 5, montant_total: 5500, montant_bonus: 0, statut: 'validee' },
+    { couturier_id: 'inconnu', date_production: '2026-10-02', quantite: 9, montant_total: 9000, montant_bonus: 0, statut: 'validee' },
+  ];
+  const [aya, bamba] = calculatePeriodEarnings({ couturiers, productions });
+  assert.deepEqual(aya, {
+    id: 'c1', nom: 'Aya', equipe: 'jour',
+    piecesValidees: 7, montantValide: 7250, bonusValide: 250, piecesEnAttente: 2, montantEnAttente: 1600,
+    jours: [{ date: '2026-10-01', pieces: 7, montant: 7250, bonus: 250 }],
+  });
+  assert.equal(bamba.montantValide, 5500);
+  assert.deepEqual(bamba.jours, [{ date: '2026-10-02', pieces: 5, montant: 5500, bonus: 0 }]);
 });

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import {
   Banknote,
+  CalendarRange,
   Check,
   ClipboardCheck,
   Coins,
@@ -14,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { DEFAULT_REMUNERATION_RULE, inTeam, teamLabel } from '../utils/team';
+import { PERIOD_PRESETS, periodLabel, periodRange } from '../utils/periods';
 
 const localToday = () => {
   const now = new Date();
@@ -34,6 +36,13 @@ const RemunerationsCouturiers = () => {
   const [paiements, setPaiements] = useState([]);
   const [equipe, setEquipe] = useState(''); // '' = toutes les équipes, sinon jour ou nuit
   const [regles, setRegles] = useState({ jour: DEFAULT_REMUNERATION_RULE }); // règles de paie de chaque équipe
+  // Gains sur une période (journées de production du … au …), calculés par le serveur.
+  const [presetPeriode, setPresetPeriode] = useState('mois');
+  const [periode, setPeriode] = useState(() => periodRange('mois'));
+  const [gainsPeriode, setGainsPeriode] = useState([]);
+  const [chargementPeriode, setChargementPeriode] = useState(false);
+  const [detailOuvert, setDetailOuvert] = useState(null);
+  const [versionDonnees, setVersionDonnees] = useState(0); // recalcule la période après une validation
 
   const loadData = async (silent = false) => {
     try {
@@ -55,6 +64,7 @@ const RemunerationsCouturiers = () => {
       setCouturiers(resumeRes.data.couturiers || []);
       setProductions(productionsRes.data.productions || []);
       setPaiements(paiementsRes.data.paiements || []);
+      if (silent) setVersionDonnees((version) => version + 1);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible de charger les rémunérations');
     } finally {
@@ -63,6 +73,32 @@ const RemunerationsCouturiers = () => {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (!periode.du || !periode.au || periode.du > periode.au) return undefined;
+    let annule = false;
+    setChargementPeriode(true);
+    api.get('/remunerations/admin/periode', { params: { du: periode.du, au: periode.au } })
+      .then((response) => { if (!annule) setGainsPeriode(response.data.couturiers || []); })
+      .catch((error) => { if (!annule) toast.error(error.response?.data?.message || 'Impossible de calculer les gains de la période'); })
+      .finally(() => { if (!annule) setChargementPeriode(false); });
+    return () => { annule = true; };
+  }, [periode.du, periode.au, versionDonnees]);
+
+  const gainsAffiches = useMemo(() => gainsPeriode.filter((item) => inTeam(equipe, item.equipe)), [gainsPeriode, equipe]);
+  const totauxPeriode = useMemo(() => gainsAffiches.reduce((total, item) => ({
+    pieces: total.pieces + item.piecesValidees,
+    montant: total.montant + item.montantValide,
+    bonus: total.bonus + item.bonusValide,
+    piecesEnAttente: total.piecesEnAttente + item.piecesEnAttente,
+    enAttente: total.enAttente + item.montantEnAttente,
+  }), { pieces: 0, montant: 0, bonus: 0, piecesEnAttente: 0, enAttente: 0 }), [gainsAffiches]);
+
+  const choisirPeriode = (preset) => {
+    setPresetPeriode(preset);
+    setDetailOuvert(null);
+    if (preset !== 'personnalisee') setPeriode(periodRange(preset));
+  };
 
   // Équipe choisie : seuls ses couturiers, leurs productions et leurs paiements sont affichés.
   const equipeParCouturier = useMemo(() => new Map(couturiers.map((item) => [item.id, item.equipe || 'jour'])), [couturiers]);
@@ -347,6 +383,73 @@ const RemunerationsCouturiers = () => {
         )}
       </section>
 
+      <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
+        <div className="mb-4">
+          <h2 className="text-xl font-black flex items-center gap-2"><CalendarRange className="text-teal-600" />Gains sur une période</h2>
+          <p className="text-sm text-gray-500 mt-1">Productions validées {periodLabel(periode.du, periode.au)}{equipe ? ` · équipe de ${equipe}` : ''}.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {PERIOD_PRESETS.map((item) => (
+            <button key={item.id} type="button" onClick={() => choisirPeriode(item.id)} className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${presetPeriode === item.id ? 'bg-teal-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{item.label}</button>
+          ))}
+        </div>
+        {presetPeriode === 'personnalisee' && (
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700">Du<input type="date" value={periode.du} max={periode.au} onChange={(event) => setPeriode((current) => ({ ...current, du: event.target.value }))} className="input w-auto" /></label>
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-700">au<input type="date" value={periode.au} min={periode.du} onChange={(event) => setPeriode((current) => ({ ...current, au: event.target.value }))} className="input w-auto" /></label>
+          </div>
+        )}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <MiniStat label="Gagné (validé)" value={money(totauxPeriode.montant)} accent />
+          <MiniStat label="Pièces validées" value={totauxPeriode.pieces} />
+          <MiniStat label="Dont bonus" value={money(totauxPeriode.bonus)} />
+          <MiniStat label="En attente de validation" value={totauxPeriode.enAttente > 0 ? `${money(totauxPeriode.enAttente)} · ${totauxPeriode.piecesEnAttente} p.` : money(0)} />
+        </div>
+        {chargementPeriode ? (
+          <div className="h-24 flex items-center justify-center"><Loader2 className="animate-spin text-teal-600" size={30} /></div>
+        ) : gainsAffiches.length === 0 ? <Empty text={equipe ? `Aucun couturier dans l’équipe de ${equipe}` : 'Aucun couturier'} /> : (
+          <>
+          <div className="sm:hidden space-y-2">
+            {gainsAffiches.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-black truncate">{item.nom}</p>
+                    <p className="text-xs text-gray-500">{teamLabel(item.equipe || 'jour')} · {item.piecesValidees} pièce(s){item.bonusValide > 0 ? ` · bonus ${money(item.bonusValide)}` : ''}</p>
+                  </div>
+                  <p className="font-black text-emerald-700 whitespace-nowrap">{money(item.montantValide)}</p>
+                </div>
+                {item.montantEnAttente > 0 && <p className="text-xs font-bold text-amber-700 mt-1">En attente : {money(item.montantEnAttente)} · {item.piecesEnAttente} p.</p>}
+                {item.jours.length > 0 && <button type="button" onClick={() => setDetailOuvert(detailOuvert === item.id ? null : item.id)} className="mt-2 text-xs font-black text-teal-700">{detailOuvert === item.id ? 'Masquer le détail' : `Voir par jour (${item.jours.length})`}</button>}
+                {detailOuvert === item.id && <div className="mt-2"><JoursDetail jours={item.jours} /></div>}
+              </div>
+            ))}
+            <div className="rounded-2xl bg-teal-50 p-3 flex items-center justify-between font-black"><span>Total · {totauxPeriode.pieces} p.</span><span className="text-emerald-700">{money(totauxPeriode.montant)}</span></div>
+          </div>
+          <div className="hidden sm:block overflow-x-auto"><table className="table-modern min-w-[780px] w-full">
+            <thead><tr><th>Couturier</th><th>Équipe</th><th>Pièces validées</th><th>Dont bonus</th><th>Gagné</th><th>En attente</th><th>Détail</th></tr></thead>
+            <tbody>{gainsAffiches.map((item) => (
+              <Fragment key={item.id}>
+                <tr>
+                  <td><p className="font-black">{item.nom}</p><p className="text-xs text-gray-500">{item.actif ? 'Actif' : 'Inactif'}</p></td>
+                  <td className="whitespace-nowrap font-bold">{teamLabel(item.equipe || 'jour')}</td>
+                  <td>{item.piecesValidees}</td>
+                  <td>{money(item.bonusValide)}</td>
+                  <td className="font-black text-emerald-700">{money(item.montantValide)}</td>
+                  <td>{item.montantEnAttente > 0 ? `${money(item.montantEnAttente)} · ${item.piecesEnAttente} p.` : '—'}</td>
+                  <td>{item.jours.length > 0 ? <button type="button" onClick={() => setDetailOuvert(detailOuvert === item.id ? null : item.id)} className="text-xs font-black text-teal-700 whitespace-nowrap hover:underline">{detailOuvert === item.id ? 'Masquer' : `Par jour (${item.jours.length})`}</button> : <span className="text-xs text-gray-400">—</span>}</td>
+                </tr>
+                {detailOuvert === item.id && (
+                  <tr><td colSpan={7} className="bg-gray-50"><JoursDetail jours={item.jours} /></td></tr>
+                )}
+              </Fragment>
+            ))}</tbody>
+            <tfoot><tr className="font-black bg-teal-50"><td>Total</td><td>{equipe ? teamLabel(equipe) : 'Toutes'}</td><td>{totauxPeriode.pieces}</td><td>{money(totauxPeriode.bonus)}</td><td className="text-emerald-700">{money(totauxPeriode.montant)}</td><td>{totauxPeriode.enAttente > 0 ? money(totauxPeriode.enAttente) : '—'}</td><td /></tr></tfoot>
+          </table></div>
+          </>
+        )}
+      </section>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <HistoryPanel title="Historique des productions" items={productionsAffichees.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom} · {item.modele?.nom}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) · {item.statut}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-black text-emerald-700">Bonus : +{money(item.montant_bonus)}</p>}</div><p className="font-black">{money(productionTotal(item))}</p></div>} />
         <HistoryPanel title="Historique des paiements" items={paiementsAffiches.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom}</p><p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('fr-FR')} · {item.statut}</p></div><p className="font-black">{money(item.montant)}</p></div>} />
@@ -358,6 +461,25 @@ const RemunerationsCouturiers = () => {
 function SummaryCard({ icon: Icon, label, value, color }) {
   const styles = { blue: 'bg-blue-100 text-blue-700', amber: 'bg-amber-100 text-amber-700', purple: 'bg-purple-100 text-purple-700', emerald: 'bg-emerald-100 text-emerald-700' };
   return <div className="stat-card"><div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${styles[color]}`}><Icon size={22} /></div><p className="text-xs uppercase font-bold text-gray-500">{label}</p><p className="text-2xl font-black mt-1">{value}</p></div>;
+}
+// Détail jour par jour des gains validés d'un couturier sur la période.
+function JoursDetail({ jours }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 py-1">
+      {jours.map((jour) => (
+        <div key={jour.date} className="bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-bold capitalize">{new Date(`${jour.date}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
+            <span className="font-black whitespace-nowrap">{money(jour.montant)}</span>
+          </div>
+          <p className="text-xs text-gray-500">{jour.pieces} pièce(s){jour.bonus > 0 ? ` · dont bonus ${money(jour.bonus)}` : ''}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+function MiniStat({ label, value, accent = false }) {
+  return <div className={`rounded-2xl border p-3 ${accent ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-100'}`}><p className="text-[11px] uppercase font-bold text-gray-500">{label}</p><p className={`text-lg sm:text-xl font-black mt-0.5 ${accent ? 'text-emerald-700' : 'text-gray-900'}`}>{value}</p></div>;
 }
 function Empty({ text }) { return <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-2xl">{text}</div>; }
 function HistoryPanel({ title, items, render }) { return <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6"><h2 className="text-lg font-black mb-4">{title}</h2>{items.length === 0 ? <Empty text="Aucun historique" /> : items.map(render)}</section>; }
