@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { inTeam, teamLabel } from '../utils/team';
 
 const localToday = () => {
   const now = new Date();
@@ -31,6 +32,7 @@ const RemunerationsCouturiers = () => {
   const [couturiers, setCouturiers] = useState([]);
   const [productions, setProductions] = useState([]);
   const [paiements, setPaiements] = useState([]);
+  const [equipe, setEquipe] = useState(''); // '' = toutes les équipes, sinon jour ou nuit
 
   const loadData = async (silent = false) => {
     try {
@@ -60,7 +62,23 @@ const RemunerationsCouturiers = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  const pendingProductions = useMemo(() => productions.filter((item) => item.statut === 'en_attente'), [productions]);
+  // Équipe choisie : seuls ses couturiers, leurs productions et leurs paiements sont affichés.
+  const equipeParCouturier = useMemo(() => new Map(couturiers.map((item) => [item.id, item.equipe || 'jour'])), [couturiers]);
+  const couturiersAffiches = useMemo(() => couturiers.filter((item) => inTeam(equipe, item.equipe)), [couturiers, equipe]);
+  const productionsAffichees = useMemo(
+    () => productions.filter((item) => !equipe || equipeParCouturier.get(item.couturier?.id) === equipe),
+    [productions, equipe, equipeParCouturier],
+  );
+  const paiementsAffiches = useMemo(
+    () => paiements.filter((item) => !equipe || equipeParCouturier.get(item.couturier?.id) === equipe),
+    [paiements, equipe, equipeParCouturier],
+  );
+  const effectifs = useMemo(() => ({
+    jour: couturiers.filter((item) => (item.equipe || 'jour') === 'jour').length,
+    nuit: couturiers.filter((item) => item.equipe === 'nuit').length,
+  }), [couturiers]);
+
+  const pendingProductions = useMemo(() => productionsAffichees.filter((item) => item.statut === 'en_attente'), [productionsAffichees]);
   const pendingProductionGroups = useMemo(() => {
     const grouped = new Map();
     pendingProductions.forEach((item) => {
@@ -82,7 +100,7 @@ const RemunerationsCouturiers = () => {
     });
     return [...grouped.values()];
   }, [pendingProductions]);
-  const pendingPayments = useMemo(() => paiements.filter((item) => item.statut === 'en_attente'), [paiements]);
+  const pendingPayments = useMemo(() => paiementsAffiches.filter((item) => item.statut === 'en_attente'), [paiementsAffiches]);
   const filteredTarifs = useMemo(() => {
     const term = tarifSearch.trim().toLocaleLowerCase('fr-FR');
     const sorted = [...tarifs].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
@@ -180,7 +198,7 @@ const RemunerationsCouturiers = () => {
 
   if (loading) return <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-emerald-600" size={46} /></div>;
 
-  const totalDu = couturiers.reduce((sum, item) => sum + Number(item.resume?.soldeAvantDemandes || 0), 0);
+  const totalDu = couturiersAffiches.reduce((sum, item) => sum + Number(item.resume?.soldeAvantDemandes || 0), 0);
   const totalPending = pendingPayments.reduce((sum, item) => sum + Number(item.montant || 0), 0);
 
   return (
@@ -189,8 +207,26 @@ const RemunerationsCouturiers = () => {
         <div className="flex items-center gap-4"><div className="p-3 bg-white/20 rounded-2xl"><Coins size={32} /></div><div><h1 className="text-2xl sm:text-3xl font-black">Rémunération des couturiers</h1><p className="text-emerald-50 mt-1">Côte d’Ivoire · Tarifs, productions, paiements et performances en FCFA.</p></div></div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {[
+          ['', `Toutes les équipes (${couturiers.length})`, `Toutes (${couturiers.length})`],
+          ['jour', `☀️ Équipe de jour (${effectifs.jour})`, `☀️ Jour (${effectifs.jour})`],
+          ['nuit', `🌙 Équipe de nuit (${effectifs.nuit})`, `🌙 Nuit (${effectifs.nuit})`],
+        ].map(([valeur, libelle, libelleCourt]) => (
+          <button
+            key={valeur || 'toutes'}
+            type="button"
+            onClick={() => setEquipe(valeur)}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-black transition-all ${equipe === valeur ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+          >
+            <span className="sm:hidden">{libelleCourt}</span>
+            <span className="hidden sm:inline">{libelle}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <SummaryCard icon={Users} label="Couturiers" value={couturiers.length} color="blue" />
+        <SummaryCard icon={Users} label={equipe ? `Couturiers · équipe de ${equipe}` : 'Couturiers'} value={couturiersAffiches.length} color="blue" />
         <SummaryCard icon={ClipboardCheck} label="Productions à valider" value={pendingProductions.length} color="amber" />
         <SummaryCard icon={Banknote} label="Paiements demandés" value={money(totalPending)} color="purple" />
         <SummaryCard icon={Coins} label="Total encore dû" value={money(totalDu)} color="emerald" />
@@ -271,7 +307,7 @@ const RemunerationsCouturiers = () => {
             return (
               <div key={group.key} className="border border-amber-200 rounded-2xl overflow-hidden">
                 <div className="bg-amber-50 p-4 flex flex-col xl:flex-row xl:items-center gap-4 justify-between">
-                  <div><p className="font-black text-lg text-gray-900">{group.couturier?.nom || 'Couturier'}</p><p className="text-sm text-gray-600">Journée du {new Date(`${group.date}T12:00:00`).toLocaleDateString('fr-FR')} · {group.items.length} modèle{group.items.length > 1 ? 's' : ''} · {group.pieces} pièce(s)</p></div>
+                  <div><p className="font-black text-lg text-gray-900">{group.couturier?.nom || 'Couturier'}{equipeParCouturier.has(group.couturier?.id) && <span className="ml-2 text-xs font-bold text-gray-500">{teamLabel(equipeParCouturier.get(group.couturier?.id))}</span>}</p><p className="text-sm text-gray-600">Journée du {new Date(`${group.date}T12:00:00`).toLocaleDateString('fr-FR')} · {group.items.length} modèle{group.items.length > 1 ? 's' : ''} · {group.pieces} pièce(s)</p></div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-2xl text-amber-800 sm:mr-2">{money(group.montant)}</p><button type="button" disabled={groupProcessing} onClick={() => handleProductionGroup(group, 'valider')} className="btn btn-success disabled:opacity-50">{groupProcessing ? <Loader2 className="animate-spin" size={17} /> : <Check size={17} />}Tout valider</button><button type="button" disabled={groupProcessing} onClick={() => handleProductionGroup(group, 'refuser')} className="btn btn-danger disabled:opacity-50"><X size={17} />Tout refuser</button></div>
                 </div>
                 <div className="divide-y divide-gray-100">{group.items.map((item) => (
@@ -291,7 +327,7 @@ const RemunerationsCouturiers = () => {
         {pendingPayments.length === 0 ? <Empty text="Aucune demande de paiement en attente" /> : (
           <div className="space-y-3">{pendingPayments.map((item) => (
             <div key={item.id} className="border rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
-              <div><p className="font-black">{item.couturier?.nom || 'Couturier'}</p><p className="text-sm text-gray-500">Demandé le {new Date(item.created_at).toLocaleDateString('fr-FR')}</p>{item.note_couturier && <p className="text-sm text-gray-600 mt-1">{item.note_couturier}</p>}</div>
+              <div><p className="font-black">{item.couturier?.nom || 'Couturier'}{equipeParCouturier.has(item.couturier?.id) && <span className="ml-2 text-xs font-bold text-gray-500">{teamLabel(equipeParCouturier.get(item.couturier?.id))}</span>}</p><p className="text-sm text-gray-500">Demandé le {new Date(item.created_at).toLocaleDateString('fr-FR')}</p>{item.note_couturier && <p className="text-sm text-gray-600 mt-1">{item.note_couturier}</p>}</div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2"><p className="font-black text-2xl text-purple-700 mr-2">{money(item.montant)}</p><button type="button" disabled={processingId === item.id} onClick={() => handlePayment(item, 'payer')} className="btn btn-success"><Check size={17} />Confirmer payé</button><button type="button" disabled={processingId === item.id} onClick={() => handlePayment(item, 'refuser')} className="btn btn-danger"><X size={17} />Refuser</button></div>
             </div>
           ))}</div>
@@ -300,14 +336,14 @@ const RemunerationsCouturiers = () => {
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
         <h2 className="text-xl font-black mb-5 flex items-center gap-2"><Users className="text-blue-600" />Performances des couturiers</h2>
-        {couturiers.length === 0 ? <Empty text="Aucun couturier actif" /> : (
-          <div className="overflow-x-auto"><table className="table-modern min-w-[850px] w-full"><thead><tr><th>Couturier</th><th>Aujourd’hui</th><th>Semaine</th><th>Mois</th><th>Total gagné</th><th>Déjà payé</th><th>Solde</th></tr></thead><tbody>{couturiers.map((item) => <tr key={item.id}><td><p className="font-black">{item.nom}</p><p className="text-xs text-gray-500">{item.actif ? 'Actif' : 'Inactif'}</p></td><td>{money(item.resume?.aujourdHui)}</td><td>{money(item.resume?.semaine)}</td><td>{money(item.resume?.mois)}</td><td className="font-bold">{money(item.resume?.totalGagne)}</td><td>{money(item.resume?.totalPaye)}</td><td className="font-black text-emerald-700">{money(item.resume?.soldeAvantDemandes)}</td></tr>)}</tbody></table></div>
+        {couturiersAffiches.length === 0 ? <Empty text={equipe ? `Aucun couturier dans l’équipe de ${equipe}` : 'Aucun couturier actif'} /> : (
+          <div className="overflow-x-auto"><table className="table-modern min-w-[950px] w-full"><thead><tr><th>Couturier</th><th>Équipe</th><th>Aujourd’hui</th><th>Semaine</th><th>Mois</th><th>Total gagné</th><th>Déjà payé</th><th>Solde</th></tr></thead><tbody>{couturiersAffiches.map((item) => <tr key={item.id}><td><p className="font-black">{item.nom}</p><p className="text-xs text-gray-500">{item.actif ? 'Actif' : 'Inactif'}</p></td><td className="whitespace-nowrap font-bold">{teamLabel(item.equipe || 'jour')}</td><td>{money(item.resume?.aujourdHui)}</td><td>{money(item.resume?.semaine)}</td><td>{money(item.resume?.mois)}</td><td className="font-bold">{money(item.resume?.totalGagne)}</td><td>{money(item.resume?.totalPaye)}</td><td className="font-black text-emerald-700">{money(item.resume?.soldeAvantDemandes)}</td></tr>)}</tbody></table></div>
         )}
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <HistoryPanel title="Historique des productions" items={productions.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom} · {item.modele?.nom}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) · {item.statut}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-black text-emerald-700">Bonus : +{money(item.montant_bonus)}</p>}</div><p className="font-black">{money(productionTotal(item))}</p></div>} />
-        <HistoryPanel title="Historique des paiements" items={paiements.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom}</p><p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('fr-FR')} · {item.statut}</p></div><p className="font-black">{money(item.montant)}</p></div>} />
+        <HistoryPanel title="Historique des productions" items={productionsAffichees.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom} · {item.modele?.nom}</p><p className="text-xs text-gray-500">{item.date_production} · {item.quantite} pièce(s) · {item.statut}</p>{Number(item.montant_bonus || 0) > 0 && <p className="text-xs font-black text-emerald-700">Bonus : +{money(item.montant_bonus)}</p>}</div><p className="font-black">{money(productionTotal(item))}</p></div>} />
+        <HistoryPanel title="Historique des paiements" items={paiementsAffiches.filter((item) => item.statut !== 'en_attente').slice(0, 30)} render={(item) => <div key={item.id} className="py-3 border-b last:border-0 flex justify-between gap-3"><div><p className="font-bold">{item.couturier?.nom}</p><p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('fr-FR')} · {item.statut}</p></div><p className="font-black">{money(item.montant)}</p></div>} />
       </div>
     </div>
   );

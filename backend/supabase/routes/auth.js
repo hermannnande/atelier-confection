@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate } from '../middleware/auth.js';
-import { mapUser } from '../map.js';
+import { mapUser, mapUserWithTeam } from '../map.js';
+import { parseTeam, teamStatsUpdate } from '../../services/team.service.js';
 
 const router = express.Router();
 const VALID_USER_ROLES = ['administrateur', 'gestionnaire', 'gestionnaire_stock', 'appelant', 'styliste', 'couturier', 'livreur'];
@@ -23,6 +24,8 @@ router.post('/register', authenticate, async (req, res) => {
     if (role === 'gestionnaire_stock' && req.user.role !== 'administrateur') {
       return res.status(403).json({ message: 'Seul un administrateur peut créer ce rôle' });
     }
+    const { equipe, error: teamError } = parseTeam(req.body.equipe);
+    if (teamError) return res.status(400).json({ message: teamError });
 
     const { data: existing } = await supabase
       .from('users')
@@ -58,15 +61,17 @@ router.post('/register', authenticate, async (req, res) => {
         actif: true,
         pays_code: finalPaysCode,
         pays_autorises: finalPaysAutorises,
+        // Équipe de jour ou de nuit d'un couturier ou d'un styliste (jour si non précisée).
+        stats: teamStatsUpdate({ stats: {}, role, equipe }) || {},
       })
-      .select('id, nom, email, role, telephone, actif, pays_code, pays_autorises, created_at, updated_at')
+      .select('id, nom, email, role, telephone, actif, pays_code, pays_autorises, stats, created_at, updated_at')
       .single();
 
     if (error) {
       return res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
     }
 
-    return res.status(201).json({ message: 'Utilisateur créé avec succès', user: mapUser(data) });
+    return res.status(201).json({ message: 'Utilisateur créé avec succès', user: mapUserWithTeam(data) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la création', error: error.message });
   }

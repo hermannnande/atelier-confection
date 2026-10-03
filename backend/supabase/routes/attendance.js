@@ -21,9 +21,18 @@ import { getSupabaseAdmin } from '../client.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { resolveCountry, ensureCountryAccess } from '../middleware/country.js';
 import { mapUser } from '../map.js';
+import { hasTeam, userTeam } from '../../services/team.service.js';
+import { isLateArrival, NIGHT_SHIFT, shiftDate } from '../../services/work-shift.service.js';
 
 const router = express.Router();
 const ATTENDANCE_ROLES = ['gestionnaire', 'appelant', 'styliste', 'couturier'];
+
+// Équipe de la personne qui pointe : nuit ou jour (couturiers et stylistes), sinon jour.
+async function attendanceTeam(supabase, userId, role) {
+  if (!hasTeam(role)) return 'jour';
+  const { data } = await supabase.from('users').select('role, stats').eq('id', userId).maybeSingle();
+  return userTeam(data) || 'jour';
+}
 
 // ============================================================================
 // FORMULE DE HAVERSINE : Calculer la distance entre deux coordonnées GPS
@@ -62,6 +71,7 @@ router.post('/mark-arrival', authenticate, resolveCountry, authorize(...ATTENDAN
     const { latitude, longitude, note } = req.body;
     const userId = req.userId;
     const supabase = getSupabaseAdmin();
+    const now = new Date();
 
     // Validation des coordonnées
     if (!latitude || !longitude) {
@@ -75,8 +85,10 @@ router.post('/mark-arrival', authenticate, resolveCountry, authorize(...ATTENDAN
     // qui peut etre un pays d'admin) car un livreur/couturier appartient a un seul pays.
     const userPaysCode = req.user.pays_code || 'CI';
 
-    // Vérifier si déjà pointé aujourd'hui (du pays du user)
-    const today = new Date().toISOString().split('T')[0];
+    // Vérifier si déjà pointé aujourd'hui (du pays du user). Pour l'équipe de nuit,
+    // le pointage est rattaché à la date du début de la nuit.
+    const equipe = await attendanceTeam(supabase, userId, req.user.role);
+    const today = shiftDate(now, equipe);
     
     const { data: existingAttendance, error: checkError } = await supabase
       .from('attendances')
@@ -96,7 +108,9 @@ router.post('/mark-arrival', authenticate, resolveCountry, authorize(...ATTENDAN
     if (existingAttendance) {
       return res.status(400).json({
         error: 'Déjà pointé',
-        message: 'Vous avez déjà marqué votre présence aujourd\'hui',
+        message: equipe === 'nuit'
+          ? 'Vous avez déjà marqué votre présence pour cette nuit'
+          : 'Vous avez déjà marqué votre présence aujourd\'hui',
         attendance: existingAttendance
       });
     }
@@ -143,19 +157,8 @@ router.post('/mark-arrival', authenticate, resolveCountry, authorize(...ATTENDAN
       });
     }
 
-    // ✅ Dans la zone : Déterminer si retard
-    let validation = 'VALIDE';
-    const now = new Date();
-    const heureOuverture = new Date();
-    const [heureO, minuteO] = storeConfig.heure_ouverture.split(':');
-    heureOuverture.setHours(parseInt(heureO), parseInt(minuteO), 0, 0);
-
-    if (now > heureOuverture) {
-      const retardMinutes = Math.floor((now - heureOuverture) / (1000 * 60));
-      if (retardMinutes > storeConfig.tolerance_retard) {
-        validation = 'RETARD';
-      }
-    }
+    // ✅ Dans la zone : Déterminer si retard (horaire de l'équipe, à l'heure d'Abidjan)
+    const validation = isLateArrival(now, equipe, storeConfig) ? 'RETARD' : 'VALIDE';
 
     // Enregistrer le pointage (avec le pays du user)
     const { data: attendance, error: insertError } = await supabase
@@ -240,8 +243,10 @@ router.post('/mark-departure', authenticate, resolveCountry, authorize(...ATTEND
 
     const userPaysCode = req.user.pays_code || 'CI';
 
-    // Trouver le pointage d'aujourd'hui (du pays du user)
-    const today = new Date().toISOString().split('T')[0];
+    // Trouver le pointage d'aujourd'hui (du pays du user) ; pour l'équipe de nuit,
+    // celui de la nuit commencée la veille quand on part après minuit.
+    const equipe = await attendanceTeam(supabase, userId, req.user.role);
+    const today = shiftDate(new Date(), equipe);
     
     const { data: attendance, error: findError } = await supabase
       .from('attendances')
@@ -358,7 +363,8 @@ router.get('/my-attendance-today', authenticate, async (req, res) => {
       });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const equipe = await attendanceTeam(supabase, userId, userRole);
+    const today = shiftDate(new Date(), equipe);
 
     const { data: attendance, error } = await supabase
       .from('attendances')
@@ -386,7 +392,9 @@ router.get('/my-attendance-today', authenticate, async (req, res) => {
     const user = mapUser(userRow);
 
     res.json({
-      attendance: attendance ? { ...attendance, user } : null
+      attendance: attendance ? { ...attendance, user } : null,
+      equipe,
+      horaires: equipe === 'nuit' ? { ...NIGHT_SHIFT } : null
     });
 
   } catch (error) {

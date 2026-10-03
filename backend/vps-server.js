@@ -5,6 +5,9 @@ for (const name of ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'JWT_SECRET']) {
   if (!process.env[name]) throw new Error(`Required setting missing: ${name}`);
 }
 process.env.NODE_ENV = 'production';
+// Même fuseau qu'avant le passage sur le VPS (Vercel) : UTC, qui est l'heure d'Abidjan.
+// Sans lui, le serveur suivait l'heure de Paris (08:30 devenait 06:30 à Abidjan).
+process.env.TZ = 'UTC';
 process.env.ATELIER_MANAGED_START = 'true';
 const { default: app } = await import('./server.js');
 app.disable('x-powered-by');

@@ -1,4 +1,5 @@
 import { normalizeSize } from '../services/size-normalization.service.js';
+import { userTeam } from '../services/team.service.js';
 
 export function mapTimestamps(row) {
   if (!row) return row;
@@ -53,6 +54,13 @@ export function mapCommande(row) {
 export function mapUser(row) {
   if (!row) return row;
   return withMongoShape(mapTimestamps(row));
+}
+
+// Utilisateur avec son équipe (jour ou nuit, couturiers et stylistes), sans le champ stats.
+export function mapUserWithTeam(row) {
+  if (!row) return row;
+  const { stats, ...rest } = row;
+  return { ...mapUser(rest), equipe: userTeam(row) };
 }
 
 export function mapStock(row) {

@@ -3,6 +3,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Users, UserPlus, Edit, Trash2, Eye, EyeOff, Wand2, Copy } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { TEAM_OPTIONS, hasTeam, teamLabel } from '../utils/team';
 
 // Génère un mot de passe robuste de 10 caractères (lettres maj/min + chiffres)
 function generatePassword() {
@@ -20,6 +21,7 @@ const EMPTY_FORM = {
   password: '',
   role: '',
   telephone: '',
+  equipe: 'jour', // couturiers et stylistes : équipe de jour ou de nuit
 };
 
 const Utilisateurs = () => {
@@ -65,6 +67,7 @@ const Utilisateurs = () => {
       password: '', // vide par défaut : seul le remplissage déclenche une mise à jour
       role: user.role || '',
       telephone: user.telephone || '',
+      equipe: user.equipe || 'jour',
     });
     setShowPassword(false);
     setShowModal(true);
@@ -111,6 +114,7 @@ const Utilisateurs = () => {
           role: formData.role,
           telephone: formData.telephone,
         };
+        if (hasTeam(formData.role)) payload.equipe = formData.equipe;
         // Mot de passe ENVOYÉ uniquement s'il est rempli (sinon on ne le change pas)
         if (formData.password && formData.password.trim()) {
           if (formData.password.trim().length < 6) {
@@ -127,7 +131,10 @@ const Utilisateurs = () => {
             : 'Utilisateur modifié !'
         );
       } else {
-        await api.post('/auth/register', formData);
+        await api.post('/auth/register', {
+          ...formData,
+          equipe: hasTeam(formData.role) ? formData.equipe : undefined,
+        });
         toast.success('Utilisateur créé !');
       }
       closeModal();
@@ -256,6 +263,11 @@ const Utilisateurs = () => {
                     <span className={`badge ${getRoleBadgeColor(user.role)}`}>
                       {getRoleLabel(user.role)}
                     </span>
+                    {user.equipe && (
+                      <span className={`badge ml-1 ${user.equipe === 'nuit' ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {teamLabel(user.equipe)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-700">{user.telephone || '-'}</td>
                   <td className="px-4 py-3">
@@ -407,6 +419,20 @@ const Utilisateurs = () => {
                   )}
                 </select>
               </div>
+              {hasTeam(formData.role) && (
+                <div>
+                  <label className="label">Équipe *</label>
+                  <select
+                    value={formData.equipe}
+                    onChange={(e) => setFormData({ ...formData, equipe: e.target.value })}
+                    className="input"
+                  >
+                    {TEAM_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="label">Téléphone</label>
                 <input

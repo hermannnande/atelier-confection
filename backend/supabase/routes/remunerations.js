@@ -11,6 +11,7 @@ import {
   validateProductionIds,
   validateProductionItems,
 } from '../../services/remuneration.service.js';
+import { userTeam } from '../../services/team.service.js';
 
 const router = express.Router();
 
@@ -292,7 +293,7 @@ router.get('/admin/resume', authorize('administrateur'), async (req, res) => {
     const [usersResult, productionsResult, paymentsResult] = await Promise.all([
       supabase
         .from('users')
-        .select('id, nom, email, telephone, actif')
+        .select('id, nom, email, telephone, actif, role, stats')
         .eq('pays_code', req.country)
         .eq('role', 'couturier')
         .order('nom', { ascending: true }),
@@ -305,8 +306,9 @@ router.get('/admin/resume', authorize('administrateur'), async (req, res) => {
     const today = normalizeDateKey(req.query.today);
     const productions = productionsResult.data || [];
     const paiements = paymentsResult.data || [];
-    const couturiers = (usersResult.data || []).map((couturier) => ({
+    const couturiers = (usersResult.data || []).map(({ role, stats, ...couturier }) => ({
       ...couturier,
+      equipe: userTeam({ role, stats }),
       resume: calculateRemunerationSummary({
         today,
         productions: productions.filter((item) => item.couturier_id === couturier.id),

@@ -35,6 +35,7 @@ export default function Presence() {
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [storeConfig, setStoreConfig] = useState(null);
+  const [horairesEquipe, setHorairesEquipe] = useState(null); // équipe de nuit : 19:00 → 07:00
   const [gpsError, setGpsError] = useState(null);
 
   // Charger les données au montage et toutes les 60 secondes
@@ -54,6 +55,7 @@ export default function Presence() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAttendance(attendanceRes.data.attendance);
+      setHorairesEquipe(attendanceRes.data.horaires || null);
 
       // Charger la config de l'atelier
       const configRes = await axios.get(`${API_URL}/attendance/store-config`, {
@@ -292,7 +294,12 @@ export default function Presence() {
             <p>📍 <strong>{storeConfig.nom}</strong></p>
             {storeConfig.adresse && <p>📮 {storeConfig.adresse}</p>}
             <p>📏 Rayon de validation : <strong>{storeConfig.rayon_tolerance}m</strong></p>
-            <p>🕐 Horaires : {storeConfig.heure_ouverture} - {storeConfig.heure_fermeture}</p>
+            <p>
+              🕐 Horaires :{' '}
+              {horairesEquipe
+                ? `${horairesEquipe.debut} - ${horairesEquipe.fin} (équipe de nuit)`
+                : `${storeConfig.heure_ouverture} - ${storeConfig.heure_fermeture}`}
+            </p>
             <p>⏱️ Tolérance retard : {storeConfig.tolerance_retard} minutes</p>
           </div>
         </div>
@@ -377,7 +384,7 @@ export default function Presence() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
           <p className="text-yellow-800 text-center">
             <AlertCircle className="w-5 h-5 inline mr-2" />
-            Vous n'avez pas encore pointé aujourd'hui
+            Vous n'avez pas encore pointé {horairesEquipe ? 'pour cette nuit' : "aujourd'hui"}
           </p>
         </div>
       )}
