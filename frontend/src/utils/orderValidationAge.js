@@ -6,16 +6,24 @@ const toValidDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+// Moment où la commande est devenue validée : début de sa dernière suite de lignes
+// « validée ». Une modification d'une commande déjà validée ne déplace pas cette date ;
+// une commande repassée par un autre statut puis revalidée prend la nouvelle validation.
 export const getOrderValidatedAt = (commande) => {
   const historique = Array.isArray(commande?.historique) ? commande.historique : [];
+  let validatedAt = null;
 
-  for (let index = historique.length - 1; index >= 0; index -= 1) {
-    const event = historique[index];
-    const isValidation = event?.statut === 'validee'
-      || String(event?.action || '').toLocaleLowerCase('fr').includes('valid');
-    const eventDate = isValidation ? toValidDate(event?.date) : null;
-    if (eventDate) return eventDate;
+  for (const event of historique) {
+    const statut = event?.statut;
+    const isValidation = statut === 'validee'
+      || (!statut && String(event?.action || '').toLocaleLowerCase('fr').includes('valid'));
+    if (isValidation) {
+      validatedAt = validatedAt || toValidDate(event?.date);
+    } else if (statut) {
+      validatedAt = null;
+    }
   }
+  if (validatedAt) return validatedAt;
 
   return toValidDate(
     commande?.createdAt
@@ -47,6 +55,18 @@ export const getOrderValidationAgeInDays = (
   return Math.floor(
     (getCalendarDateNumber(now, timeZone) - getCalendarDateNumber(validatedAt, timeZone)) / DAY_IN_MS,
   );
+};
+
+// « 02/10 à 14:35 » (heure d'Abidjan), avec l'année si ce n'est pas l'année en cours.
+export const formatOrderValidationDate = (date, now = new Date(), timeZone = DEFAULT_TIME_ZONE) => {
+  if (!date) return '';
+  const sameYear = new Intl.DateTimeFormat('fr-FR', { timeZone, year: 'numeric' }).format(date)
+    === new Intl.DateTimeFormat('fr-FR', { timeZone, year: 'numeric' }).format(now);
+  const jour = new Intl.DateTimeFormat('fr-FR', {
+    timeZone, day: '2-digit', month: '2-digit', ...(sameYear ? {} : { year: 'numeric' }),
+  }).format(date);
+  const heure = new Intl.DateTimeFormat('fr-FR', { timeZone, hour: '2-digit', minute: '2-digit' }).format(date);
+  return `${jour} à ${heure}`;
 };
 
 export const isValidatedForAtLeastDays = (

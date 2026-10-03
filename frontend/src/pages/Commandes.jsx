@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing, Truck } from 'lucide-react';
+import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing, Truck, CalendarCheck } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { isValidatedForAtLeastDays } from '../utils/orderValidationAge';
+import { formatOrderValidationDate, getOrderValidatedAt, isValidatedForAtLeastDays } from '../utils/orderValidationAge';
 import { isConfirmedAfterReminder } from '../utils/orderReminderHighlight';
 import OrderSupplementTags from '../components/OrderSupplementTags';
 import { normalizeSize as canonicalSize } from '../utils/sizeNormalization';
@@ -594,6 +594,7 @@ const Commandes = () => {
             const isMarked = isCardMarked(commande);
             const isReminderConfirmed = isConfirmedAfterReminder(commande);
             const isAgedValidated = isValidatedForAtLeastDays(commande, AGED_VALIDATED_DAYS);
+            const validatedAt = commande.statut === 'validee' ? getOrderValidatedAt(commande) : null;
             return (
               <div
                 key={commandeId}
@@ -643,6 +644,12 @@ const Commandes = () => {
                       <span className="badge badge-danger text-xs flex-shrink-0">
                         <AlertCircle size={11} className="mr-0.5" />
                         Urgent
+                      </span>
+                    )}
+                    {validatedAt && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 flex-shrink-0" title="Date de validation de la commande">
+                        <CalendarCheck size={12} />
+                        Validée le {formatOrderValidationDate(validatedAt)}
                       </span>
                     )}
                   </div>
