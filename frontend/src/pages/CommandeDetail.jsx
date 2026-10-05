@@ -131,7 +131,7 @@ const CommandeDetail = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
           <button
-            onClick={() => navigate('/commandes')}
+            onClick={() => navigate(user?.role === 'appelant' ? '/historique' : '/commandes')}
             className="btn btn-secondary btn-sm flex-shrink-0"
           >
             <ArrowLeft size={16} />

@@ -19,7 +19,8 @@ import {
   Banknote,
   BellRing,
   ClipboardCheck,
-  Shirt
+  Shirt,
+  History
 } from 'lucide-react';
 import Presence from './Presence';
 
@@ -167,7 +168,15 @@ const Dashboard = () => {
       icon: ShoppingBag,
       href: '/commandes',
       gradient: 'from-indigo-500 to-purple-600',
-      roles: ['appelant', 'gestionnaire', 'administrateur']
+      roles: ['gestionnaire', 'administrateur']
+    },
+    {
+      title: 'Historique des commandes',
+      description: 'Retrouver une commande',
+      icon: History,
+      href: '/historique',
+      gradient: 'from-indigo-500 to-purple-600',
+      roles: ['appelant']
     },
     {
       title: 'Gérer le Stock',

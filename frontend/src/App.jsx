@@ -101,9 +101,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Commandes - Appelants, Gestionnaires, Admins */}
+          {/* Commandes - Gestionnaires, Admins (les appelants utilisent l'Historique) */}
           <Route path="commandes" element={
-            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
               <Commandes />
             </ProtectedRoute>
           } />
@@ -125,9 +125,9 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Historique Complet - Gestionnaires, Admins */}
+          {/* Historique Complet - Appelants, Gestionnaires, Admins */}
           <Route path="historique" element={
-            <ProtectedRoute allowedRoles={['gestionnaire', 'administrateur']}>
+            <ProtectedRoute allowedRoles={['appelant', 'gestionnaire', 'administrateur']}>
               <HistoriqueCommandes />
             </ProtectedRoute>
           } />

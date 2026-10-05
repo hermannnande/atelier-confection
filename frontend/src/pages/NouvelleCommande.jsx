@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { normalizeSize } from '../utils/sizeNormalization';
@@ -237,6 +238,7 @@ function RecapCard({ formData, articles, onRemoveArticle, selectedModel }) {
 
 const NouvelleCommande = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -1070,7 +1072,7 @@ const NouvelleCommande = () => {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate('/commandes')}
+          onClick={() => navigate(user?.role === 'appelant' ? '/appel' : '/commandes')}
           className="p-2.5 bg-white/80 backdrop-blur rounded-xl border border-white/40 shadow-sm hover:shadow-md hover:scale-105 transition-all"
         >
           <ArrowLeft size={20} strokeWidth={2.5} className="text-gray-700" />
