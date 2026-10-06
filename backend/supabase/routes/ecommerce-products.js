@@ -1,5 +1,6 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
+import { protectCatalogRows } from '../../services/ecommerce-catalog-sync.service.js';
 
 const router = express.Router();
 
@@ -121,22 +122,41 @@ router.post('/sync', async (req, res) => {
       active: p.active !== false,
       created_at: p.createdAt || p.created_at || now,
       updated_at: now,
+      clientUpdatedAt: p.updatedAt || p.updated_at || null,
     })).filter((r) => r.id && r.name);
 
     if (!rows.length) {
       return res.status(400).json({ success: false, message: 'Aucun produit valide' });
     }
 
+    const { data: currentRows, error: currentError } = await supabase
+      .from('ecommerce_products')
+      .select('id,thumbnail,images,video,updated_at')
+      .in('id', rows.map((r) => r.id));
+
+    if (currentError) {
+      console.error('❌ Supabase ecommerce_products read before sync error:', currentError);
+      return res.status(500).json({ success: false, message: currentError.message });
+    }
+
+    const { rows: safeRows, skippedIds } = protectCatalogRows(rows, currentRows || []);
+    if (skippedIds.length) {
+      console.warn(`⚠️ Sync catalogue : ${skippedIds.length} fiche(s) ignorée(s), copie plus ancienne que la version en ligne`);
+    }
+    if (!safeRows.length) {
+      return res.json({ success: true, count: 0, skipped: skippedIds });
+    }
+
     const { error } = await supabase
       .from('ecommerce_products')
-      .upsert(rows, { onConflict: 'id' });
+      .upsert(safeRows, { onConflict: 'id' });
 
     if (error) {
       console.error('❌ Supabase ecommerce_products upsert error:', error);
       return res.status(500).json({ success: false, message: error.message });
     }
 
-    return res.json({ success: true, count: rows.length });
+    return res.json({ success: true, count: safeRows.length, skipped: skippedIds });
   } catch (e) {
     console.error('❌ /api/ecommerce/products/sync error:', e);
     return res.status(500).json({ success: false, message: 'Erreur serveur', error: e.message });

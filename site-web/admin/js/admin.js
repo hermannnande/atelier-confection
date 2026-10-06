@@ -25,11 +25,17 @@ const AdminStore = (() => {
   const syncProductsToServer = async (products) => {
     try {
       // Ne pas bloquer l'UI admin si le backend est indisponible
-      await fetch(ECOMMERCE_SYNC_URL, {
+      const res = await fetch(ECOMMERCE_SYNC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: ECOMMERCE_SYNC_TOKEN, products }),
       });
+      const data = await res.json().catch(() => ({}));
+      // Le serveur refuse une copie plus ancienne que la version en ligne
+      if (Array.isArray(data.skipped) && data.skipped.length) {
+        alert('Ce produit a été modifié depuis un autre appareil. La page va se recharger avec la version en ligne : refaites votre modification.');
+        window.location.reload();
+      }
     } catch (e) {
       console.warn('⚠️ Sync produits échouée (non bloquant):', e);
     }
@@ -54,26 +60,19 @@ const AdminStore = (() => {
     if (!localStorage.getItem(ORDERS_KEY)) {
       localStorage.setItem(ORDERS_KEY, JSON.stringify([]));
     }
-    // Sync initial pour rendre le catalogue disponible sur mobile
-    try {
-      const products = getProducts();
-      if (Array.isArray(products) && products.length) {
-        syncProductsToServer(products);
-      }
-    } catch (e) {
-      // ignore
-    }
+    // Pas d'envoi du catalogue local à l'ouverture : une copie ancienne
+    // écraserait les fiches en ligne. Seules les fiches modifiées sont envoyées.
     // Recharger les catégories depuis le serveur (source de vérité)
     try { refreshCategoriesFromServer(); } catch (e) { /* ignore */ }
   };
   
   // Produits
   const getProducts = () => JSON.parse(localStorage.getItem(PRODUCTS_KEY) || '[]');
-  const saveProducts = (products) => {
+  const saveProducts = (products, changedProducts = []) => {
     try {
       localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
-      // Sync en arrière-plan (pour que mobile voie les produits)
-      syncProductsToServer(products);
+      // Sync en arrière-plan des seules fiches modifiées (pour que mobile voie les produits)
+      if (changedProducts.length) syncProductsToServer(changedProducts);
       return true;
     } catch (error) {
       console.error('❌ Échec sauvegarde produits (localStorage saturé ?)', error);
@@ -90,7 +89,7 @@ const AdminStore = (() => {
       updatedAt: new Date().toISOString()
     };
     products.push(newProduct);
-    if (!saveProducts(products)) {
+    if (!saveProducts(products, [newProduct])) {
       return { error: 'storage' };
     }
     addActivity('Produit ajouté', `${product.name} a été ajouté au catalogue`);
@@ -106,7 +105,7 @@ const AdminStore = (() => {
         ...updates,
         updatedAt: new Date().toISOString()
       };
-      if (!saveProducts(products)) {
+      if (!saveProducts(products, [products[index]])) {
         return { error: 'storage' };
       }
       addActivity('Produit modifié', `${products[index].name} a été modifié`);

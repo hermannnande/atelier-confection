@@ -1,0 +1,14 @@
+# Nous Unique : sert la copie WebP (photo.png.webp, créée par le mu-plugin
+# nu-webp-copies.php) aux navigateurs qui l'acceptent. Les pages ne changent pas.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteOptions Inherit
+RewriteCond %{HTTP_ACCEPT} image/webp
+RewriteCond %{REQUEST_FILENAME}.webp -f
+RewriteRule ^(.+)\.(jpe?g|png)$ /wp-content/uploads/$1.$2.webp [NC,T=image/webp,L]
+</IfModule>
+<IfModule mod_headers.c>
+<FilesMatch "\.(?:jpe?g|png|webp)$">
+Header merge Vary Accept
+</FilesMatch>
+</IfModule>
