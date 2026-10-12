@@ -11,7 +11,10 @@ import {
   normalizeDateKey,
   parseMoney,
   parsePeriod,
+  parseTenuesSansBonus,
+  TENUES_SANS_BONUS_KEY,
   validateProductionIds,
+  withTenueBonus,
   validateProductionItems,
 } from '../../services/remuneration.service.js';
 import { userTeam } from '../../services/team.service.js';
@@ -44,7 +47,7 @@ async function couturierTeam(supabase, userId) {
   return userTeam(data) || 'jour';
 }
 
-function mapTarif(modele, tarif) {
+function mapTarif(modele, tarif, sansBonus = []) {
   return {
     id: tarif?.id || null,
     modeleId: modele.id,
@@ -54,7 +57,15 @@ function mapTarif(modele, tarif) {
     montantUnitaire: tarif ? Number(tarif.montant_unitaire || 0) : null,
     actif: tarif?.actif ?? false,
     configured: Boolean(tarif),
+    bonus: !sansBonus.includes(modele.id),
   };
+}
+
+// Tenues sans bonus de productivité (réglage rangé dans la table des réglages sms_config).
+async function loadTenuesSansBonus(supabase) {
+  const { data, error } = await supabase.from('sms_config').select('valeur').eq('cle', TENUES_SANS_BONUS_KEY).maybeSingle();
+  if (error) throw error;
+  return parseTenuesSansBonus(data?.valeur);
 }
 
 function safeNote(value, maxLength = 500) {
@@ -92,7 +103,7 @@ async function getFinancialRows(supabase, country, couturierId) {
 router.get('/tarifs', async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const [modelesResult, tarifsResult] = await Promise.all([
+    const [modelesResult, tarifsResult, sansBonus] = await Promise.all([
       supabase
         .from('modeles')
         .select('id, nom, image, categorie, actif')
@@ -102,6 +113,7 @@ router.get('/tarifs', async (req, res) => {
         .from('tarifs_confection')
         .select('id, modele_id, montant_unitaire, actif')
         .eq('pays_code', req.country),
+      loadTenuesSansBonus(supabase),
     ]);
 
     if (modelesResult.error || tarifsResult.error) {
@@ -110,7 +122,7 @@ router.get('/tarifs', async (req, res) => {
     }
 
     const tarifByModele = new Map((tarifsResult.data || []).map((item) => [item.modele_id, item]));
-    const tarifs = (modelesResult.data || []).map((modele) => mapTarif(modele, tarifByModele.get(modele.id)));
+    const tarifs = (modelesResult.data || []).map((modele) => mapTarif(modele, tarifByModele.get(modele.id), sansBonus));
     // Règles de chaque équipe, et l'équipe du couturier qui consulte ses tarifs.
     const regles = { jour: getRemunerationRule('jour'), nuit: getRemunerationRule('nuit') };
     const equipe = isCouturier(req) ? await couturierTeam(supabase, req.userId) : undefined;
@@ -155,9 +167,42 @@ router.put('/tarifs/:modeleId', authorize('administrateur'), async (req, res) =>
       .single();
 
     if (error) return res.status(500).json({ message: 'Impossible d’enregistrer le tarif', error: error.message });
-    return res.json({ message: 'Tarif enregistré', tarif: mapTarif(modele, data) });
+    return res.json({ message: 'Tarif enregistré', tarif: mapTarif(modele, data, await loadTenuesSansBonus(supabase)) });
   } catch (error) {
     return res.status(500).json({ message: 'Impossible d’enregistrer le tarif', error: error.message });
+  }
+});
+
+// Appliquer ou retirer le bonus de productivité d'une tenue. Les déclarations déjà faites
+// gardent leurs montants figés ; seules les prochaines suivent ce réglage.
+router.patch('/tarifs/:modeleId/bonus', authorize('administrateur'), async (req, res) => {
+  try {
+    const modeleId = String(req.params.modeleId || '');
+    if (!uuidPattern.test(modeleId)) return res.status(400).json({ message: 'Modèle invalide' });
+    if (typeof req.body.bonus !== 'boolean') return res.status(400).json({ message: 'Indiquez si le bonus s’applique à cette tenue' });
+
+    const supabase = getSupabaseAdmin();
+    const { data: modele, error: modeleError } = await supabase.from('modeles').select('id, nom').eq('id', modeleId).maybeSingle();
+    if (modeleError) return res.status(500).json({ message: 'Impossible de vérifier la tenue', error: modeleError.message });
+    if (!modele) return res.status(404).json({ message: 'Modèle introuvable' });
+
+    const liste = withTenueBonus(await loadTenuesSansBonus(supabase), modeleId, req.body.bonus);
+    const { error } = await supabase.from('sms_config').upsert({
+      cle: TENUES_SANS_BONUS_KEY,
+      valeur: JSON.stringify(liste),
+      description: 'Rémunération des couturiers : tenues sans bonus de productivité (identifiants de modèles)',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'cle' });
+    if (error) return res.status(500).json({ message: 'Impossible d’enregistrer le réglage du bonus', error: error.message });
+
+    return res.json({
+      message: req.body.bonus ? `Bonus appliqué à ${modele.nom}` : `Bonus retiré pour ${modele.nom}`,
+      modeleId,
+      bonus: req.body.bonus,
+      tenuesSansBonus: liste.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Impossible d’enregistrer le réglage du bonus', error: error.message });
   }
 });
 
@@ -217,12 +262,15 @@ router.post('/me/productions', authorize('couturier'), async (req, res) => {
 
     const supabase = getSupabaseAdmin();
     const modeleIds = items.map((item) => item.modeleId);
-    const { data: tarifs, error: tarifsError } = await supabase
-      .from('tarifs_confection')
-      .select('modele_id, montant_unitaire, actif')
-      .eq('pays_code', req.country)
-      .eq('actif', true)
-      .in('modele_id', modeleIds);
+    const [{ data: tarifs, error: tarifsError }, sansBonus] = await Promise.all([
+      supabase
+        .from('tarifs_confection')
+        .select('modele_id, montant_unitaire, actif')
+        .eq('pays_code', req.country)
+        .eq('actif', true)
+        .in('modele_id', modeleIds),
+      loadTenuesSansBonus(supabase),
+    ]);
     if (tarifsError) return res.status(500).json({ message: 'Impossible de vérifier les tarifs', error: tarifsError.message });
 
     const tarifMap = new Map((tarifs || []).map((tarif) => [tarif.modele_id, tarif]));
@@ -251,6 +299,7 @@ router.post('/me/productions', authorize('couturier'), async (req, res) => {
       tarifByModele: tarifMap,
       existingProductions: existing || [],
       equipe,
+      sansBonus,
     });
     const rows = itemsWithBonus.map((item) => ({
       pays_code: req.country,

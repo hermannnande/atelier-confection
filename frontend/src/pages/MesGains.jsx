@@ -96,8 +96,11 @@ const MesGains = () => {
       .filter(Boolean),
   ), [productions, dateProduction]);
   const calculSaisie = useMemo(() => {
+    // Les tenues sans bonus ne reçoivent pas de bonus et ne comptent pas dans les premières pièces.
+    const avecBonus = (modeleId) => tarifMap.get(modeleId)?.bonus !== false;
     let quantiteDuJour = productions
       .filter((item) => ['en_attente', 'validee'].includes(item.statut) && item.date_production === dateProduction)
+      .filter((item) => avecBonus(item.modele?.id))
       .reduce((sum, item) => sum + Number(item.quantite || 0), 0);
 
     const details = lignes.map((ligne) => {
@@ -106,6 +109,9 @@ const MesGains = () => {
         : 0;
       const quantite = Number(ligne.quantite || 0);
       const montantBase = tarif * quantite;
+      if (ligne.modeleId && !avecBonus(ligne.modeleId)) {
+        return { montantBase, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0, total: montantBase };
+      }
 
       const remainingWithoutBonus = Math.max(0, regle.quota - quantiteDuJour);
       const quantiteBonus = Math.max(0, quantite - remainingWithoutBonus);
@@ -233,6 +239,7 @@ const MesGains = () => {
               <p className="text-sm text-emerald-800 mt-1">
                 {regle.supplementTenue > 0 && <>Chaque tenue est payée <strong>+{money(regle.supplementTenue)}</strong> de plus que son tarif. </>}
                 Les {regle.quota} premières pièces de la {regle.equipe === 'nuit' ? 'nuit' : 'journée'} sont au tarif normal. La {regle.quota + 1}ᵉ pièce et chacune des suivantes reçoivent <strong>+{money(regle.bonusUnitaire)}</strong>, tous modèles et tous tarifs confondus.
+                {tarifs.some((item) => item.bonus === false) && <> Les tenues marquées « sans bonus » ne reçoivent pas de bonus et ne comptent pas dans ces {regle.quota} pièces.</>}
               </p>
             </div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Journée de production</label>
@@ -251,7 +258,7 @@ const MesGains = () => {
                         {tarifs.map((item) => {
                           const selectedElsewhere = lignes.some((other, otherIndex) => otherIndex !== index && other.modeleId === item.modeleId);
                           const alreadySubmitted = modelesDejaDeclares.has(item.modeleId);
-                          return <option key={item.modeleId} value={item.modeleId} disabled={selectedElsewhere || alreadySubmitted}>{item.nom} — {money(Number(item.montantUnitaire || 0) + regle.supplementTenue)}{alreadySubmitted ? ' · Déjà déclaré pour cette journée' : selectedElsewhere ? ' · Déjà sélectionné' : ''}</option>;
+                          return <option key={item.modeleId} value={item.modeleId} disabled={selectedElsewhere || alreadySubmitted}>{item.nom} — {money(Number(item.montantUnitaire || 0) + regle.supplementTenue)}{item.bonus === false ? ' · sans bonus' : ''}{alreadySubmitted ? ' · Déjà déclaré pour cette journée' : selectedElsewhere ? ' · Déjà sélectionné' : ''}</option>;
                         })}
                       </select>
                     </div>

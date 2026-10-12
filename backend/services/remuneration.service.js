@@ -79,21 +79,24 @@ export function getProductionBonusRule(equipe) {
   return { groupe: 'toutes_tenues', quota, bonusUnitaire };
 }
 
-export function calculateProductionBonusAllocations({ items = [], existingProductions = [], equipe } = {}) {
-  const quantitiesByGroup = new Map();
-
-  existingProductions.forEach((item) => {
-    const rule = getProductionBonusRule(equipe);
-    quantitiesByGroup.set(rule.groupe, Number(quantitiesByGroup.get(rule.groupe) || 0) + Number(item.quantite || 0));
-  });
+// Tenues sans bonus (réglage de l'administrateur, décision du 12/10/2026) : elles ne
+// reçoivent pas de bonus et ne comptent pas dans les premières pièces de la journée.
+export function calculateProductionBonusAllocations({ items = [], existingProductions = [], equipe, sansBonus = [] } = {}) {
+  const rule = getProductionBonusRule(equipe);
+  const exclues = new Set(sansBonus.map(String));
+  const avecBonus = (modeleId) => !exclues.has(String(modeleId || ''));
+  let piecesComptees = existingProductions
+    .filter((item) => avecBonus(item.modele_id ?? item.modeleId))
+    .reduce((sum, item) => sum + Number(item.quantite || 0), 0);
 
   return items.map((item) => {
-    const rule = getProductionBonusRule(equipe);
-
-    const previousQuantity = Number(quantitiesByGroup.get(rule.groupe) || 0);
-    const remainingWithoutBonus = Math.max(0, rule.quota - previousQuantity);
-    const quantiteBonus = Math.max(0, Number(item.quantite || 0) - remainingWithoutBonus);
-    quantitiesByGroup.set(rule.groupe, previousQuantity + Number(item.quantite || 0));
+    const quantite = Number(item.quantite || 0);
+    if (!avecBonus(item.modeleId)) {
+      return { ...item, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0 };
+    }
+    const remainingWithoutBonus = Math.max(0, rule.quota - piecesComptees);
+    const quantiteBonus = Math.max(0, quantite - remainingWithoutBonus);
+    piecesComptees += quantite;
 
     return {
       ...item,
@@ -102,6 +105,27 @@ export function calculateProductionBonusAllocations({ items = [], existingProduc
       montantBonus: quantiteBonus * rule.bonusUnitaire,
     };
   });
+}
+
+// Réglage « tenues sans bonus », rangé dans la table des réglages (clé / valeur) :
+// liste JSON d'identifiants de modèles. Sans réglage, toutes les tenues ont le bonus.
+export const TENUES_SANS_BONUS_KEY = 'remuneration_tenues_sans_bonus';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function parseTenuesSansBonus(valeur) {
+  try {
+    const liste = JSON.parse(valeur || '[]');
+    return Array.isArray(liste) ? [...new Set(liste.map(String).filter((id) => UUID_PATTERN.test(id)))].sort() : [];
+  } catch {
+    return [];
+  }
+}
+
+export function withTenueBonus(liste = [], modeleId, bonus) {
+  const ensemble = new Set(liste);
+  if (bonus) ensemble.delete(modeleId);
+  else ensemble.add(modeleId);
+  return [...ensemble].sort();
 }
 
 function productionAmount(item) {

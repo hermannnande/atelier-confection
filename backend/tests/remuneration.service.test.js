@@ -10,7 +10,9 @@ import {
   normalizeDateKey,
   parseMoney,
   parsePeriod,
+  parseTenuesSansBonus,
   validateProductionIds,
+  withTenueBonus,
   validateProductionItems,
 } from '../services/remuneration.service.js';
 
@@ -189,4 +191,42 @@ test('les gains d’une période ne comptent que les productions validées, jour
   });
   assert.equal(bamba.montantValide, 5500);
   assert.deepEqual(bamba.jours, [{ date: '2026-10-02', pieces: 5, montant: 5500, bonus: 0 }]);
+});
+
+test('une tenue sans bonus ne reçoit pas de bonus et ne compte pas dans les 6 premières pièces', () => {
+  const avecBonus = '44444444-4444-4444-8444-444444444444';
+  const sansBonus = '55555555-5555-4555-8555-555555555555';
+
+  // 4 pièces sans bonus + 4 avec bonus : seules les 4 avec bonus comptent, donc aucun bonus.
+  const [sans, avec] = calculateProductionBonusAllocations({
+    items: [{ modeleId: sansBonus, quantite: 4 }, { modeleId: avecBonus, quantite: 4 }],
+    sansBonus: [sansBonus],
+  });
+  assert.deepEqual(sans, { modeleId: sansBonus, quantite: 4, quantiteBonus: 0, bonusUnitaire: 0, montantBonus: 0 });
+  assert.equal(avec.quantiteBonus, 0);
+
+  // Déjà 5 pièces avec bonus et 10 sans bonus dans la journée : 3 de plus avec bonus = 2 bonus.
+  const [suite] = calculateProductionBonusAllocations({
+    items: [{ modeleId: avecBonus, quantite: 3 }],
+    existingProductions: [{ modele_id: avecBonus, quantite: 5 }, { modele_id: sansBonus, quantite: 10 }],
+    sansBonus: [sansBonus],
+  });
+  assert.deepEqual(suite, { modeleId: avecBonus, quantite: 3, quantiteBonus: 2, bonusUnitaire: 250, montantBonus: 500 });
+
+  // L'équipe de nuit non plus n'a pas de bonus sur une tenue sans bonus.
+  const [nuit] = calculateProductionBonusAllocations({
+    items: [{ modeleId: sansBonus, quantite: 9 }], equipe: 'nuit', sansBonus: [sansBonus],
+  });
+  assert.equal(nuit.montantBonus, 0);
+});
+
+test('le réglage des tenues sans bonus se lit et se modifie sans doublon', () => {
+  const a = '44444444-4444-4444-8444-444444444444';
+  const b = '55555555-5555-4555-8555-555555555555';
+  assert.deepEqual(parseTenuesSansBonus(undefined), []);
+  assert.deepEqual(parseTenuesSansBonus('pas du json'), []);
+  assert.deepEqual(parseTenuesSansBonus(JSON.stringify([b, a, a, 'invalide'])), [a, b]);
+  assert.deepEqual(withTenueBonus([a], b, false), [a, b]);
+  assert.deepEqual(withTenueBonus([a, b], a, true), [b]);
+  assert.deepEqual(withTenueBonus([a], a, false), [a]);
 });

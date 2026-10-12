@@ -157,6 +157,7 @@ const RemunerationsCouturiers = () => {
   const tarifsAvecMontant = useMemo(() => tarifs.filter((item) => item.configured), [tarifs]);
   const selectableSansMontant = useMemo(() => selectableTarifs.filter((item) => !item.configured), [selectableTarifs]);
   const selectableAvecMontant = useMemo(() => selectableTarifs.filter((item) => item.configured), [selectableTarifs]);
+  const tarifsSansBonus = useMemo(() => tarifs.filter((item) => item.bonus === false), [tarifs]);
 
   const saveTarif = async (tarif) => {
     const amount = Number(draftTarifs[tarif.modeleId]);
@@ -168,6 +169,20 @@ const RemunerationsCouturiers = () => {
       await loadData(true);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Impossible d’enregistrer le tarif');
+    } finally { setProcessingId(null); }
+  };
+
+  // Appliquer ou retirer le bonus de productivité d'une tenue (prochaines déclarations seulement).
+  const toggleBonus = async (tarif) => {
+    const retirer = tarif.bonus !== false;
+    if (retirer && !window.confirm(`Retirer le bonus de productivité pour ${tarif.nom} ?\n\nSes prochaines pièces ne recevront plus de bonus et ne compteront pas dans les ${regles.jour.quota} premières pièces de la journée. Les déclarations déjà faites gardent leur bonus.`)) return;
+    setProcessingId(`bonus-${tarif.modeleId}`);
+    try {
+      const { data } = await api.patch(`/remunerations/tarifs/${tarif.modeleId}/bonus`, { bonus: !retirer });
+      toast.success(data.message || 'Réglage du bonus enregistré');
+      await loadData(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de modifier le bonus');
     } finally { setProcessingId(null); }
   };
 
@@ -274,6 +289,7 @@ const RemunerationsCouturiers = () => {
         <p className="font-black">Règle du bonus de productivité</p>
         <p className="mt-1 text-sm">☀️ Équipe de jour : les {regles.jour.quota} premières tenues de chaque journée sont au tarif normal. De la {regles.jour.quota + 1}ᵉ tenue jusqu’aux suivantes : <strong>+{money(regles.jour.bonusUnitaire)} par tenue</strong>, tous modèles et tous tarifs confondus.</p>
         {regles.nuit && <p className="mt-1 text-sm">🌙 Équipe de nuit : chaque tenue est payée <strong>+{money(regles.nuit.supplementTenue)}</strong> de plus que son tarif, et <strong>+{money(regles.nuit.bonusUnitaire)} par tenue</strong> à partir de la {regles.nuit.quota + 1}ᵉ tenue de la nuit.</p>}
+        {tarifsSansBonus.length > 0 && <p className="mt-1 text-sm">⛔ Tenues sans bonus ({tarifsSansBonus.length}) : {tarifsSansBonus.map((item) => item.nom).join(', ')}. Elles ne reçoivent pas de bonus et ne comptent pas dans les {regles.jour.quota} premières pièces.</p>}
       </div>
 
       <section className="bg-white rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-7">
@@ -282,6 +298,7 @@ const RemunerationsCouturiers = () => {
           <div className="flex flex-wrap gap-2 self-start sm:self-auto">
             <span className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-black">{tarifsSansMontant.length} sans tarif</span>
             <span className="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black">{tarifsAvecMontant.length} tarifé{tarifsAvecMontant.length > 1 ? 's' : ''}</span>
+            {tarifsSansBonus.length > 0 && <span className="px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 text-xs font-black">{tarifsSansBonus.length} sans bonus</span>}
           </div>
         </div>
         {tarifs.length === 0 ? <Empty text="Aucun modèle disponible" /> : (
@@ -305,7 +322,7 @@ const RemunerationsCouturiers = () => {
                   )}
                   {selectableAvecMontant.length > 0 && (
                     <optgroup label={`TARIFS DÉJÀ AJOUTÉS (${selectableAvecMontant.length})`}>
-                      {selectableAvecMontant.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''} — {money(tarif.montantUnitaire)}</option>)}
+                      {selectableAvecMontant.map((tarif) => <option key={tarif.modeleId} value={tarif.modeleId}>{tarif.nom}{tarif.categorie ? ` · ${tarif.categorie}` : ''} — {money(tarif.montantUnitaire)}{tarif.bonus === false ? ' · sans bonus' : ''}</option>)}
                     </optgroup>
                   )}
                 </select>
@@ -320,6 +337,10 @@ const RemunerationsCouturiers = () => {
                     <span className={`inline-flex mb-2 px-2.5 py-1 rounded-full text-[11px] uppercase tracking-wide font-black ${selectedTarif.configured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{selectedTarif.configured ? 'Tarif déjà ajouté' : 'Tarif à ajouter en priorité'}</span>
                     <p className="font-black text-lg text-gray-900 truncate">{selectedTarif.nom}</p>
                     <p className="text-sm text-gray-500">{selectedTarif.categorie || 'Tenue'}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-black ${selectedTarif.bonus === false ? 'bg-gray-200 text-gray-700' : 'bg-emerald-100 text-emerald-800'}`}>{selectedTarif.bonus === false ? 'Sans bonus de productivité' : 'Bonus de productivité appliqué'}</span>
+                      <button type="button" onClick={() => toggleBonus(selectedTarif)} disabled={processingId === `bonus-${selectedTarif.modeleId}`} className="text-xs font-black text-teal-700 hover:underline disabled:opacity-50">{selectedTarif.bonus === false ? 'Appliquer le bonus' : 'Retirer le bonus'}</button>
+                    </div>
                   </div>
                   <label className="block flex-1">
                     <span className="block text-sm font-bold text-gray-700 mb-2">Montant par tenue confectionnée</span>
