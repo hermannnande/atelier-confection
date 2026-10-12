@@ -26,6 +26,7 @@ const PREDEFINED_COLORS = [
   { name: 'Jaune Moutarde', hex: '#CA8A04' },
   { name: 'Vert', hex: '#16A34A' },
   { name: 'Vert Treillis', hex: '#15803D' },
+  { name: 'Vert Olive', hex: '#708238' },
   { name: 'Bleu', hex: '#3B82F6' },
   { name: 'Bleu Ciel', hex: '#87CEEB' },
   { name: 'Bleu Bic', hex: '#2563EB' },
