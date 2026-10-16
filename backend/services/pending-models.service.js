@@ -2,6 +2,15 @@
 // Les commandes "nouvelle" restent dans Commandes pour être traitées, mais ne
 // deviennent un besoin atelier qu'après leur validation.
 import { normalizeSize } from './size-normalization.service.js';
+import {
+  buildStockSynchronization,
+  fetchStockSynchronizationOrders,
+} from './stock-synchronization.service.js';
+
+// Seules les colonnes utilisées par le calcul : l'historique donne la date de
+// validation et les pièces déjà réservées en Préparation Colis.
+const SUMMARY_ORDER_COLUMNS = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique';
+const SUMMARY_STOCK_COLUMNS = 'modele, taille, couleur, quantite_principale, quantite_en_livraison, image';
 
 const TRACKED_STATUSES = new Set(['validee']);
 const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
@@ -121,4 +130,52 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
       b.urgentes - a.urgentes ||
       a.nom.localeCompare(b.nom, 'fr', { numeric: true })
     ));
+}
+
+function summaryReadError(message, cause) {
+  const error = new Error(message);
+  error.cause = cause;
+  // Base injoignable ou trop lente : la même lecture peut être retentée.
+  error.status = /abort|timeout|fetch failed/i.test(String(cause?.message || '')) ? 503 : 500;
+  return error;
+}
+
+// Besoins atelier = commandes validées qui restent après déduction du stock
+// libre (le stock réservé aux colis en préparation est déjà retiré).
+export async function loadPendingModelsSummary(supabase, { country, now = new Date(), signal } = {}) {
+  let stockQuery = supabase
+    .from('stock')
+    .select(SUMMARY_STOCK_COLUMNS)
+    .eq('pays_code', country);
+  if (signal) stockQuery = stockQuery.abortSignal(signal);
+
+  const [ordersResult, stockResult] = await Promise.all([
+    fetchStockSynchronizationOrders(supabase, { country, select: SUMMARY_ORDER_COLUMNS, signal }),
+    stockQuery,
+  ]);
+
+  if (ordersResult.error) {
+    throw summaryReadError('Erreur lors du chargement des modèles en attente', ordersResult.error);
+  }
+  if (stockResult.error) {
+    throw summaryReadError('Erreur lors du chargement du stock', stockResult.error);
+  }
+
+  const synchronization = buildStockSynchronization({
+    orders: ordersResult.data || [],
+    stock: stockResult.data || [],
+  });
+  const groupes = groupPendingModels(
+    synchronization.uncoveredOrders,
+    { recentAfter: recentVisibilityThreshold(now) },
+  );
+
+  return {
+    groupes,
+    totalCommandes: synchronization.totals.aConfectionner,
+    totalValidees: synchronization.totals.commandesValidees,
+    totalCouvertesStock: synchronization.totals.reserveCommandes,
+    totalModeles: groupes.length,
+    recentWindowMinutes: 60,
+  };
 }

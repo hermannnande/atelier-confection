@@ -1,7 +1,40 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { AlertCircle, Package, RefreshCw, Scissors, Search, Sparkles } from 'lucide-react';
+import { AlertCircle, Package, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { useCountryStore } from '../store/countryStore';
+import {
+  describeRequestError,
+  isRetryableRequestError,
+  retryDelayMs,
+} from '../utils/requestErrors';
+import {
+  nextRefreshDelayMs,
+  pendingModelsState,
+  readPendingModelsSnapshot,
+  savePendingModelsSnapshot,
+} from '../utils/pendingModelsSnapshot';
+
+// Au-delà, la requête est abandonnée : le bouton ne tourne jamais sans fin.
+const REQUEST_TIMEOUT_MS = 15000;
+// Une seule nouvelle tentative, et seulement après un échec rapide (serveur en
+// redémarrage, réseau coupé), pour que l'attente reste courte.
+const FAST_FAILURE_MS = 5000;
+
+const formatTime = (value, withSeconds = false) => (value
+  ? new Date(value).toLocaleTimeString('fr-FR', withSeconds
+    ? { hour: '2-digit', minute: '2-digit', second: '2-digit' }
+    : { hour: '2-digit', minute: '2-digit' })
+  : '');
+
+const waitFor = (ms, signal) => new Promise((resolve, reject) => {
+  const timer = window.setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => {
+    window.clearTimeout(timer);
+    reject(signal.reason);
+  }, { once: true });
+});
 
 const relativeArrival = (value, now) => {
   if (!value) return '';
@@ -15,39 +48,127 @@ const relativeArrival = (value, now) => {
 };
 
 const ModelesEnAttente = () => {
-  const [groupes, setGroupes] = useState([]);
-  const [totalCommandes, setTotalCommandes] = useState(0);
-  const [totalValidees, setTotalValidees] = useState(0);
-  const [totalCouvertesStock, setTotalCouvertesStock] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const { currentCountry } = useCountryStore();
+  const country = currentCountry || user?.pays_code || 'CI';
+
+  // Le dernier état connu s'affiche tout de suite, la mise à jour suit.
+  const [suivi, setSuivi] = useState(() => readPendingModelsSnapshot(country));
+  const [loading, setLoading] = useState(suivi === null);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState('all');
-  const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  const fetchSuivi = async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    try {
-      const response = await api.get('/commandes/modeles-en-attente/suivi');
-      setGroupes(response.data.groupes || []);
-      setTotalCommandes(response.data.totalCommandes || 0);
-      setTotalValidees(response.data.totalValidees || 0);
-      setTotalCouvertesStock(response.data.totalCouvertesStock || 0);
-      setLastRefresh(new Date(response.data.serverNow || Date.now()));
-    } catch (error) {
-      if (!silent) toast.error(error.response?.data?.message || 'Erreur lors du chargement');
-      console.error(error);
-    } finally {
-      setLoading(false);
-      if (!silent) setRefreshing(false);
+  const requestRef = useRef(null);
+  const timerRef = useRef(null);
+  const failuresRef = useRef(0);
+  const scheduleRef = useRef(() => {});
+
+  // Une seule lecture à la fois : un clic pendant une mise à jour attend sa
+  // réponse au lieu d'envoyer une deuxième requête. Le chargement se termine
+  // toujours : réponse, erreur ou délai dépassé.
+  const load = useCallback(({ manual = false } = {}) => {
+    if (manual) setRefreshing(true);
+    if (requestRef.current) {
+      if (manual) requestRef.current.manual = true;
+      return requestRef.current.promise;
     }
-  };
+
+    window.clearTimeout(timerRef.current);
+    const controller = new AbortController();
+    const request = { controller, manual, promise: null };
+    requestRef.current = request;
+    setSyncing(true);
+
+    const fetchSuivi = () => api.get('/commandes/modeles-en-attente/suivi', {
+      signal: controller.signal,
+      timeout: REQUEST_TIMEOUT_MS,
+    });
+
+    request.promise = (async () => {
+      const startedAt = Date.now();
+      try {
+        let response;
+        try {
+          response = await fetchSuivi();
+        } catch (error) {
+          if (!isRetryableRequestError(error) || Date.now() - startedAt > FAST_FAILURE_MS) throw error;
+          await waitFor(retryDelayMs(error), controller.signal);
+          response = await fetchSuivi();
+        }
+        // Page quittée ou pays changé pendant la lecture.
+        if (controller.signal.aborted) return;
+
+        const next = pendingModelsState(response.data);
+        setSuivi(next);
+        savePendingModelsSnapshot(country, next);
+        failuresRef.current = 0;
+        setLoadError(null);
+        if (request.manual) toast.success('Liste à jour', { id: 'modeles-en-attente', duration: 1500 });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        failuresRef.current += 1;
+        const message = describeRequestError(error);
+        setLoadError({ message, at: Date.now() });
+        if (request.manual) toast.error(message, { id: 'modeles-en-attente' });
+        console.error('Modèles en attente :', error);
+      } finally {
+        if (requestRef.current === request) {
+          requestRef.current = null;
+          setSyncing(false);
+          setRefreshing(false);
+          setLoading(false);
+          scheduleRef.current();
+        }
+      }
+    })();
+    return request.promise;
+  }, [country]);
 
   useEffect(() => {
-    fetchSuivi();
-    const intervalId = setInterval(() => fetchSuivi(true), 5000);
-    return () => clearInterval(intervalId);
-  }, []);
+    const cached = readPendingModelsSnapshot(country);
+    setSuivi(cached);
+    setLoading(cached === null);
+    setLoadError(null);
+    failuresRef.current = 0;
+
+    // Mise à jour automatique après chaque réponse, suspendue quand l'onglet
+    // est caché (téléphone en veille, autre onglet) et reprise au retour.
+    scheduleRef.current = () => {
+      window.clearTimeout(timerRef.current);
+      if (document.visibilityState === 'hidden') return;
+      timerRef.current = window.setTimeout(() => load(), nextRefreshDelayMs(failuresRef.current));
+    };
+    const resume = () => {
+      if (document.visibilityState === 'hidden') {
+        window.clearTimeout(timerRef.current);
+        return;
+      }
+      load();
+    };
+
+    load();
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    return () => {
+      scheduleRef.current = () => {};
+      window.clearTimeout(timerRef.current);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+      const pending = requestRef.current;
+      requestRef.current = null;
+      pending?.controller.abort();
+    };
+  }, [country, load]);
+
+  const groupes = useMemo(() => suivi?.groupes || [], [suivi]);
+  const totalCommandes = suivi?.totalCommandes || 0;
+  const totalValidees = suivi?.totalValidees || 0;
+  const totalCouvertesStock = suivi?.totalCouvertesStock || 0;
+  const lastRefresh = useMemo(() => new Date(suivi?.serverNow || Date.now()), [suivi]);
+  const refreshManually = () => load({ manual: true });
 
   const totalUrgences = useMemo(
     () => groupes.reduce((total, groupe) => total + (groupe.urgentes || 0), 0),
@@ -102,33 +223,89 @@ const ModelesEnAttente = () => {
     );
   }
 
+  const header = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+        <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 p-2.5 shadow-lg sm:rounded-2xl sm:p-4">
+          <Scissors className="h-6 w-6 text-white sm:h-8 sm:w-8" strokeWidth={2.5} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent sm:text-3xl lg:text-4xl">
+            Modèles en attente
+          </h1>
+          <p className="text-xs font-medium text-gray-600 sm:text-sm lg:text-base">
+            Besoins réels à confectionner après déduction du stock disponible
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={refreshManually}
+        disabled={refreshing}
+        aria-busy={refreshing}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-60 sm:w-auto sm:text-sm"
+      >
+        <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+        {refreshing ? 'Actualisation…' : 'Actualiser'}
+      </button>
+    </div>
+  );
+
+  // Premier chargement en échec et rien en mémoire : on le dit clairement au
+  // lieu d'afficher « Aucun modèle en attente ».
+  if (!suivi) {
+    return (
+      <div className="max-w-full space-y-4 overflow-x-hidden animate-fade-in sm:space-y-6">
+        {header}
+        <div className="card !p-8 text-center sm:!p-12">
+          <WifiOff className="mx-auto mb-3 text-amber-500" size={42} />
+          <h3 className="mb-1 text-lg font-bold text-gray-900 sm:text-xl">Impossible de charger les modèles en attente</h3>
+          <p className="mb-4 text-sm text-gray-600">{loadError?.message || 'Réessayez dans quelques secondes.'}</p>
+          <button
+            type="button"
+            onClick={refreshManually}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+          >
+            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-full space-y-4 overflow-x-hidden animate-fade-in sm:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-          <div className="flex-shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 p-2.5 shadow-lg sm:rounded-2xl sm:p-4">
-            <Scissors className="h-6 w-6 text-white sm:h-8 sm:w-8" strokeWidth={2.5} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent sm:text-3xl lg:text-4xl">
-              Modèles en attente
-            </h1>
-            <p className="text-xs font-medium text-gray-600 sm:text-sm lg:text-base">
-              Besoins réels à confectionner après déduction du stock disponible
-            </p>
-          </div>
-        </div>
+      {header}
 
-        <button
-          type="button"
-          onClick={() => fetchSuivi()}
-          disabled={refreshing}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-60 sm:w-auto sm:text-sm"
-        >
-          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
-          Actualiser
-        </button>
-      </div>
+      {loadError && (
+        <div role="alert" className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-2">
+            <WifiOff size={18} className="mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 text-xs sm:text-sm">
+              <p className="font-bold">{loadError.message}</p>
+              <p className="text-amber-800">
+                Données affichées : {formatTime(suivi.generatedAt, true)}. Nouvel essai automatique dans quelques secondes.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={refreshManually}
+            disabled={refreshing}
+            className="inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-60 sm:text-sm"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Réessayer
+          </button>
+        </div>
+      )}
+
+      {suivi.stale && !loadError && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          Base de données lente : données de {formatTime(suivi.generatedAt, true)}, mises à jour dès qu’elle répond.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
         <div className="stat-card !rounded-xl !p-3 sm:!rounded-2xl sm:!p-5">
@@ -152,6 +329,7 @@ const ModelesEnAttente = () => {
             <button
               type="button"
               onClick={() => setFilterMode('all')}
+              aria-pressed={filterMode === 'all'}
               className={`rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:px-3 sm:text-sm ${
                 filterMode === 'all'
                   ? 'bg-purple-600 text-white shadow-sm'
@@ -163,6 +341,7 @@ const ModelesEnAttente = () => {
             <button
               type="button"
               onClick={() => setFilterMode('recent')}
+              aria-pressed={filterMode === 'recent'}
               className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:gap-1.5 sm:px-3 sm:text-sm ${
                 filterMode === 'recent'
                   ? 'bg-emerald-600 text-white shadow-sm'
@@ -174,6 +353,7 @@ const ModelesEnAttente = () => {
             <button
               type="button"
               onClick={() => setFilterMode('urgent')}
+              aria-pressed={filterMode === 'urgent'}
               className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] font-black transition-colors sm:gap-1.5 sm:px-3 sm:text-sm ${
                 filterMode === 'urgent'
                   ? 'bg-red-600 text-white shadow-sm'
@@ -193,8 +373,9 @@ const ModelesEnAttente = () => {
               className="input !py-2 pl-10 pr-3 text-sm sm:!py-3 sm:text-base"
             />
           </div>
-          <p className="mt-1.5 text-[10px] text-gray-400 sm:text-xs">
-            Nouveautés visibles 1 h · Mise à jour automatique · {lastRefresh.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] text-gray-400 sm:text-xs">
+            Nouveautés visibles 1 h · Mise à jour automatique · {formatTime(suivi.generatedAt)}
+            {syncing && <RefreshCw size={10} className="animate-spin" aria-label="Mise à jour en cours" />}
           </p>
         </div>
       )}
@@ -239,7 +420,15 @@ const ModelesEnAttente = () => {
               <div className="flex items-center gap-3 border-b border-gray-100 p-3">
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 sm:h-16 sm:w-16">
                   {groupe.image ? (
-                    <img src={groupe.image} alt={groupe.nom} className="h-full w-full object-cover" />
+                    <img
+                      src={groupe.image}
+                      alt={groupe.nom}
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
                       <Package className="text-purple-400" size={26} />

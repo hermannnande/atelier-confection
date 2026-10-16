@@ -113,11 +113,12 @@ export async function fetchStockSynchronizationOrders(supabase, {
   country,
   select = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique',
   pageSize = DEFAULT_PAGE_SIZE,
+  signal,
 } = {}) {
   const rows = [];
 
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('commandes')
       .select(select)
       .eq('pays_code', country)
@@ -125,6 +126,9 @@ export async function fetchStockSynchronizationOrders(supabase, {
       .order('created_at', { ascending: false })
       .order('id', { ascending: true })
       .range(offset, offset + pageSize - 1);
+    // Un délai dépassé arrête la lecture au lieu de la laisser pendre.
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
 
     if (error) return { data: null, error };
     rows.push(...(data || []));

@@ -22,10 +22,10 @@ import {
   resolveStoredOrderBasePrice,
 } from '../../services/order-supplements.service.js';
 import { moveOrderSupplementStock } from '../../services/order-supplement-stock.service.js';
-import { groupPendingModels, recentVisibilityThreshold } from '../../services/pending-models.service.js';
+import { loadPendingModelsSummary } from '../../services/pending-models.service.js';
+import { createSharedSnapshot } from '../../services/shared-snapshot.service.js';
 import {
   buildStockSynchronization,
-  fetchStockSynchronizationOrders,
   orderStockArticleKeys,
 } from '../../services/stock-synchronization.service.js';
 import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
@@ -276,6 +276,28 @@ router.post('/', authenticate, resolveCountry, authorize('appelant', 'gestionnai
   }
 });
 
+// La page se rafraîchit toutes les 5 s dans chaque onglet ouvert : tous les
+// onglets d'un pays partagent la même lecture (environ 1 500 commandes, 2 Mo),
+// refaite au plus toutes les 4 s et arrêtée si la base ne répond pas en 8 s.
+const PENDING_MODELS_MAX_AGE_MS = 4000;
+const PENDING_MODELS_READ_TIMEOUT_MS = 8000;
+const PENDING_MODELS_STALE_IF_ERROR_MS = 2 * 60 * 1000;
+const readPendingModels = createSharedSnapshot({
+  maxAgeMs: PENDING_MODELS_MAX_AGE_MS,
+  staleIfErrorMs: PENDING_MODELS_STALE_IF_ERROR_MS,
+  load: async (country) => {
+    try {
+      return await loadPendingModelsSummary(getSupabaseAdmin(), {
+        country,
+        signal: AbortSignal.timeout(PENDING_MODELS_READ_TIMEOUT_MS),
+      });
+    } catch (error) {
+      console.error(`Modèles en attente (${country}) :`, error.cause?.message || error.message);
+      throw error;
+    }
+  },
+});
+
 // Vue agrégée synchronisée avec les commandes validées qui ne sont pas encore envoyées ailleurs.
 router.get(
   '/modeles-en-attente/suivi',
@@ -284,47 +306,24 @@ router.get(
   authorize('styliste', 'gestionnaire', 'gestionnaire_stock', 'administrateur'),
   async (req, res) => {
     try {
-      const supabase = getSupabaseAdmin();
-      const now = new Date();
-
-      const [ordersResult, stockResult] = await Promise.all([
-        fetchStockSynchronizationOrders(supabase, {
-          country: req.country,
-          select: 'id, numero_commande, modele, taille, couleur, supplements, statut, urgence, created_at, updated_at, historique',
-        }),
-        supabase
-          .from('stock')
-          .select('modele, taille, couleur, quantite_principale, quantite_en_livraison, image')
-          .eq('pays_code', req.country),
-      ]);
-
-      if (ordersResult.error) {
-        return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: ordersResult.error.message });
-      }
-      if (stockResult.error) {
-        return res.status(500).json({ message: 'Erreur lors du chargement du stock', error: stockResult.error.message });
-      }
-
-      const synchronization = buildStockSynchronization({
-        orders: ordersResult.data || [],
-        stock: stockResult.data || [],
-      });
-      const groupes = groupPendingModels(
-        synchronization.uncoveredOrders,
-        { recentAfter: recentVisibilityThreshold(now) },
-      );
-
+      const snapshot = await readPendingModels(req.country);
       return res.json({
-        groupes,
-        totalCommandes: synchronization.totals.aConfectionner,
-        totalValidees: synchronization.totals.commandesValidees,
-        totalCouvertesStock: synchronization.totals.reserveCommandes,
-        totalModeles: groupes.length,
-        recentWindowMinutes: 60,
-        serverNow: now.toISOString(),
+        ...snapshot.value,
+        serverNow: new Date().toISOString(),
+        // Heure du calcul affiché ; « stale » signale une version gardée
+        // pendant une panne passagère de la base.
+        generatedAt: new Date(snapshot.generatedAt).toISOString(),
+        stale: snapshot.stale,
       });
     } catch (error) {
-      return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: error.message });
+      if (error.status === 503) {
+        res.set('Retry-After', '2');
+        return res.status(503).json({
+          message: 'La base de données ne répond pas assez vite. Réessayez dans quelques secondes.',
+          error: error.cause?.message || error.message,
+        });
+      }
+      return res.status(500).json({ message: 'Erreur lors du chargement des modèles en attente', error: error.cause?.message || error.message });
     }
   },
 );
