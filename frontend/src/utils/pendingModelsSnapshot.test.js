@@ -60,6 +60,8 @@ test('une réponse incomplète donne un état vide mais utilisable', () => {
     totalCommandes: 0,
     totalValidees: 0,
     totalCouvertesStock: 0,
+    totalEnCours: 0,
+    totalAVerifier: 0,
     serverNow: '2026-10-16T12:00:00.000Z',
     generatedAt: '2026-10-16T12:00:00.000Z',
     stale: false,

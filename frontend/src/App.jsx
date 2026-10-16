@@ -32,7 +32,7 @@ import RemunerationsCouturiers from './pages/RemunerationsCouturiers';
 import Layout from './components/Layout';
 
 const getDefaultRoute = (user) => (
-  user?.role === 'gestionnaire_stock' ? '/stock' : '/dashboard'
+  user?.role === 'gestionnaire_stock' ? '/stock' : user?.role === 'styliste' ? '/modeles-en-attente' : '/dashboard'
 );
 
 // Route protégée

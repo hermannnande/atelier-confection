@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Scissors, CheckCircle, AlertCircle, Package, RefreshCw, Eye } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import OrderSupplementTags from '../components/OrderSupplementTags';
+import { Link } from 'react-router-dom';
 
 const AtelierStyliste = () => {
   const { user } = useAuthStore();
@@ -71,6 +72,11 @@ const AtelierStyliste = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in overflow-x-hidden max-w-full px-2 sm:px-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+        <p className="font-bold">Anciennes découpes à vérifier</p>
+        <p className="mt-1 text-sm">Vérifiez si ces tenues ont déjà été remises au stock avant de les refaire. Pour les nouvelles pièces, utilisez le suivi par lots.</p>
+        <Link to="/modeles-en-attente" className="mt-3 inline-block rounded-lg bg-purple-700 px-4 py-3 font-bold text-white">Voir mes tenues en cours</Link>
+      </div>
       {/* Badge mode lecture seule pour gestionnaire */}
       {isReadOnly && (
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4 flex items-center gap-3">

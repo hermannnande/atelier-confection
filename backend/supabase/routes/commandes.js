@@ -28,14 +28,30 @@ import {
   buildStockSynchronization,
   orderStockArticleKeys,
 } from '../../services/stock-synchronization.service.js';
-import { courierContext, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
+import { courierContext, courierSynchronizationOrders, snapshotArticles } from '../../services/courier-stock.service.js';
 import { fetchRowsUpTo, parseOrderListLimit } from '../../services/order-list.service.js';
 import { createClientHistoryLoader } from '../../services/client-history.service.js';
 import { loadPreparationOrders } from '../../services/preparation-orders.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
+import { startWorkshopLot, receiveWorkshopLot, listWorkshopLots, workshopRpc } from '../../services/atelier-lots.service.js';
 
 const router = express.Router();
+router.get('/modeles-en-attente/lots', authenticate, resolveCountry,
+  authorize('styliste', 'gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+    try { res.json(await listWorkshopLots(getSupabaseAdmin(), req.country)); }
+    catch (error) { res.status(error.status || 503).json({ message: error.message }); }
+  });
+router.post('/modeles-en-attente/lots', authenticate, resolveCountry,
+  authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
+    try { res.json({ lot: await startWorkshopLot(getSupabaseAdmin(), { country: req.country, actor: req.userId, input: req.body }) }); }
+    catch (error) { res.status(error.status || 503).json({ message: error.message }); }
+  });
+router.post('/modeles-en-attente/lots/:lotId/recevoir', authenticate, resolveCountry,
+  authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+    try { res.json({ lot: await receiveWorkshopLot(getSupabaseAdmin(), { country: req.country, actor: req.userId, lotId: req.params.lotId, input: req.body }) }); }
+    catch (error) { res.status(error.status || 503).json({ message: error.message }); }
+  });
 const loadClientHistories = createClientHistoryLoader();
 
 async function hydrateUsersForCommandes(supabase, rows) {
@@ -711,8 +727,9 @@ router.put('/:id', authenticate, resolveCountry, authorize('appelant', 'gestionn
     });
     update.historique = historique;
 
-    const { data, error } = await supabase.from('commandes').update(update).eq('id', req.params.id).select('*').single();
-    if (error) return res.status(500).json({ message: 'Erreur lors de la modification', error: error.message });
+    const { data, error } = await supabase.from('commandes').update(update).eq('id', req.params.id).eq('updated_at', existing.updated_at).select('*').maybeSingle();
+    if (error) return res.status(error.code === 'P0001' ? 409 : 500).json({ message: error.code === 'P0001' ? error.message : 'Erreur lors de la modification', error: error.message });
+    if (!data) return res.status(409).json({ message: 'Cette commande vient de changer. Actualisez avant de continuer.' });
 
     // 📱 Robustesse: si le statut a changé via PUT, déclencher le SMS correspondant
     // (certaines pages changent le statut via PUT et ne passent pas par les routes spécialisées).
@@ -927,90 +944,17 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
     if (e1 || !existing) return res.status(404).json({ message: 'Commande non trouvée' });
     if (!ensureCountryAccess(existing, req, res)) return;
 
-    const historique = Array.isArray(existing.historique) ? existing.historique : [];
-    historique.push({
-      action: 'Couture terminée',
-      statut: 'en_stock',
-      utilisateur: req.userId,
-      date: new Date().toISOString(),
-      // Les tenues confectionnées entrent au stock pour cette commande.
-      reservationStock: orderStockArticleKeys(existing),
-    });
-
-    const { data: updatedCommande, error: e2 } = await supabase
-      .from('commandes')
-      .update({
-        statut: 'en_stock',
-        couturier_id: req.userId,
-        date_couture: new Date().toISOString(),
-        historique,
-      })
-      .eq('id', req.params.id)
-      .select('*')
-      .single();
-
-    if (e2) return res.status(500).json({ message: 'Erreur', error: e2.message });
-
-    // Ajouter au stock principal (upsert)
-    const modeleNom = existing.modele?.nom;
-    const taille = normalizeSize(existing.taille);
-    const couleur = existing.couleur;
-
-    const commandeCountry = existing.pays_code || 'CI';
-    const { data: stockItem } = await findStockVariation(supabase, {
-      country: commandeCountry, modele: modeleNom, taille, couleur,
-    });
-
-    if (stockItem) {
-      const mouvements = Array.isArray(stockItem.mouvements) ? stockItem.mouvements : [];
-      mouvements.push({
-        type: 'entree',
-        quantite: 1,
-        source: 'Atelier de confection',
-        destination: 'Stock principal',
-        commande: existing.id,
-        utilisateur: req.userId,
-        date: new Date().toISOString(),
-        commentaire: 'Ajout après confection',
+    const articles = snapshotArticles(existing);
+    for (const article of articles) {
+      const { data: match, error } = await findStockVariation(supabase, {
+        country: req.country, modele: article.modele, taille: article.taille, couleur: article.couleur,
       });
-
-      await supabase
-        .from('stock')
-        .update({
-          quantite_principale: (stockItem.quantite_principale || 0) + 1,
-          mouvements,
-        })
-        .eq('id', stockItem.id);
-    } else {
-      const mouvements = [
-        {
-          type: 'entree',
-          quantite: 1,
-          source: 'Atelier de confection',
-          destination: 'Stock principal',
-          commande: existing.id,
-          utilisateur: req.userId,
-          date: new Date().toISOString(),
-          commentaire: 'Création et ajout après confection',
-        },
-      ];
-
-      await supabase.from('stock').insert({
-        pays_code: commandeCountry,
-        modele: modeleNom,
-        taille,
-        couleur,
-        quantite_principale: 1,
-        quantite_en_livraison: 0,
-        prix: existing.prix,
-        image: existing.modele?.image,
-        mouvements,
-      });
+      if (error) throw error;
+      if (match) Object.assign(article, { modele: match.modele, taille: match.taille, couleur: match.couleur });
     }
-
-    await moveOrderSupplementStock({
-      supabase, commande: existing, country: commandeCountry, userId: req.userId,
-      action: 'production', commentaire: 'Ajout après confection',
+    const updatedCommande = await workshopRpc(supabase, 'atelier_finish_legacy', {
+      p_order: existing.id, p_country: req.country, p_actor: req.userId,
+      p_updated_at: existing.updated_at, p_articles: articles,
     });
 
     // 📱 Envoyer SMS automatique "Confection terminée"
@@ -1031,7 +975,7 @@ router.post('/:id/terminer-couture', authenticate, resolveCountry, authorize('co
 
     return res.json({ message: 'Commande terminée et ajoutée au stock', commande: mapCommande(updatedCommande) });
   } catch (error) {
-    return res.status(500).json({ message: 'Erreur', error: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 

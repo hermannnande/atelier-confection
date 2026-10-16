@@ -120,7 +120,7 @@ export async function courierContext(db, country) {
     readHeldDeliveries(db, country),
     readCountryRows(db, 'users', country, q => q.eq('role', 'livreur'), 'id, pays_code, nom, role, actif'),
     fetchStockSynchronizationOrders(db, { country,
-      select: 'id, pays_code, modele, taille, couleur, supplements, statut, urgence, created_at, historique' }),
+      select: 'id, pays_code, modele, taille, couleur, supplements, statut, urgence, created_at, historique, atelier_pieces' }),
   ]);
   if (orderResult.error) throw orderResult.error;
   return { stock, deliveries, couriers, orders: orderResult.data || [], country };
@@ -268,12 +268,19 @@ async function finishAssignment(db, { delivery, order, country, userId }) {
   for (let index = 0; index < articles.length; index++) {
     const article = articles[index];
     if (Object.hasOwn(operation.suivis || {}, article.id)) continue;
-    const context = await readHeldDeliveries(db, country);
-    const protectedQuantity = heldPieces(context, country)
-      .filter(p => stockVariationKey(p) === stockVariationKey(article) && p.operation !== operation.id).length;
+    const context = await courierContext(db, country);
+    const synchronization = buildStockSynchronization({
+      orders: courierSynchronizationOrders({ ...context, orders: context.orders.filter(o => o.id !== order.id) })
+        .filter(o => !String(o.id).startsWith(`${operation.id}:`)),
+      stock: context.stock,
+    });
+    const variation = synchronization.variations.find(v => v.key === stockVariationKey(article));
+    const protectedQuantity = Math.max((variation?.reservePreparation || 0) + (variation?.reserveAtelier || 0),
+      heldPieces(context.deliveries, country)
+        .filter(p => stockVariationKey(p) === stockVariationKey(article) && p.operation !== operation.id).length);
     const moved = await moveStockOnce(db, { country, article, operation: `assignation:${operation.id}:${article.id}`,
       commandeId: order.id, userId, action: 'assigner', protectedQuantity,
-      required: refs.some(r => r.index === index), commentaire: refs.some(r => r.index === index)
+      required: refs.some(r => r.index === index) || ['recue', 'expedition'].includes(order.atelier_pieces?.[article.id]?.etat), commentaire: refs.some(r => r.index === index)
         ? 'Réattribution d’une tenue refusée, conservée chez le même livreur' : 'Assignation au livreur' });
     const fresh = await readOne(db, 'livraisons', delivery.id, country);
     operation.suivis = { ...fresh.adresse_livraison.stockAffectation.suivis, [article.id]: moved };
@@ -353,6 +360,7 @@ export async function assignWithCourierStock(db, { commandeId, courierId, countr
     // Aucune sortie de stock n'a commencé : libérer les pièces et restaurer la commande.
     await releaseClaims(db, pieces, country, operation);
     await compareAndSet(db, 'commandes', updatedOrder, { statut: order.statut, livreur_id: order.livreur_id,
+      ...(order.atelier_pieces ? { atelier_pieces: order.atelier_pieces } : {}),
       historique: order.historique || [] });
     throw error;
   }

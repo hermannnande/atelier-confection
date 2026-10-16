@@ -111,7 +111,7 @@ export function stockVariationKey(source) {
 
 export async function fetchStockSynchronizationOrders(supabase, {
   country,
-  select = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique',
+  select = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique, atelier_pieces',
   pageSize = DEFAULT_PAGE_SIZE,
   signal,
 } = {}) {
@@ -135,12 +135,40 @@ export async function fetchStockSynchronizationOrders(supabase, {
     if ((data || []).length < pageSize) break;
   }
 
+  // New tracked pieces stay reserved during the short gap between assigning
+  // the courier and debiting physical stock. Older deliveries are unchanged.
+  for (let offset = 0; ; offset += pageSize) {
+    let query = supabase.from('commandes').select(select).eq('pays_code', country)
+      .eq('statut', 'en_livraison').neq('atelier_pieces', '{}')
+      .order('id', { ascending: true }).range(offset, offset + pageSize - 1);
+    if (signal) query = query.abortSignal(signal);
+    const { data, error } = await query;
+    if (error) return { data: null, error };
+    rows.push(...(data || []));
+    if ((data || []).length < pageSize) break;
+  }
   return { data: rows, error: null };
+}
+
+export function withWorkshopDispatchHolds(orders, stock) {
+  const applied = new Set(stock.flatMap(s => (s.mouvements || []).map(m => m.operation).filter(Boolean)));
+  const holds = orders.filter(o => o.statut === 'en_livraison' && Object.keys(o.atelier_pieces || {}).length)
+    .flatMap(o => {
+      const operation = [...(o.historique || [])].reverse().find(h => h.statut === 'en_livraison')?.operation;
+      return orderStockArticles(o).flatMap((article, index) => {
+        const key = stockArticleKey(index);
+        if (o.atelier_pieces[key]?.etat !== 'expedition' || (operation && applied.has(`assignation:${operation}:${key}`))) return [];
+        return [{ id: `atelier-expedition:${o.id}:${key}`, atelierSourceId: o.id, ...article,
+          statut: 'en_stock', historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] }];
+      });
+    });
+  return [...orders, ...holds];
 }
 
 export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   const variationsByKey = new Map();
   const articleKeys = new Map();
+  const workshopStates = new Map();
 
   const ensureVariation = (source) => {
     const key = stockVariationKey(source);
@@ -175,7 +203,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     );
   }
 
-  for (const order of orders) {
+  for (const order of withWorkshopDispatchHolds(orders, stock)) {
     if (order?.statut === PENDING_STATUS || order?.statut === PREPARATION_STATUS) {
       const id = orderId(order);
       const held = order.statut === PREPARATION_STATUS ? preparationHeldArticles(order) : null;
@@ -190,6 +218,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
           taille: article.taille,
           couleur: article.couleur,
           sourceOrderId: id,
+          sourceArticleKey: articleKey,
         };
         const variation = ensureVariation(itemOrder);
 
@@ -200,6 +229,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
           variation.reservePreparation += 1;
         } else {
           articleKeys.set(itemOrder, articleKey);
+          workshopStates.set(itemOrder, order.atelier_pieces?.[articleKey]?.etat);
           variation.commandesValidees.push(itemOrder);
         }
       });
@@ -211,14 +241,21 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   const articlesReserves = {};
 
   const variations = Array.from(variationsByKey.values()).map((variation) => {
-    const pendingOrders = variation.commandesValidees.sort(comparePendingOrders);
+    // A received piece stays with its order, even when a newer urgent order arrives.
+    // Work already started must never reappear in the cutting list.
+    const pendingOrders = variation.commandesValidees.sort((a, b) =>
+      Number(workshopStates.get(b) === 'recue') - Number(workshopStates.get(a) === 'recue')
+      || comparePendingOrders(a, b));
+    const startedOrders = pendingOrders.filter(o => workshopStates.get(o) === 'en_cours');
+    const eligibleOrders = pendingOrders.filter(o => workshopStates.get(o) !== 'en_cours');
     const disponibleAvantCommandes = Math.max(
       variation.stockPhysique - variation.reservePreparation,
       0,
     );
-    const reserveCommandes = Math.min(disponibleAvantCommandes, pendingOrders.length);
-    const coveredOrders = pendingOrders.slice(0, reserveCommandes);
-    const missingOrders = pendingOrders.slice(reserveCommandes);
+    const reserveCommandes = Math.min(disponibleAvantCommandes, eligibleOrders.length);
+    const coveredOrders = eligibleOrders.slice(0, reserveCommandes);
+    const missingOrders = [...eligibleOrders.slice(reserveCommandes), ...startedOrders];
+    const toProduce = missingOrders.filter(o => !['en_cours', 'recue'].includes(workshopStates.get(o)));
     const quantiteReservee = Math.min(
       variation.stockPhysique,
       variation.reservePreparation + reserveCommandes,
@@ -247,7 +284,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
           quantiteDisponible,
         };
       }
-      uncoveredOrders.push(order);
+      if (toProduce.includes(order)) uncoveredOrders.push(order);
     });
 
     return {
@@ -261,9 +298,12 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
       reservePreparation: variation.reservePreparation,
       commandesValidees: pendingOrders.length,
       reserveCommandes,
+      reserveAtelier: coveredOrders.filter(o => workshopStates.get(o) === 'recue').length,
       quantiteReservee,
       quantiteDisponible,
-      aConfectionner: missingOrders.length,
+      aConfectionner: toProduce.length,
+      enCours: startedOrders.length,
+      aVerifier: missingOrders.filter(o => workshopStates.get(o) === 'recue').length,
       incoherencesPreparation: Math.max(
         variation.reservePreparation - variation.stockPhysique,
         0,
@@ -280,6 +320,8 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     quantiteDisponible: acc.quantiteDisponible + variation.quantiteDisponible,
     commandesValidees: acc.commandesValidees + variation.commandesValidees,
     aConfectionner: acc.aConfectionner + variation.aConfectionner,
+    enCours: acc.enCours + variation.enCours,
+    aVerifier: acc.aVerifier + variation.aVerifier,
   }), {
     stockPhysique: 0,
     enLivraison: 0,
@@ -289,6 +331,8 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     quantiteDisponible: 0,
     commandesValidees: 0,
     aConfectionner: 0,
+    enCours: 0,
+    aVerifier: 0,
   });
 
   return {

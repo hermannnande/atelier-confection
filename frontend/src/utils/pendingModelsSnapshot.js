@@ -11,6 +11,8 @@ export function pendingModelsState(data = {}) {
     totalCommandes: Number(data?.totalCommandes) || 0,
     totalValidees: Number(data?.totalValidees) || 0,
     totalCouvertesStock: Number(data?.totalCouvertesStock) || 0,
+    totalEnCours: Number(data?.totalEnCours) || 0,
+    totalAVerifier: Number(data?.totalAVerifier) || 0,
     serverNow: data?.serverNow || null,
     generatedAt: data?.generatedAt || data?.serverNow || null,
     stale: data?.stale === true,

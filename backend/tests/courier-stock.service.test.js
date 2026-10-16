@@ -34,6 +34,7 @@ class Query {
   constructor(db, table) { this.db = db; this.table = table; this.filters = []; this.action = 'select'; }
   select() { return this; }
   eq(field, value) { this.filters.push(row => row[field] === value); return this; }
+  neq(field, value) { this.filters.push(row => field === 'atelier_pieces' ? Object.keys(row[field] || {}).length > 0 : row[field] !== value); return this; }
   in(field, values) { this.filters.push(row => values.includes(row[field])); return this; }
   not(field, operator, value) {
     assert.equal(operator, 'is'); assert.equal(value, null);
@@ -65,6 +66,16 @@ class Query {
   }
 }
 const assign = (db, extra = {}) => assignWithCourierStock(db, { commandeId: 'new', courierId: 'driver', country: 'CI', userId: 'admin', direct: true, ...extra });
+
+test('a direct empty parcel cannot take a received piece pinned to another order', async () => {
+  const db = new Database(context({ deliveries: [], orders: [
+    order('new', { statut: 'en_stock', historique: [{ statut: 'en_stock', reservationStock: [] }] }),
+    order('pinned', { atelier_pieces: { principal: { etat: 'recue' } } }),
+  ] }));
+  const result = await assign(db, { direct: false });
+  assert.equal(db.tables.stock[0].quantite_principale, 1);
+  assert.equal(result.delivery.adresse_livraison.stockAffectation.suivis.principal, false);
+});
 
 test('proposition exacte, tailles XXL/2XL équivalentes, anciens refus exclus', () => {
   assert.equal(buildCourierOffers(context()).new.livreurNom, 'Franck');

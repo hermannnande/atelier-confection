@@ -29,7 +29,7 @@ const Login = () => {
             color: '#fff',
           },
         });
-        navigate(result.user?.role === 'gestionnaire_stock' ? '/stock' : '/dashboard');
+        navigate(result.user?.role === 'gestionnaire_stock' ? '/stock' : result.user?.role === 'styliste' ? '/modeles-en-attente' : '/dashboard');
       } else {
         toast.error(result.message || 'Erreur de connexion', {
           style: {

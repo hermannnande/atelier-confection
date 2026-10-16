@@ -17,12 +17,17 @@ function fakeSupabase({ commandes = [], stock = [], errors = {} } = {}) {
       const builder = {
         select(columns) { read.select = columns; return builder; },
         eq(column, value) { read.filters.push([column, value]); return builder; },
+        neq(column, value) { read.filters.push([column, value, 'neq']); return builder; },
         in(column, values) { read.filters.push([column, values]); return builder; },
         order() { return builder; },
         range(from, to) { read.range = [from, to]; return builder; },
         abortSignal(signal) { read.signal = signal; return builder; },
         then(resolve, reject) {
-          const rows = table === 'commandes' ? commandes : stock;
+          const rows = (table === 'commandes' ? commandes : stock).filter(row => read.filters.every(([column, value, op]) => {
+            if (column === 'pays_code') return !row.pays_code || row.pays_code === value;
+            if (column === 'atelier_pieces' && op === 'neq') return Object.keys(row.atelier_pieces || {}).length > 0;
+            return Array.isArray(value) ? value.includes(row[column]) : row[column] === value;
+          }));
           const result = errors[table]
             ? { data: null, error: errors[table] }
             : { data: read.range ? rows.slice(read.range[0], read.range[1] + 1) : rows, error: null };
@@ -143,7 +148,7 @@ test('le résumé ne garde que les commandes validées non couvertes par le stoc
   ]);
   assert.deepEqual(
     supabase.reads.map(({ table, filters }) => [table, filters[0]]).sort(),
-    [['commandes', ['pays_code', 'CI']], ['stock', ['pays_code', 'CI']]],
+    [['commandes', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['stock', ['pays_code', 'CI']]],
   );
 });
 

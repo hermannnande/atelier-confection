@@ -1,6 +1,7 @@
 export function normalizeSize(value) {
   const text = String(value ?? '').trim();
   const compact = text.replace(/\s+/g, '').toUpperCase();
+  if (compact === 'STANDARD' || compact === 'TAILLESTANDARD') return 'Standard';
   if (compact === 'XXL' || compact === '2XL') return '2XL';
   if (compact === 'XXXL' || compact === '3XL') return '3XL';
   return text;
@@ -8,6 +9,7 @@ export function normalizeSize(value) {
 
 export function equivalentSizes(value) {
   const size = normalizeSize(value);
+  if (size === 'Standard') return ['Standard', 'standard', 'STANDARD', 'Taille standard', 'Taille Standard', 'taille standard', 'TAILLE STANDARD'];
   if (size === '2XL') return ['2XL', 'XXL', '2xl', 'xxl', '2 XL', '2 xl'];
   if (size === '3XL') return ['3XL', 'XXXL', '3xl', 'xxxl', '3 XL', '3 xl'];
   return [...new Set([

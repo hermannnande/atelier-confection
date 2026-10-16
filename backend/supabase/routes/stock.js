@@ -10,6 +10,7 @@ import {
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 import { courierContext, buildCourierOffers, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
+import { assertNoPendingLot } from '../../services/atelier-lots.service.js';
 
 const router = express.Router();
 
@@ -181,6 +182,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
     }
 
     const canonicalSize = normalizeSize(taille);
+    await assertNoPendingLot(supabase, req.country, { modele, taille: canonicalSize, couleur });
     const { data: existing, error: lookupError } = await findStockVariation(supabase, {
       country: req.country, modele, taille: canonicalSize, couleur, preferQuantity: '__none',
     });
@@ -210,6 +212,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
           mouvements,
         })
         .eq('id', existing.id)
+        .eq('updated_at', existing.updated_at)
         .select('*')
         .single();
 
@@ -248,7 +251,7 @@ router.post('/', authenticate, resolveCountry, authorize('gestionnaire_stock', '
     if (error) return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
     return res.status(201).json({ message: 'Stock mis à jour avec succès', stockItem: mapStock(data) });
   } catch (error) {
-    return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 
@@ -268,11 +271,15 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire_stock',
 
     const updates = {};
     if (quantite !== undefined) {
+      if (req.body.expectedUpdatedAt && req.body.expectedUpdatedAt !== existing.updated_at) {
+        return res.status(409).json({ message: 'Le stock a changé depuis l’ouverture. Actualisez avant de le corriger.' });
+      }
       const newQuantity = Number(quantite);
       if (!Number.isFinite(newQuantity) || newQuantity < 0) {
         return res.status(400).json({ message: 'La quantité doit être un nombre positif ou nul' });
       }
       updates.quantite_principale = newQuantity;
+      if (newQuantity > existing.quantite_principale) await assertNoPendingLot(supabase, req.country, existing);
       
       // Ajouter mouvement
       const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];
@@ -305,13 +312,14 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire_stock',
       .from('stock')
       .update(updates)
       .eq('id', req.params.id)
+      .eq('updated_at', existing.updated_at)
       .select()
       .single();
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
     return res.json({ message: 'Stock modifié avec succès', stockItem: mapStock(data) });
   } catch (error) {
-    return res.status(500).json({ message: 'Erreur lors de la modification', error: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 
@@ -329,6 +337,7 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
       return res.status(400).json({ message: "Choisissez une entrée ou une sortie avec une quantité positive" });
     }
     let quantitePrincipale = existing.quantite_principale || 0;
+    if (type === 'entree') await assertNoPendingLot(supabase, req.country, existing);
     if (type === 'entree') quantitePrincipale += q;
     if (type === 'sortie') {
       if (quantitePrincipale < q) return res.status(400).json({ message: 'Stock insuffisant' });
@@ -350,13 +359,14 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
       .from('stock')
       .update({ quantite_principale: quantitePrincipale, mouvements })
       .eq('id', req.params.id)
+      .eq('updated_at', existing.updated_at)
       .select('*')
       .single();
 
     if (error) return res.status(500).json({ message: "Erreur lors de l'ajustement", error: error.message });
     return res.json({ message: 'Stock ajusté avec succès', stockItem: mapStock(data) });
   } catch (error) {
-    return res.status(500).json({ message: "Erreur lors de l'ajustement", error: error.message });
+    return res.status(error.status || 500).json({ message: error.message });
   }
 });
 

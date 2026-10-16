@@ -25,7 +25,7 @@ export const useAuthStore = create(
             await useCountryStore.getState().fetchAvailableCountries();
           } catch (_) { /* non bloquant */ }
 
-          return { success: true };
+          return { success: true, user };
         } catch (error) {
           return { 
             success: false, 

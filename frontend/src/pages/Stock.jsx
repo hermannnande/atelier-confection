@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import AtelierLots from '../components/AtelierLots';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
 import { normalizeStockLabel, summarizeStockVariations } from '../utils/stockVariation';
@@ -45,6 +46,8 @@ const Stock = () => {
   const [selectedModeleDetails, setSelectedModeleDetails] = useState(null);
   const [selectedModele, setSelectedModele] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const saveLock = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [editedVariations, setEditedVariations] = useState([]);
   
   const [selectedTaille, setSelectedTaille] = useState('');
@@ -268,61 +271,40 @@ const Stock = () => {
   };
 
   const handleSaveChanges = async () => {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    let successCount = 0;
+    const failures = [];
     try {
-      let successCount = 0;
-      
       for (const variation of editedVariations) {
-        const original = selectedModeleDetails.variations.find((item) => (
-          (item._id || item.id) === (variation._id || variation.id)
-        ));
+        const original = selectedModeleDetails.variations.find(item => (item._id || item.id) === (variation._id || variation.id));
         const quantityChanged = Number(variation.quantitePrincipale) !== Number(original?.quantitePrincipale ?? original?.quantite ?? 0);
         const priceChanged = canEditPrices && Number(variation.prix) !== Number(original?.prix || 0);
         if (!quantityChanged && !priceChanged) continue;
-
         try {
-          const payload = {
-            quantite: variation.quantitePrincipale,
-          };
-          if (canEditPrices) payload.prix = variation.prix;
-          await api.put(`/stock/${variation._id || variation.id}`, payload);
+          const payload = { expectedUpdatedAt: original?.updatedAt };
+          if (quantityChanged) payload.quantite = Number(variation.quantitePrincipale);
+          if (priceChanged) payload.prix = Number(variation.prix);
+          await api.put('/stock/' + (variation._id || variation.id), payload);
           successCount++;
         } catch (error) {
-          console.error(`Erreur pour ${variation.taille} × ${variation.couleur}:`, error);
+          failures.push(variation.couleur + ' / ' + variation.taille + ' : ' + (error.response?.data?.message || 'enregistrement non confirmé'));
         }
       }
-      
-      toast.success(successCount > 0 ? `${successCount} variation(s) mise(s) à jour !` : 'Aucune modification à enregistrer');
+      if (successCount) toast.success(successCount + ' variation(s) enregistrée(s).');
+      if (failures.length) toast.error(failures.join('\n'), { duration: 8000 });
+      if (!successCount && !failures.length) toast.success('Aucune modification à enregistrer');
+      // Reload real quantities; never display failed edits as saved stock.
       setEditMode(false);
-      fetchStock();
-      
-      // Mettre à jour les données du modal
-      const refreshedVariations = editedVariations.map((variation) => ({
-        ...variation,
-        quantiteReservee: Math.min(
-          variation.quantitePrincipale,
-          variation.quantiteReservee || 0,
-        ),
-        quantiteDisponible: Math.max(
-          variation.quantitePrincipale - (variation.quantiteReservee || 0),
-          0,
-        ),
-      }));
-      const updatedGroup = {
-        ...selectedModeleDetails,
-        variations: refreshedVariations,
-        quantiteTotal: editedVariations.reduce((sum, v) => sum + v.quantitePrincipale, 0),
-        quantiteReservee: refreshedVariations.reduce((sum, v) => sum + v.quantiteReservee, 0),
-        quantiteDisponible: refreshedVariations.reduce((sum, v) => sum + v.quantiteDisponible, 0),
-        valeurTotal: editedVariations.reduce((sum, v) => sum + (v.quantitePrincipale * v.prix), 0)
-      };
-      setSelectedModeleDetails(updatedGroup);
-      
-    } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
-    }
+      setShowDetailsModal(false);
+      await fetchStock();
+    } finally { saveLock.current = false; setSaving(false); }
   };
 
   const handleSubmitVariations = async () => {
+    if (saveLock.current) return;
+    saveLock.current = true; setSaving(true);
     try {
       if (!selectedModele || !selectedTaille || !selectedCouleur || stockQuantity < 1) {
         toast.error('Choisissez une taille, une couleur et une quantité');
@@ -347,7 +329,7 @@ const Stock = () => {
       fetchStock();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur');
-    }
+    } finally { saveLock.current = false; setSaving(false); }
   };
 
   const detailVariations = showDetailsModal && selectedModeleDetails
@@ -409,6 +391,7 @@ const Stock = () => {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 overflow-x-hidden px-1 animate-fade-in sm:space-y-5 sm:px-3">
+      <AtelierLots onReceived={fetchStock} />
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-teal-700 to-cyan-800 p-4 text-white shadow-xl sm:rounded-3xl sm:p-6">
         <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" />
         <div className="absolute -bottom-24 right-20 h-48 w-48 rounded-full bg-cyan-300/10" />
@@ -440,7 +423,7 @@ const Stock = () => {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800 shadow-lg transition hover:bg-emerald-50 active:scale-[0.98] sm:w-auto"
             >
               <Plus size={18} strokeWidth={3} />
-              Ajouter des pièces
+              Autre entrée de stock
             </button>
           </div>
         </div>
@@ -766,7 +749,7 @@ const Stock = () => {
                       Annuler
                     </button>
                     <button
-                      onClick={handleSaveChanges}
+                      onClick={handleSaveChanges} disabled={saving}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700"
                     >
                       <Save size={15} />
@@ -1190,7 +1173,7 @@ const Stock = () => {
                     </button>
                     <button
                       onClick={handleSubmitVariations}
-                      disabled={!selectedTaille || !selectedCouleur || stockQuantity < 1}
+                      disabled={saving || !selectedTaille || !selectedCouleur || stockQuantity < 1}
                       className="btn btn-success flex items-center justify-center gap-2 !px-3 !py-2.5 text-sm"
                     >
                       <Save size={17} />

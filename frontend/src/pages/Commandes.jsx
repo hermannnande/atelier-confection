@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Search, AlertCircle, Eye, Send, Package, Check, Pencil, Save, X, Ruler, Phone, BellRing, Truck, CalendarCheck } from 'lucide-react';
@@ -132,26 +132,8 @@ const Commandes = () => {
     }
   };
 
-  const envoyerAAtelier = async (commandeId) => {
-    if (!window.confirm('Envoyer cette commande à l\'atelier styliste ?')) {
-      return;
-    }
-
-    setSendingToAtelier(commandeId);
-    try {
-      await api.put(`/commandes/${commandeId}`, {
-        statut: 'en_decoupe'
-      });
-      
-      toast.success('Commande envoyée à l\'atelier styliste ! ✂️');
-      fetchCommandes(); // Recharger la liste
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi');
-      console.error(error);
-    } finally {
-      setSendingToAtelier(null);
-    }
-  };
+  const navigate = useNavigate();
+  const envoyerAAtelier = () => navigate('/modeles-en-attente');
 
   const envoyerEnPreparationColis = async (commandeId) => {
     if (!window.confirm('Envoyer cette commande directement en Préparation Colis ?\n\nMême sans stock disponible, elle sera envoyée. Si le client refuse le colis, la tenue sera automatiquement ajoutée au stock.')) {
@@ -779,10 +761,10 @@ const Commandes = () => {
                         onClick={() => envoyerAAtelier(commande._id)}
                         disabled={assigningCourierId === commandeId || sendingToAtelier === commande._id || sendingToPreparation === commande._id || sendingToReminder === commandeId}
                         className="btn btn-primary btn-sm inline-flex items-center justify-center space-x-1 disabled:opacity-50 text-xs sm:text-sm w-full sm:w-auto"
-                        title="Envoyer à l'atelier styliste"
+                        title="Voir le suivi des pièces à confectionner"
                       >
                         <Send size={14} className="flex-shrink-0" />
-                        <span className="truncate">{sendingToAtelier === commande._id ? 'Envoi...' : 'Atelier'}</span>
+                        <span className="truncate">{sendingToAtelier === commande._id ? 'Envoi...' : 'Suivi atelier'}</span>
                       </button>
                       
                       <button

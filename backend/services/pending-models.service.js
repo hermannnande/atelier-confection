@@ -5,12 +5,13 @@ import { normalizeSize } from './size-normalization.service.js';
 import {
   buildStockSynchronization,
   fetchStockSynchronizationOrders,
+  stockVariationKey,
 } from './stock-synchronization.service.js';
 
 // Seules les colonnes utilisées par le calcul : l'historique donne la date de
 // validation et les pièces déjà réservées en Préparation Colis.
-const SUMMARY_ORDER_COLUMNS = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique';
-const SUMMARY_STOCK_COLUMNS = 'modele, taille, couleur, quantite_principale, quantite_en_livraison, image';
+const SUMMARY_ORDER_COLUMNS = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique, atelier_pieces';
+const SUMMARY_STOCK_COLUMNS = 'id, modele, taille, couleur, quantite_principale, quantite_en_livraison, image, mouvements';
 
 const TRACKED_STATUSES = new Set(['validee']);
 const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
@@ -113,6 +114,9 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
     }
 
     const variation = group.variations.get(variationKey);
+    variation.key = stockVariationKey(order);
+    (variation.pieces ||= []).push({ commandeId: order.sourceOrderId || order.id || order._id,
+      articleKey: order.sourceArticleKey || 'principal', urgence: Boolean(order.urgence) });
     variation.quantite += 1;
     if (order.urgence) variation.urgentes += 1;
     if (isNew) variation.nouveau += 1;
@@ -169,6 +173,9 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
     synchronization.uncoveredOrders,
     { recentAfter: recentVisibilityThreshold(now) },
   );
+  for (const groupe of groupes) for (const variation of groupe.variations) {
+    variation.aVerifier = synchronization.variations.some(v => v.key === variation.key && v.incoherencesPreparation > 0);
+  }
 
   return {
     groupes,
@@ -176,6 +183,8 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
     totalValidees: synchronization.totals.commandesValidees,
     totalCouvertesStock: synchronization.totals.reserveCommandes,
     totalModeles: groupes.length,
+    totalEnCours: synchronization.totals.enCours,
+    totalAVerifier: synchronization.totals.aVerifier,
     recentWindowMinutes: 60,
   };
 }
