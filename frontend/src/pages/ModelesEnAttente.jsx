@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import AtelierLots from '../components/AtelierLots';
+import StockVerificationModal from '../components/StockVerificationModal';
 import { workshopOperation } from '../utils/workshopOperations';
-import { AlertCircle, Package, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
+import { AlertCircle, ClipboardCheck, Package, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCountryStore } from '../store/countryStore';
 import {
@@ -64,6 +65,10 @@ const ModelesEnAttente = () => {
   const [filterMode, setFilterMode] = useState('all');
   const [starting, setStarting] = useState(null);
   const startLock = useRef(false);
+  // Le responsable du stock débloque une tenue « à vérifier » ; le styliste lance la découpe.
+  const canVerifyStock = ['gestionnaire_stock', 'gestionnaire', 'administrateur'].includes(user?.role);
+  const canStartLots = ['styliste', 'gestionnaire', 'administrateur'].includes(user?.role);
+  const [verifying, setVerifying] = useState(null);
 
   const requestRef = useRef(null);
   const timerRef = useRef(null);
@@ -517,7 +522,14 @@ const ModelesEnAttente = () => {
                     <span className="min-w-9 rounded-lg bg-purple-100 px-2 py-1 text-center text-sm font-black text-purple-800">
                       ({variation.quantite})
                     </span>
-                    {['styliste', 'gestionnaire', 'administrateur'].includes(user?.role) && <button
+                    {variation.aVerifier && canVerifyStock ? (
+                      <button
+                        type="button"
+                        onClick={() => setVerifying(variation)}
+                        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-3 font-bold text-white hover:bg-amber-600">
+                        <ClipboardCheck size={18} /> Vérifier le stock
+                      </button>
+                    ) : canStartLots && <button
                       type="button" disabled={!!starting || !!loadError || suivi.stale || variation.aVerifier || !variation.pieces?.length}
                       onClick={() => startLot(variation)}
                       className="min-h-12 w-full rounded-xl bg-purple-700 px-3 py-3 font-bold text-white disabled:opacity-50">
@@ -529,6 +541,24 @@ const ModelesEnAttente = () => {
             </article>
           ))}
         </div>
+      )}
+
+      {verifying && (
+        <StockVerificationModal
+          cle={verifying.key}
+          onClose={() => setVerifying(null)}
+          onDone={() => {
+            const key = verifying.key;
+            setVerifying(null);
+            // Le serveur garde le calcul 4 s : la carte est débloquée tout de suite,
+            // puis la liste est relue avec les quantités vérifiées.
+            setSuivi(previous => ({ ...previous, groupes: previous.groupes.map(g => ({
+              ...g, variations: g.variations.map(v => (v.key === key ? { ...v, aVerifier: false } : v)),
+            })) }));
+            window.clearTimeout(timerRef.current);
+            timerRef.current = window.setTimeout(() => load({ manual: true }), 4500);
+          }}
+        />
       )}
     </div>
   );

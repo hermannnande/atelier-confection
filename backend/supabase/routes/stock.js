@@ -6,11 +6,15 @@ import { mapStock } from '../map.js';
 import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
+  stockVariationKey,
 } from '../../services/stock-synchronization.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
-import { courierContext, buildCourierOffers, courierSynchronizationOrders } from '../../services/courier-stock.service.js';
+import { courierContext, buildCourierOffers, courierSynchronizationOrders, heldPieces } from '../../services/courier-stock.service.js';
 import { assertNoPendingLot } from '../../services/atelier-lots.service.js';
+import {
+  applyStockVerification, assertStockFloor, loadStockVerification,
+} from '../../services/stock-verification.service.js';
 
 const router = express.Router();
 
@@ -65,13 +69,20 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
         livreurId: offer.livreurId, livreurNom: offer.livreurNom,
       };
     }
+    // Tenues refusées gardées par les livreurs : comptées dans le stock, absentes de l'atelier.
+    const livreurs = new Map();
+    for (const piece of heldPieces(context.deliveries, req.country)) {
+      if (piece.statut !== 'disponible') continue;
+      const key = stockVariationKey(piece);
+      livreurs.set(key, (livreurs.get(key) || 0) + 1);
+    }
     const valeurTotale = stock.reduce(
       (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
       0,
     );
 
     return res.json({
-      stock: enrichStockWithSynchronization(stock, synchronization),
+      stock: enrichStockWithSynchronization(stock, synchronization, { livreurs }),
       variations: synchronization.variations,
       couvertureCommandes: synchronization.couvertureCommandes,
       totaux: { ...synchronization.totals, valeurTotale },
@@ -152,6 +163,27 @@ router.get('/stats/resume', authenticate, resolveCountry, authorize('gestionnair
     return res.json({ stats });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors du calcul', error: error.message });
+  }
+});
+
+// Vérification physique d'une variante : colis en préparation, robes chez les
+// livreurs, puis enregistrement du comptage (colis sans robe remis en attente).
+router.get('/verification', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    return res.json(await loadStockVerification(getSupabaseAdmin(), { country: req.country, key: req.query.cle }));
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Erreur lors du chargement de la vérification', error: error.message });
+  }
+});
+
+router.post('/verification', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const result = await applyStockVerification(getSupabaseAdmin(), {
+      country: req.country, userId: req.userId, actorName: req.user?.nom, input: req.body,
+    });
+    return res.json({ message: 'Vérification enregistrée', ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'La vérification n’a pas été enregistrée. Réessayez.', error: error.message });
   }
 });
 
@@ -280,6 +312,9 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire_stock',
       }
       updates.quantite_principale = newQuantity;
       if (newQuantity > existing.quantite_principale) await assertNoPendingLot(supabase, req.country, existing);
+      if (newQuantity < (existing.quantite_principale || 0)) {
+        await assertStockFloor(supabase, { country: req.country, row: existing, nextQuantity: newQuantity });
+      }
       
       // Ajouter mouvement
       const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];
@@ -342,6 +377,7 @@ router.put('/:id/ajuster', authenticate, resolveCountry, authorize('gestionnaire
     if (type === 'sortie') {
       if (quantitePrincipale < q) return res.status(400).json({ message: 'Stock insuffisant' });
       quantitePrincipale -= q;
+      await assertStockFloor(supabase, { country: req.country, row: existing, nextQuantity: quantitePrincipale });
     }
 
     const mouvements = Array.isArray(existing.mouvements) ? existing.mouvements : [];

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import AtelierLots from '../components/AtelierLots';
+import StockVerificationModal from '../components/StockVerificationModal';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
 import { normalizeStockLabel, summarizeStockVariations } from '../utils/stockVariation';
@@ -10,6 +11,7 @@ import {
   Boxes,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   Edit2,
   Eye,
   History,
@@ -28,6 +30,8 @@ const Stock = () => {
   const { user } = useAuthStore();
   const canEditPrices = ['administrateur', 'gestionnaire'].includes(user?.role);
   const canPinModels = ['administrateur', 'gestionnaire', 'gestionnaire_stock'].includes(user?.role);
+  const canVerifyStock = ['administrateur', 'gestionnaire', 'gestionnaire_stock'].includes(user?.role);
+  const [verifyingKey, setVerifyingKey] = useState(null);
   const [stock, setStock] = useState([]);
   const [stockTotals, setStockTotals] = useState({});
   const [modeles, setModeles] = useState([]);
@@ -154,11 +158,13 @@ const Stock = () => {
         quantiteDisponible: 0,
         quantiteLivraison: 0,
         valeurTotal: 0,
+        aVerifier: 0,
         taillesUniques: new Set(),
         couleursUniques: new Set()
       };
     }
     acc[key].variations.push(item);
+    if (item.stockAVerifier) acc[key].aVerifier += 1;
     acc[key].quantiteTotal += item.quantitePrincipale || item.quantite || 0;
     acc[key].quantiteReservee += item.quantiteReservee || 0;
     acc[key].quantiteDisponible += item.quantiteDisponible || 0;
@@ -175,13 +181,15 @@ const Stock = () => {
       taillesUniques: Array.from(item.taillesUniques),
       couleursUniques: Array.from(item.couleursUniques),
       variations: [...item.variations].sort((a, b) => (
-        (b.quantiteReservee || 0) - (a.quantiteReservee || 0)
+        Number(Boolean(b.stockAVerifier)) - Number(Boolean(a.stockAVerifier))
+        || (b.quantiteReservee || 0) - (a.quantiteReservee || 0)
         || (b.quantiteDisponible || 0) - (a.quantiteDisponible || 0)
         || String(a.couleur || '').localeCompare(String(b.couleur || ''), 'fr')
       )),
     }))
     .sort((a, b) => (
       Number(b.epingleStock) - Number(a.epingleStock)
+      || Number(b.aVerifier > 0) - Number(a.aVerifier > 0)
       || Number(b.quantiteReservee > 0) - Number(a.quantiteReservee > 0)
       || Number(b.quantiteDisponible <= 2 && b.quantiteTotal > 0) - Number(a.quantiteDisponible <= 2 && a.quantiteTotal > 0)
       || b.quantiteDisponible - a.quantiteDisponible
@@ -194,6 +202,7 @@ const Stock = () => {
     reserved: allStockGroups.filter(item => item.quantiteReservee > 0).length,
     low: allStockGroups.filter(item => item.quantiteTotal > 0 && item.quantiteDisponible <= 2).length,
     empty: allStockGroups.filter(item => item.quantiteTotal === 0).length,
+    verify: allStockGroups.filter(item => item.aVerifier > 0).length,
   };
   const modelesEnStock = allStockGroups.filter(item => item.quantiteTotal > 0).length;
 
@@ -211,6 +220,7 @@ const Stock = () => {
     if (stockFilter === 'reserved') return item.quantiteReservee > 0;
     if (stockFilter === 'low') return item.quantiteTotal > 0 && item.quantiteDisponible <= 2;
     if (stockFilter === 'empty') return item.quantiteTotal === 0;
+    if (stockFilter === 'verify') return item.aVerifier > 0;
     return true;
   });
 
@@ -357,6 +367,7 @@ const Stock = () => {
       ajustement: 'Ajustement',
       retour: 'Retour',
       transfert: 'Transfert',
+      fusion: 'Fusion',
     };
     const tones = {
       entree: 'bg-emerald-100 text-emerald-800',
@@ -364,18 +375,53 @@ const Stock = () => {
       sortie: 'bg-red-100 text-red-800',
       ajustement: 'bg-amber-100 text-amber-800',
       transfert: 'bg-violet-100 text-violet-800',
+      fusion: 'bg-slate-100 text-slate-700',
     };
+    const verification = movement.source === 'Vérification physique';
     let quantity = `${Number(movement.quantite || 0)}`;
     if (movement.type === 'entree' || movement.type === 'retour') quantity = `+${quantity}`;
     if (movement.type === 'sortie') quantity = `-${quantity}`;
+    if (movement.type === 'fusion') quantity = '—';
     if (movement.type === 'ajustement' && movement.ancienneQuantite !== undefined) {
       quantity = `${movement.ancienneQuantite} → ${movement.nouvelleQuantite ?? movement.quantite}`;
     }
     return {
-      label: labels[movement.type] || movement.type || 'Mouvement',
-      tone: tones[movement.type] || 'bg-gray-100 text-gray-700',
+      label: verification ? 'Vérification' : labels[movement.type] || movement.type || 'Mouvement',
+      tone: verification ? 'bg-teal-100 text-teal-800' : tones[movement.type] || 'bg-gray-100 text-gray-700',
       quantity,
     };
+  };
+
+  // Robes déjà dans des colis ou chez les livreurs : elles font partie du stock,
+  // même si elles ne sont plus sur l'étagère.
+  const variantNotice = (variation, physical) => {
+    const colis = variation.colisPreparation || 0;
+    const livreurs = variation.chezLivreurs || 0;
+    if (!colis && !livreurs) return null;
+    const alert = Boolean(variation.stockAVerifier);
+    return (
+      <div className={`flex flex-col gap-2 rounded-lg px-3 py-2 text-xs font-bold sm:flex-row sm:items-center sm:justify-between ${alert ? 'bg-red-50 text-red-800 ring-1 ring-red-200' : 'bg-indigo-50 text-indigo-800'}`}>
+        <span className="flex items-start gap-1.5">
+          {alert && <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />}
+          <span>
+            {alert
+              ? `${colis} robe(s) réservée(s) à des colis pour ${physical} en stock : à vérifier.`
+              : `Dont ${colis} réservée(s) à des colis en préparation`}
+            {livreurs > 0 && ` · ${livreurs} chez les livreurs`}
+            {editMode && ' — à compter dans le total.'}
+          </span>
+        </span>
+        {canVerifyStock && !editMode && colis > 0 && variation.cle && (
+          <button
+            type="button"
+            onClick={() => setVerifyingKey(variation.cle)}
+            className={`inline-flex flex-shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black text-white ${alert ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+          >
+            <ClipboardCheck size={14} /> Vérifier
+          </button>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -428,7 +474,7 @@ const Stock = () => {
           </div>
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2 text-[10px] font-bold text-white/90 sm:text-xs">
-          <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Physique = pièces présentes</span>
+          <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Physique = étagère + colis en préparation + refus chez les livreurs</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Réservé = commandes en cours</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Disponible = pièces encore libres</span>
         </div>
@@ -488,6 +534,7 @@ const Stock = () => {
               { id: 'reserved', label: 'Réservés', count: filterCounts.reserved },
               { id: 'low', label: 'Faibles', count: filterCounts.low },
               { id: 'empty', label: 'Vides', count: filterCounts.empty },
+              ...(filterCounts.verify > 0 ? [{ id: 'verify', label: 'À vérifier', count: filterCounts.verify }] : []),
             ].map((filter) => (
               <button
                 key={filter.id}
@@ -495,8 +542,8 @@ const Stock = () => {
                 onClick={() => setStockFilter(filter.id)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-black transition-colors sm:text-sm ${
                   stockFilter === filter.id
-                    ? 'bg-emerald-700 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? filter.id === 'verify' ? 'bg-red-600 text-white shadow-sm' : 'bg-emerald-700 text-white shadow-sm'
+                    : filter.id === 'verify' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 {filter.label} ({filter.count})
@@ -528,6 +575,7 @@ const Stock = () => {
               (variation.quantitePrincipale || variation.quantite || 0) > 0
               || (variation.quantiteReservee || 0) > 0
               || (variation.quantiteEnLivraison || 0) > 0
+              || (variation.colisPreparation || 0) > 0
             ));
             const previewVariations = (usefulVariations.length > 0 ? usefulVariations : logicalVariations).slice(0, 4);
             const hiddenCount = logicalVariations.length - previewVariations.length;
@@ -591,6 +639,11 @@ const Stock = () => {
                         </span>
                       )}
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${status.className}`}>{status.label}</span>
+                      {item.aVerifier > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700">
+                          <AlertTriangle size={10} /> {item.aVerifier} à vérifier
+                        </span>
+                      )}
                       <span className="text-[10px] font-bold text-gray-400">{logicalVariations.length} variation(s)</span>
                     </div>
                   </div>
@@ -624,8 +677,9 @@ const Stock = () => {
                   {previewVariations.map((variation) => {
                     const physical = variation.quantitePrincipale || variation.quantite || 0;
                     return (
-                      <div key={variation._id || variation.id || `${variation.taille}-${variation.couleur}`} className="flex items-center gap-2 rounded-lg bg-gray-50 px-2.5 py-2">
+                      <div key={variation._id || variation.id || `${variation.taille}-${variation.couleur}`} className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${variation.stockAVerifier ? 'bg-red-50 ring-1 ring-red-200' : 'bg-gray-50'}`}>
                         <span className="min-w-0 flex-1 truncate text-xs font-bold text-gray-800">
+                          {variation.stockAVerifier && <AlertTriangle size={12} className="mr-1 inline text-red-600" aria-label="À vérifier" />}
                           {variation.couleur} · {variation.taille}
                         </span>
                         <span className="whitespace-nowrap text-[10px] font-bold text-gray-500">
@@ -782,6 +836,7 @@ const Stock = () => {
                   const qty = variation.quantitePrincipale || variation.quantite || 0;
                   const reserved = variation.quantiteReservee || 0;
                   const available = Math.max(qty - reserved, 0);
+                  const notice = variantNotice(variation, qty);
                   return (
                     <div key={variation._id || variation.id || index} className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
                       <div className="flex items-start justify-between gap-2">
@@ -791,10 +846,11 @@ const Stock = () => {
                         </div>
                         <span className="text-xs font-black text-violet-700">{Number(variation.prix || 0).toLocaleString('fr-FR')} F</span>
                       </div>
+                      {notice && <div className="mt-2">{notice}</div>}
                       {editMode ? (
                         <div className={`mt-3 grid gap-2 ${canEditPrices ? 'grid-cols-2' : 'grid-cols-1'}`}>
                           <label className="text-[10px] font-black uppercase text-gray-500">
-                            Quantité physique
+                            Total en stock
                             <input
                               type="number"
                               value={variation.quantitePrincipale}
@@ -856,8 +912,10 @@ const Stock = () => {
                       const qty = variation.quantitePrincipale || variation.quantite || 0;
                       const reserved = variation.quantiteReservee || 0;
                       const available = Math.max(qty - reserved, 0);
+                      const notice = variantNotice(variation, qty);
                       return (
-                        <tr key={variation._id || variation.id || index} className="border-b border-gray-100 hover:bg-emerald-50/40 transition-colors">
+                        <Fragment key={variation._id || variation.id || index}>
+                        <tr className={`transition-colors hover:bg-emerald-50/40 ${notice ? '' : 'border-b border-gray-100'}`}>
                           <td className="px-4 py-3">
                             <span className="badge badge-secondary font-bold">{variation.taille}</span>
                           </td>
@@ -909,6 +967,12 @@ const Stock = () => {
                             )}
                           </td>
                         </tr>
+                        {notice && (
+                          <tr className="border-b border-gray-100">
+                            <td colSpan={7} className="px-4 pb-3">{notice}</td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
@@ -1185,6 +1249,20 @@ const Stock = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {verifyingKey && (
+        <StockVerificationModal
+          cle={verifyingKey}
+          onClose={() => setVerifyingKey(null)}
+          onDone={() => {
+            // Les quantités affichées dans le détail ont changé : on recharge la liste.
+            setVerifyingKey(null);
+            setShowDetailsModal(false);
+            setSelectedModeleDetails(null);
+            fetchStock();
+          }}
+        />
       )}
     </div>
   );

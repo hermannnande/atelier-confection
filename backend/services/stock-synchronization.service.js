@@ -87,7 +87,8 @@ export function orderStockArticleKeys(order) {
 // déjà réservées à son entrée, enregistrées dans l'historique. Envoyée sans
 // pièce, ou avant cet enregistrement (un bilan du stock réajustera ces colis),
 // elle n'absorbe pas les entrées destinées aux commandes validées.
-function preparationHeldArticles(order) {
+// Renvoie aussi la ligne d'entrée en préparation, dont la date sert à la vérification.
+export function preparationReservation(order) {
   const statusEntries = (Array.isArray(order?.historique) ? order.historique : [])
     .filter((entry) => entry?.statut);
   let entry = null;
@@ -95,7 +96,14 @@ function preparationHeldArticles(order) {
     if (statusEntries[index].statut !== PREPARATION_STATUS) break;
     entry = statusEntries[index];
   }
-  return new Set(Array.isArray(entry?.reservationStock) ? entry.reservationStock : []);
+  return {
+    entry,
+    held: new Set(Array.isArray(entry?.reservationStock) ? entry.reservationStock : []),
+  };
+}
+
+function preparationHeldArticles(order) {
+  return preparationReservation(order).held;
 }
 
 export function comparePendingOrders(a, b) {
@@ -152,12 +160,16 @@ export async function fetchStockSynchronizationOrders(supabase, {
 
 export function withWorkshopDispatchHolds(orders, stock) {
   const applied = new Set(stock.flatMap(s => (s.mouvements || []).map(m => m.operation).filter(Boolean)));
+  // Une tenue refusée reprise chez le livreur pour cette même affectation est déjà
+  // retenue (voir courierSynchronizationOrders) : c'est la même robe, une seule fois.
+  const alreadyHeld = new Set(orders.map(o => o.stockMovementOperation).filter(Boolean));
   const holds = orders.filter(o => o.statut === 'en_livraison' && Object.keys(o.atelier_pieces || {}).length)
     .flatMap(o => {
       const operation = [...(o.historique || [])].reverse().find(h => h.statut === 'en_livraison')?.operation;
       return orderStockArticles(o).flatMap((article, index) => {
         const key = stockArticleKey(index);
-        if (o.atelier_pieces[key]?.etat !== 'expedition' || (operation && applied.has(`assignation:${operation}:${key}`))) return [];
+        const movement = `assignation:${operation}:${key}`;
+        if (o.atelier_pieces[key]?.etat !== 'expedition' || (operation && (applied.has(movement) || alreadyHeld.has(movement)))) return [];
         return [{ id: `atelier-expedition:${o.id}:${key}`, atelierSourceId: o.id, ...article,
           statut: 'en_stock', historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] }];
       });
@@ -346,7 +358,12 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
   };
 }
 
-export function enrichStockWithSynchronization(stock = [], synchronization) {
+// « Réservé » reste plafonné au physique pour l'affichage habituel. Les champs
+// de variante (colis préparés, robes chez les livreurs, écart à vérifier) ne
+// sont portés que par la première ligne d'une variante, pour ne pas les
+// compter deux fois quand d'anciennes lignes en double existent encore.
+export function enrichStockWithSynchronization(stock = [], synchronization, { livreurs = new Map() } = {}) {
+  const variantFieldsGiven = new Set();
   const variationsByKey = new Map(
     (synchronization?.variations || []).map((variation) => [variation.key, {
       ...variation,
@@ -360,7 +377,10 @@ export function enrichStockWithSynchronization(stock = [], synchronization) {
   );
 
   return stock.map((item) => {
-    const variation = variationsByKey.get(stockVariationKey(item));
+    const key = stockVariationKey(item);
+    const variation = variationsByKey.get(key);
+    const firstOfVariant = !variantFieldsGiven.has(key);
+    variantFieldsGiven.add(key);
     const physical = asQuantity(
       item?.quantitePrincipale ?? item?.quantite_principale ?? item?.quantite,
     );
@@ -382,11 +402,15 @@ export function enrichStockWithSynchronization(stock = [], synchronization) {
 
     return {
       ...item,
+      cle: key,
       quantiteReservee,
       quantiteReserveeCommandes,
       quantiteReserveePreparation,
       quantiteDisponible: Math.max(physical - quantiteReservee, 0),
       aConfectionner: variation?.aConfectionner || 0,
+      colisPreparation: firstOfVariant ? variation?.reservePreparation || 0 : 0,
+      chezLivreurs: firstOfVariant ? livreurs.get(key) || 0 : 0,
+      stockAVerifier: firstOfVariant && (variation?.incoherencesPreparation || 0) > 0,
     };
   });
 }

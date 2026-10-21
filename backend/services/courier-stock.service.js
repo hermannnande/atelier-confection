@@ -100,6 +100,7 @@ export function courierSynchronizationOrders({ orders, stock, deliveries, countr
   // Une tenue en transfert est déjà prise pour une réattribution : elle reste réservée.
   return [...orders, ...inTransit.map(p => ({ id: `${p.operation}:${p.id}`, pays_code: country,
     statut: 'en_stock', modele: p.modele, couleur: p.couleur, taille: p.taille,
+    stockMovementOperation: p.stockMovementOperation,
     historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] }))];
 }
 
