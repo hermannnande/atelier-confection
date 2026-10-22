@@ -149,39 +149,42 @@ async function editCustody(db, deliveryId, country, edit) {
 
 // Chaque mouvement a un identifiant durable. Une reprise après erreur réseau
 // reconnaît le mouvement déjà effectué au lieu de compter une deuxième pièce.
+// Avec traceSansStock, une sortie impossible (aucune robe comptée) est notée à 0 :
+// la reprise retrouve la même décision et la robe partie ne reste pas retenue.
 export async function moveStockOnce(db, { country, article, operation, commandeId, userId,
-  action, commentaire, protectedQuantity = 0, required = true, debitEnLivraison = true }) {
+  action, commentaire, protectedQuantity = 0, traceSansStock = false, debitEnLivraison = true }) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const matches = (await readCountryRows(db, 'stock', country))
       .filter(row => stockVariationKey(row) === stockVariationKey(article));
-    if (matches.some(row => row.mouvements?.some(m => m.operation === operation))) return true;
+    const done = matches.flatMap(row => row.mouvements || []).find(m => m.operation === operation);
+    if (done) return done.quantite !== 0;
     const total = matches.reduce((n, row) => n + quantity(row.quantite_principale), 0);
     const returning = action === 'retour';
-    if (!returning && total <= protectedQuantity) {
-      if (required) fail('La tenue n’est plus disponible. Actualisez la liste.');
-      return false;
-    }
+    const empty = !returning && total <= protectedQuantity;
+    if (empty && !traceSansStock) return false;
+    const step = empty ? 0 : 1;
     const row = matches.find(r => quantity(returning ? r.quantite_en_livraison : r.quantite_principale) > 0) || matches[0];
-    const movement = { operation, type: returning ? 'retour' : 'transfert', quantite: 1,
+    const movement = { operation, type: returning ? 'retour' : 'transfert', quantite: step,
       source: returning ? 'Stock en livraison' : 'Stock principal',
       destination: returning ? 'Stock principal' : 'Stock en livraison', commande: commandeId,
-      utilisateur: userId, date: new Date().toISOString(), commentaire };
+      utilisateur: userId, date: new Date().toISOString(),
+      commentaire: empty ? 'Robe partie avec le livreur sans sortie de stock : aucune robe n’était comptée (stock à vérifier)' : commentaire };
     if (!row) {
       const { error } = await db.from('stock').insert({ pays_code: country, modele: article.modele,
         taille: normalizeSize(article.taille), couleur: article.couleur, prix: article.prix || 0,
-        image: article.image || null, quantite_principale: 1, quantite_en_livraison: 0, mouvements: [movement] });
-      if (!error) return true;
+        image: article.image || null, quantite_principale: step, quantite_en_livraison: 0, mouvements: [movement] });
+      if (!error) return !empty;
       if (error.code === '23505') continue;
       throw error;
     }
     try {
       await compareAndSet(db, 'stock', row, {
-        quantite_principale: quantity(row.quantite_principale) + (returning ? 1 : -1),
+        quantite_principale: quantity(row.quantite_principale) + (returning ? 1 : -step),
         quantite_en_livraison: returning ? Math.max(quantity(row.quantite_en_livraison) - (debitEnLivraison ? 1 : 0), 0)
-          : quantity(row.quantite_en_livraison) + 1,
+          : quantity(row.quantite_en_livraison) + step,
         mouvements: [...(row.mouvements || []), movement],
       });
-      return true;
+      return !empty;
     } catch (error) { if (!(error instanceof CourierStockError) || attempt === 5) throw error; }
   }
   fail('Stock en cours de modification, réessayez.');
@@ -279,10 +282,19 @@ async function finishAssignment(db, { delivery, order, country, userId }) {
     const protectedQuantity = Math.max((variation?.reservePreparation || 0) + (variation?.reserveAtelier || 0),
       heldPieces(context.deliveries, country)
         .filter(p => stockVariationKey(p) === stockVariationKey(article) && p.operation !== operation.id).length);
+    // Une tenue suivie (reçue de l'atelier ou reprise chez le livreur) est dans les mains
+    // du livreur : elle sort du stock même si le stock la promettait à un autre colis ou à
+    // une autre commande. Celle-ci n'est pas annulée : elle repasse en attente ou « à vérifier ».
+    const reprise = refs.some(r => r.index === index);
+    const suivie = reprise || ['recue', 'expedition'].includes(order.atelier_pieces?.[article.id]?.etat);
+    const comptees = context.stock.filter(row => stockVariationKey(row) === stockVariationKey(article))
+      .reduce((n, row) => n + quantity(row.quantite_principale), 0);
+    const promiseAilleurs = suivie && comptees > 0 && comptees <= protectedQuantity;
     const moved = await moveStockOnce(db, { country, article, operation: `assignation:${operation.id}:${article.id}`,
-      commandeId: order.id, userId, action: 'assigner', protectedQuantity,
-      required: refs.some(r => r.index === index) || ['recue', 'expedition'].includes(order.atelier_pieces?.[article.id]?.etat), commentaire: refs.some(r => r.index === index)
-        ? 'Réattribution d’une tenue refusée, conservée chez le même livreur' : 'Assignation au livreur' });
+      commandeId: order.id, userId, action: 'assigner', protectedQuantity: suivie ? 0 : protectedQuantity,
+      traceSansStock: suivie, commentaire: `${reprise
+        ? 'Réattribution d’une tenue refusée, conservée chez le même livreur' : 'Assignation au livreur'}${promiseAilleurs
+        ? ' — la robe était promise ailleurs dans le stock : vérifier ce modèle' : ''}` });
     const fresh = await readOne(db, 'livraisons', delivery.id, country);
     operation.suivis = { ...fresh.adresse_livraison.stockAffectation.suivis, [article.id]: moved };
     await compareAndSet(db, 'livraisons', fresh, { adresse_livraison: {
@@ -303,6 +315,14 @@ async function finishAssignment(db, { delivery, order, country, userId }) {
     ...fresh.adresse_livraison, stockAffectation: { ...operation, etat: 'terminee' },
   } });
   return { delivery: complete, order, resumed: operation.etat !== 'nouvelle' };
+}
+
+// Le livreur n'est jamais bloqué : une affectation restée « à finaliser » est terminée
+// quand il déclare la livraison, avec les mêmes mouvements que le bouton Finaliser.
+export async function finishPendingAssignment(db, { delivery, country, userId }) {
+  if (delivery.adresse_livraison?.stockAffectation?.etat !== 'nouvelle') return delivery;
+  const order = await readOne(db, 'commandes', delivery.commande_id, country);
+  return (await finishAssignment(db, { delivery, order, country, userId })).delivery;
 }
 
 export async function assignWithCourierStock(db, { commandeId, courierId, country, userId,

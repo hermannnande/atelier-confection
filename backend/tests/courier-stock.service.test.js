@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assignWithCourierStock, buildCourierOffers, compareAndSet, confirmCustody,
-  courierSynchronizationOrders, heldPieces, moveStockOnce, recordRefusal, snapshotArticles,
+  assignWithCourierStock, buildCourierOffers, compareAndSet, confirmCustody, courierSynchronizationOrders,
+  finishPendingAssignment, heldPieces, moveStockOnce, recordRefusal, snapshotArticles,
 } from '../services/courier-stock.service.js';
 import { buildStockSynchronization } from '../services/stock-synchronization.service.js';
 
@@ -66,6 +66,56 @@ class Query {
   }
 }
 const assign = (db, extra = {}) => assignWithCourierStock(db, { commandeId: 'new', courierId: 'driver', country: 'CI', userId: 'admin', direct: true, ...extra });
+// Commande atelier déjà partie avec le livreur, affectation restée « à finaliser ».
+const dispatched = id => order(id, { statut: 'en_livraison', livreur_id: 'driver',
+  atelier_pieces: { principal: { etat: 'expedition', lotId: 'lot' } }, historique: [{ statut: 'en_livraison', operation: `op-${id}` }] });
+const pendingDelivery = id => ({ ...base(`op-${id}`), statut: 'en_cours', commande_id: id, livreur_id: 'driver', adresse_livraison: {
+  articlesExpedies: snapshotArticles(dispatched(id)), stockAffectation: { id: `op-${id}`, etat: 'nouvelle', pieces: [] } } });
+const finish = (db, id) => finishPendingAssignment(db, {
+  delivery: copy(db.tables.livraisons.find(d => d.commande_id === id)), country: 'CI', userId: 'driver' });
+
+test('une robe reçue de l’atelier part avec le livreur même si le stock la promettait ailleurs', async () => {
+  // Une seule robe comptée, et une robe refusée notée chez un autre livreur.
+  const atelier = order('new', { statut: 'en_stock', atelier_pieces: { principal: { etat: 'recue', lotId: 'lot' } },
+    historique: [{ statut: 'en_stock', reservationStock: ['principal'] }] });
+  const db = new Database(context({ orders: [atelier], couriers: [courier(), courier('driver2')],
+    deliveries: [returned('old-delivery', { livreur_id: 'driver2' })] }));
+  const result = await assign(db, { direct: false });
+  assert.equal(result.delivery.adresse_livraison.stockAffectation.etat, 'terminee');
+  assert.equal(result.delivery.adresse_livraison.stockAffectation.suivis.principal, true);
+  assert.deepEqual([db.tables.stock[0].quantite_principale, db.tables.stock[0].quantite_en_livraison], [0, 1]);
+  assert.match(db.tables.stock[0].mouvements[0].commentaire, /promise ailleurs/);
+  // La robe de l'autre livreur n'est ni annulée ni déplacée : seul le stock est à vérifier.
+  assert.equal(db.tables.livraisons[0].adresse_livraison.stockRetour.articles[0].statut, 'disponible');
+});
+
+test('aucune robe comptée : l’affectation se termine sans débit, une seule trace, plus rien de retenu', async () => {
+  const db = new Database(context({ orders: [dispatched('new')], deliveries: [pendingDelivery('new')],
+    stock: [stock('stock', { quantite_principale: 0 })] }));
+  assert.equal(buildStockSynchronization({ orders: db.tables.commandes, stock: db.tables.stock }).totals.reservePreparation, 1);
+  const done = await finish(db, 'new');
+  assert.equal(done.adresse_livraison.stockAffectation.etat, 'terminee');
+  assert.equal(done.adresse_livraison.stockAffectation.suivis.principal, false);
+  assert.deepEqual([db.tables.stock[0].quantite_principale, db.tables.stock[0].quantite_en_livraison], [0, 0]);
+  assert.deepEqual(db.tables.stock[0].mouvements.map(m => [m.operation, m.quantite]), [['assignation:op-new:principal', 0]]);
+  // Une reprise retrouve la même décision, sans deuxième trace.
+  assert.equal(await moveStockOnce(db, { country: 'CI', article: snapshotArticles(dispatched('new'))[0],
+    operation: 'assignation:op-new:principal', commandeId: 'new', action: 'assigner', traceSansStock: true }), false);
+  assert.equal(db.tables.stock[0].mouvements.length, 1);
+  assert.equal(buildStockSynchronization({ orders: db.tables.commandes, stock: db.tables.stock }).totals.reservePreparation, 0);
+  // Livraison déclarée ensuite : déjà finalisée, rien ne bouge.
+  assert.equal((await finish(db, 'new')).adresse_livraison.stockAffectation.etat, 'terminee');
+  assert.equal(db.tables.stock[0].mouvements.length, 1);
+});
+
+test('deux commandes atelier de la même taille parties ensemble ne se bloquent plus', async () => {
+  // Une seule robe comptée pour deux robes remises au livreur : chacune retenait l'autre.
+  const db = new Database(context({ orders: [dispatched('a'), dispatched('b')],
+    deliveries: [pendingDelivery('a'), pendingDelivery('b')] }));
+  for (const id of ['a', 'b']) assert.equal((await finish(db, id)).adresse_livraison.stockAffectation.etat, 'terminee');
+  assert.deepEqual(db.tables.livraisons.map(d => d.adresse_livraison.stockAffectation.suivis.principal), [true, false]);
+  assert.deepEqual([db.tables.stock[0].quantite_principale, db.tables.stock[0].quantite_en_livraison], [0, 1]);
+});
 
 test('a direct empty parcel cannot take a received piece pinned to another order', async () => {
   const db = new Database(context({ deliveries: [], orders: [
