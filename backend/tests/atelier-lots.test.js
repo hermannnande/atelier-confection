@@ -40,6 +40,12 @@ test('supplement lots keep their own identity and the whole order waits for all 
   assert.deepEqual(result.articlesReserves.multi, ['principal']);
   assert.equal(result.uncoveredOrders.length, 0);
 });
+test('starting one piece out of two leaves the other one to start', () => {
+  const result = buildStockSynchronization({ orders: [order('started', 'en_cours'), order('waiting', null)], stock: [] });
+  assert.deepEqual(result.uncoveredOrders.map(o => o.id), ['waiting']);
+  assert.equal(result.totals.enCours, 1);
+  assert.equal(result.totals.aConfectionner, 1);
+});
 test('start rejects duplicate piece references and missing action identifiers', () => {
   const p = { commandeId: randomUUID(), articleKey: 'principal' };
   assert.throws(() => validateStartInput({ operationId: randomUUID(), key, pieces: [p, p] }));
@@ -165,5 +171,18 @@ test('PostgreSQL transactions: partial receipt, retries, rollback, rights and st
     const before=await quantity();
     await call(); await call();
     assert.equal(await quantity(),before+2);
+  });
+  await t.test('one piece out of two can be started now and the other one later',async()=>{
+    const pair=[await createOrder(),await createOrder()];
+    const pending=async()=>buildStockSynchronization({stock:[],
+      orders:(await db.query('select * from commandes where id in ($1,$2)',pair)).rows});
+    assert.equal((await start(randomUUID(),[pair[0]])).quantite,1);
+    let sync=await pending();
+    assert.deepEqual(sync.uncoveredOrders.map(o=>o.id),[pair[1]]);
+    assert.equal(sync.totals.enCours,1);
+    assert.equal((await start(randomUUID(),[pair[1]])).quantite,1);
+    sync=await pending();
+    assert.equal(sync.uncoveredOrders.length,0);
+    assert.equal(sync.totals.enCours,2);
   });
 });

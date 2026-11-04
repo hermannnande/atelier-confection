@@ -4,7 +4,13 @@ import toast from 'react-hot-toast';
 import AtelierLots from '../components/AtelierLots';
 import StockVerificationModal from '../components/StockVerificationModal';
 import { workshopOperation } from '../utils/workshopOperations';
-import { AlertCircle, ClipboardCheck, Package, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
+import {
+  chosenStartCount,
+  piecesToStart,
+  startButtonLabel,
+  startSuccessMessage,
+} from '../utils/workshopStartSelection';
+import { AlertCircle, ClipboardCheck, Minus, Package, Plus, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCountryStore } from '../store/countryStore';
 import {
@@ -50,6 +56,62 @@ const relativeArrival = (value, now) => {
   return `il y a ${elapsedDays} j`;
 };
 
+// Choix du nombre de pièces (− / +) puis bouton « Je commence ».
+const StartPiecesControl = ({ variation, chosen, busy, saving, disabled, onChange, onStart }) => {
+  const available = variation.pieces?.length || 0;
+  const count = chosenStartCount(chosen, available);
+  const stepClass = 'flex h-10 w-10 items-center justify-center rounded-lg bg-white text-purple-700 shadow-sm ring-1 ring-purple-200 transition-colors hover:bg-purple-100 disabled:opacity-40';
+  let label = startButtonLabel(count, available);
+  if (!available) label = `Je commence ces ${variation.quantite} pièce(s)`;
+  if (variation.aVerifier) label = 'Stock à vérifier avec le responsable';
+  if (saving) label = 'Enregistrement…';
+
+  return (
+    <>
+      {available > 1 && !variation.aVerifier && (
+        <div className="flex w-full items-center justify-between gap-2 rounded-xl bg-purple-50 px-3 py-1.5">
+          <span className="text-xs font-bold text-purple-900 sm:text-sm">Pièces que je commence</span>
+          <div
+            className="flex items-center gap-1.5"
+            role="group"
+            aria-label={`Nombre de pièces ${variation.couleur}, taille ${variation.taille}, à commencer`}
+          >
+            <button
+              type="button"
+              onClick={() => onChange(-1)}
+              disabled={busy || count <= 1}
+              aria-label="Une pièce de moins"
+              className={stepClass}
+            >
+              <Minus size={18} strokeWidth={3} />
+            </button>
+            <span className="min-w-[3.25rem] text-center text-base font-black text-purple-900" aria-live="polite">
+              {count} / {available}
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange(1)}
+              disabled={busy || count >= available}
+              aria-label="Une pièce de plus"
+              className={stepClass}
+            >
+              <Plus size={18} strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onStart}
+        className="min-h-12 w-full rounded-xl bg-purple-700 px-3 py-3 font-bold text-white disabled:opacity-50"
+      >
+        {label}
+      </button>
+    </>
+  );
+};
+
 const ModelesEnAttente = () => {
   const { user } = useAuthStore();
   const { currentCountry } = useCountryStore();
@@ -64,6 +126,8 @@ const ModelesEnAttente = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState('all');
   const [starting, setStarting] = useState(null);
+  // Nombre de pièces que le styliste commence, par variation (toutes par défaut).
+  const [startCounts, setStartCounts] = useState({});
   const startLock = useRef(false);
   // Le responsable du stock débloque une tenue « à vérifier » ; le styliste lance la découpe.
   const canVerifyStock = ['gestionnaire_stock', 'gestionnaire', 'administrateur'].includes(user?.role);
@@ -178,19 +242,33 @@ const ModelesEnAttente = () => {
   const totalCouvertesStock = suivi?.totalCouvertesStock || 0;
   const lastRefresh = useMemo(() => new Date(suivi?.serverNow || Date.now()), [suivi]);
   const refreshManually = () => load({ manual: true });
+  const changeStartCount = (variation, delta) => {
+    const available = variation.pieces?.length || 0;
+    setStartCounts(previous => ({
+      ...previous,
+      [variation.key]: chosenStartCount(chosenStartCount(previous[variation.key], available) + delta, available),
+    }));
+  };
   const startLot = async variation => {
-    if (startLock.current || !variation.pieces?.length) return;
+    const pieces = piecesToStart(variation.pieces, startCounts[variation.key]);
+    if (startLock.current || !pieces.length) return;
     startLock.current = true;
     setStarting(variation.key);
     try {
-      const scope = variation.pieces.map(p => `${p.commandeId}:${p.articleKey}`).sort().join(',');
+      const scope = pieces.map(p => `${p.commandeId}:${p.articleKey}`).sort().join(',');
       await api.post('/commandes/modeles-en-attente/lots', {
-        operationId: workshopOperation(`${country}:start:${scope}`), key: variation.key, pieces: variation.pieces,
+        operationId: workshopOperation(`${country}:start:${scope}`), key: variation.key, pieces,
       }, { timeout: 20000 });
-      toast.success('C’est enregistré. Ces pièces restent dans « Mes tenues en cours » jusqu’à leur réception.');
+      toast.success(startSuccessMessage(pieces.length, variation.pieces.length - pieces.length));
       window.dispatchEvent(new Event('atelier-updated'));
+      // Les pièces restantes repartent sur « toutes » pour le prochain clic.
+      setStartCounts(previous => {
+        const next = { ...previous };
+        delete next[variation.key];
+        return next;
+      });
       // Remove the exact displayed work immediately, without waiting for the cached summary.
-      const selected = new Set(variation.pieces.map(p => `${p.commandeId}:${p.articleKey}`));
+      const selected = new Set(pieces.map(p => `${p.commandeId}:${p.articleKey}`));
       setSuivi(previous => ({ ...previous,
         totalCommandes: Math.max(0, previous.totalCommandes - selected.size),
         totalEnCours: (previous.totalEnCours || 0) + selected.size,
@@ -199,7 +277,8 @@ const ModelesEnAttente = () => {
             const pieces = (v.pieces || []).filter(p => !selected.has(`${p.commandeId}:${p.articleKey}`));
             return { ...v, pieces, quantite: pieces.length, urgentes: pieces.filter(p => p.urgence).length };
           }).filter(v => v.quantite > 0);
-          return { ...g, variations, total: variations.reduce((n,v) => n + v.quantite, 0) };
+          return { ...g, variations, total: variations.reduce((n,v) => n + v.quantite, 0),
+            urgentes: variations.reduce((n,v) => n + v.urgentes, 0) };
         }).filter(g => g.variations.length) }));
     } catch (e) {
       toast.error(e.response?.data?.message || 'Action non confirmée. Actualisez : si elle a réussi, les pièces sont déjà en cours.');
@@ -529,12 +608,17 @@ const ModelesEnAttente = () => {
                         className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-3 font-bold text-white hover:bg-amber-600">
                         <ClipboardCheck size={18} /> Vérifier le stock
                       </button>
-                    ) : canStartLots && <button
-                      type="button" disabled={!!starting || !!loadError || suivi.stale || variation.aVerifier || !variation.pieces?.length}
-                      onClick={() => startLot(variation)}
-                      className="min-h-12 w-full rounded-xl bg-purple-700 px-3 py-3 font-bold text-white disabled:opacity-50">
-                      {variation.aVerifier ? 'Stock à vérifier avec le responsable' : starting === variation.key ? 'Enregistrement…' : `Je commence ces ${variation.pieces?.length || variation.quantite} pièce(s)`}
-                    </button>}
+                    ) : canStartLots && (
+                      <StartPiecesControl
+                        variation={variation}
+                        chosen={startCounts[variation.key]}
+                        busy={!!starting}
+                        saving={starting === variation.key}
+                        disabled={!!starting || !!loadError || suivi.stale || variation.aVerifier || !variation.pieces?.length}
+                        onChange={delta => changeStartCount(variation, delta)}
+                        onStart={() => startLot(variation)}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
