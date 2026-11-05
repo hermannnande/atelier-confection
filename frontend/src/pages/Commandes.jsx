@@ -8,6 +8,7 @@ import { formatOrderValidationDate, getOrderValidatedAt, isValidatedForAtLeastDa
 import { isConfirmedAfterReminder } from '../utils/orderReminderHighlight';
 import OrderSupplementTags from '../components/OrderSupplementTags';
 import { normalizeSize as canonicalSize } from '../utils/sizeNormalization';
+import { orderMatchesSearch } from '../utils/orderSearch';
 
 const MARKED_CARD_CLASS = '!bg-amber-50 !border-amber-300';
 const REMINDER_CONFIRMED_CARD_CLASS = '!bg-orange-100 !border-orange-500 ring-2 ring-orange-200 shadow-orange-200/60';
@@ -367,10 +368,7 @@ const Commandes = () => {
   };
 
   const filteredCommandes = commandes.filter((commande) => {
-    const matchSearch =
-      commande.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commande.client.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commande.modele.nom.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = orderMatchesSearch(commande, searchTerm);
     const matchTaille = !filterTaille || normalizeSize(commande.taille) === filterTaille;
     const matchModele = !filterModele || normalizeModel(commande) === filterModele;
     return matchSearch && matchTaille && matchModele && matchesStockFilter(commande);
