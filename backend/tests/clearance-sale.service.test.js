@@ -17,7 +17,7 @@ const MODELES = [
   { id: 'n', nom: 'DAVICHI ROYALE', categorie: 'Robe', actif: true, prix_base: 15000, image: 'n.webp' },
 ];
 const variation = (modele, couleur, taille, quantiteDisponible) => ({
-  key: `${modele}::${couleur}::${taille}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''),
+  key: `${modele}::${couleur}::${taille}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
   couleur, taille, quantiteDisponible,
 });
 const VARIATIONS = [

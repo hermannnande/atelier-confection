@@ -1,17 +1,12 @@
 import { stockVariationKey } from './stock-synchronization.service.js';
 
-// Modèles « Vente de déstockage », repérés par leur catégorie. Leur stock vit dans la
-// même table que le stock normal, pour suivre le même parcours (réservation, préparation,
-// livreur, retour), mais il a sa propre page et ne part jamais à l'atelier.
-export const CLEARANCE_CATEGORY = 'Déstockage';
+// Modèles « Vente de déstockage », repérés par la fin de leur nom (« DAVICHI ROYALE Déstockage »),
+// car la base n'accepte qu'une liste fixe de catégories. Leur stock vit dans la même table que
+// le stock normal, pour suivre le même parcours (réservation, préparation, livreur, retour),
+// mais il a sa propre page et ne part jamais à l'atelier.
+const CLEARANCE_NAME = /\sd[ée]stockage\s*$/i;
 
-const plain = (value) => String(value ?? '')
-  .normalize('NFD')
-  .replace(/[̀-ͯ]/g, '')
-  .toLocaleLowerCase('fr')
-  .trim();
-
-export const isClearanceModel = (modele) => plain(modele?.categorie) === plain(CLEARANCE_CATEGORY);
+export const isClearanceModel = (modele) => CLEARANCE_NAME.test(String(modele?.nom ?? ''));
 
 // Le stock compare les noms de modèles sans accents, majuscules ni ponctuation.
 export const stockModelKey = (nom) => stockVariationKey({ modele: nom }).split('::')[0];
@@ -21,7 +16,7 @@ export function clearanceModelKeys(modeles = []) {
 }
 
 export async function loadClearanceModelKeys(db, { signal } = {}) {
-  let query = db.from('modeles').select('nom, categorie');
+  let query = db.from('modeles').select('nom');
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
@@ -38,7 +33,7 @@ export function belongsToRayon(modelKey, rayon, clearanceKeys) {
 }
 
 export async function readModelsAndStockNames(db) {
-  const { data: modeles, error } = await db.from('modeles').select('id, nom, categorie');
+  const { data: modeles, error } = await db.from('modeles').select('id, nom');
   if (error) throw error;
   const stockNames = [];
   for (let offset = 0; ; offset += 1000) {
@@ -53,9 +48,9 @@ export async function readModelsAndStockNames(db) {
 
 // Le stock normal et le déstockage ne doivent jamais se mélanger : le système retrouve
 // les pièces par nom de modèle, couleur et taille. Renvoie le message d'erreur, ou null.
-export function clearanceNameProblem({ modeles = [], stockNames = [], nom, categorie, actuel = null }) {
+export function clearanceNameProblem({ modeles = [], stockNames = [], nom, actuel = null }) {
   const key = stockModelKey(nom);
-  const clearance = isClearanceModel({ categorie });
+  const clearance = isClearanceModel({ nom });
   const hasStockNamed = (modelKey) => stockNames.some((name) => stockModelKey(name) === modelKey);
 
   const autre = modeles.find((modele) => (
@@ -64,12 +59,12 @@ export function clearanceNameProblem({ modeles = [], stockNames = [], nom, categ
     && (clearance || isClearanceModel(modele))
   ));
   if (autre) {
-    return `Le modèle « ${autre.nom} » porte déjà ce nom. Pour ne pas mélanger les stocks, choisissez un nom différent, par exemple « ${nom} Déstockage ».`;
+    return `Le modèle « ${autre.nom} » porte déjà ce nom. Pour ne pas mélanger les stocks, choisissez un nom différent.`;
   }
 
   const memeNom = actuel && stockModelKey(actuel.nom) === key;
   if (clearance && !memeNom && hasStockNamed(key)) {
-    return `Du stock normal existe déjà sous le nom « ${nom} ». Choisissez un nom différent, par exemple « ${nom} Déstockage ».`;
+    return `Du stock existe déjà sous le nom « ${nom} ». Choisissez un nom différent.`;
   }
 
   if (actuel && hasStockNamed(stockModelKey(actuel.nom))) {

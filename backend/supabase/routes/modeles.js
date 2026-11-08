@@ -121,7 +121,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Un modèle avec ce nom existe déjà' });
     }
     
-    const probleme = clearanceNameProblem({ ...(await readModelsAndStockNames(supabase)), nom, categorie });
+    const probleme = clearanceNameProblem({ ...(await readModelsAndStockNames(supabase)), nom });
     if (probleme) return res.status(409).json({ message: probleme });
 
     const { data, error } = await supabase
@@ -188,7 +188,6 @@ router.put('/:id', async (req, res) => {
       const probleme = clearanceNameProblem({
         ...(await readModelsAndStockNames(supabase)),
         nom: nom ?? actuel.nom,
-        categorie: categorie ?? actuel.categorie,
         actuel,
       });
       if (probleme) return res.status(409).json({ message: probleme });

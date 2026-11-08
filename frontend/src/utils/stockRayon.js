@@ -1,10 +1,6 @@
-// Un modèle « Vente de déstockage » est repéré par sa catégorie, comme côté serveur.
-export const CATEGORIE_DESTOCKAGE = 'Déstockage';
+// Un modèle « Vente de déstockage » est repéré par la fin de son nom, comme côté serveur.
+const NOM_DESTOCKAGE = /\sd[ée]stockage\s*$/i;
 
-const sansAccent = (value) => String(value ?? '')
-  .normalize('NFD')
-  .replace(/[̀-ͯ]/g, '')
-  .toLocaleLowerCase('fr')
-  .trim();
-
-export const isModeleDestockage = (modele) => sansAccent(modele?.categorie) === sansAccent(CATEGORIE_DESTOCKAGE);
+export const isModeleDestockage = (modele) => NOM_DESTOCKAGE.test(String(modele?.nom ?? ''));
+export const nomSansDestockage = (nom) => String(nom ?? '').replace(NOM_DESTOCKAGE, '').trim();
+export const nomDestockage = (nom) => `${nomSansDestockage(nom)} Déstockage`;

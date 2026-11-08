@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Package, Plus, Search, Edit2, Trash2, Eye, X, Save, Image as ImageIcon } from 'lucide-react';
-import { CATEGORIE_DESTOCKAGE, isModeleDestockage } from '../utils/stockRayon';
+import { isModeleDestockage, nomDestockage, nomSansDestockage } from '../utils/stockRayon';
 
 const TYPES_MODELE = [
   { id: 'normal', titre: 'Stock normal', texte: 'Page Stock. S’il manque des pièces, la commande part à l’atelier.' },
@@ -47,7 +47,7 @@ const Modeles = () => {
     
     try {
       const { typeStock, ...champs } = formData;
-      const payload = { ...champs, categorie: typeStock === 'destockage' ? CATEGORIE_DESTOCKAGE : champs.categorie };
+      const payload = { ...champs, nom: typeStock === 'destockage' ? nomDestockage(champs.nom) : nomSansDestockage(champs.nom) };
       if (editingModele) {
         await api.put(`/modeles/${editingModele.id || editingModele._id}`, payload);
         toast.success('Modèle modifié avec succès !');
@@ -68,11 +68,11 @@ const Modeles = () => {
   const handleEdit = (modele) => {
     setEditingModele(modele);
     setFormData({
-      nom: modele.nom,
+      nom: nomSansDestockage(modele.nom),
       description: modele.description || '',
       image: modele.image || '',
       prixBase: modele.prixBase || modele.prix_base || '',
-      categorie: isModeleDestockage(modele) ? 'Robe' : (modele.categorie || 'Robe'),
+      categorie: modele.categorie || 'Robe',
       typeStock: isModeleDestockage(modele) ? 'destockage' : 'normal'
     });
     setShowModal(true);
@@ -215,8 +215,9 @@ const Modeles = () => {
                   <ImageIcon className="text-gray-400" size={48} />
                 </div>
               )}
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
                 <span className="badge badge-primary">{modele.categorie}</span>
+                {isModeleDestockage(modele) && <span className="badge badge-warning">Déstockage</span>}
               </div>
             </div>
 
@@ -321,8 +322,10 @@ const Modeles = () => {
                     className="input focus-ring"
                     placeholder="Ex: Robe Africaine"
                   />
+                  {formData.typeStock === 'destockage' && (
+                    <p className="mt-1 text-xs text-gray-500">« Déstockage » sera ajouté à la fin du nom, pour que ses pièces restent séparées du stock normal.</p>
+                  )}
                 </div>
-                {formData.typeStock !== 'destockage' && (
                 <div>
                   <label className="label">Catégorie *</label>
                   <select
@@ -336,7 +339,6 @@ const Modeles = () => {
                     ))}
                   </select>
                 </div>
-                )}
               </div>
 
               {/* Description */}

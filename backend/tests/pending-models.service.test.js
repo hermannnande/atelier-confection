@@ -199,10 +199,10 @@ test('une base injoignable ou trop lente donne une erreur 503 à retenter', asyn
 test('une commande de déstockage sans pièce n’arrive pas dans Modèles en attente', async () => {
   const supabase = fakeSupabase({
     commandes: [
-      commandeDavichi('solde', 'validee', { modele: { nom: 'Lot Solde' } }),
+      commandeDavichi('solde', 'validee', { modele: { nom: 'Lot Solde Déstockage' } }),
       commandeDavichi('normale', 'validee'),
     ],
-    modeles: [{ nom: 'Lot Solde', categorie: 'Déstockage' }, { nom: 'DAVICHI', categorie: 'Robe' }],
+    modeles: [{ nom: 'Lot Solde Déstockage' }, { nom: 'DAVICHI' }],
   });
   const summary = await loadPendingModelsSummary(supabase, { country: 'CI' });
   assert.deepEqual(summary.groupes.map((groupe) => groupe.nom), ['DAVICHI']);

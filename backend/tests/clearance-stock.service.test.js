@@ -15,25 +15,23 @@ const validee = (id, modele, couleur = 'Noir', taille = 'M') => ({
 });
 const piece = (modele, quantite, couleur = 'Noir', taille = 'M') => ({ modele, couleur, taille, quantite_principale: quantite });
 
-test('une tenue de déstockage est reconnue à sa catégorie, sans tenir compte des accents', () => {
-  assert.equal(isClearanceModel({ categorie: 'Déstockage' }), true);
-  assert.equal(isClearanceModel({ categorie: 'destockage ' }), true);
-  assert.equal(isClearanceModel({ categorie: 'Robe' }), false);
+test('une tenue de déstockage est reconnue à la fin de son nom, sans tenir compte des accents', () => {
+  assert.equal(isClearanceModel({ nom: 'ROBE AMINA Déstockage' }), true);
+  assert.equal(isClearanceModel({ nom: 'Robe Volante destockage ' }), true);
+  assert.equal(isClearanceModel({ nom: 'ROBE AMINA', categorie: 'Robe' }), false);
   assert.equal(isClearanceModel({}), false);
-  assert.deepEqual([...clearanceModelKeys([
-    { nom: 'Robe Été', categorie: 'Déstockage' }, { nom: 'ROBE AMINA', categorie: 'Robe' },
-  ])], ['robe ete']);
+  assert.deepEqual([...clearanceModelKeys([{ nom: 'Robe Été Déstockage' }, { nom: 'ROBE AMINA' }])], ['robe ete destockage']);
 });
 
 test('sans pièce, une commande de déstockage ne part pas à l’atelier ; une tenue normale, si', () => {
-  const sansConfection = clearanceModelKeys([{ nom: 'Lot Solde', categorie: 'Déstockage' }]);
+  const sansConfection = clearanceModelKeys([{ nom: 'Lot Déstockage' }]);
   const sync = buildStockSynchronization({
-    orders: [validee('a', 'Lot Solde'), validee('b', 'Lot Solde'), validee('c', 'ROBE AMINA')],
-    stock: [piece('Lot Solde', 1)],
+    orders: [validee('a', 'Lot Déstockage'), validee('b', 'Lot Déstockage'), validee('c', 'ROBE AMINA')],
+    stock: [piece('Lot Déstockage', 1)],
     sansConfection,
   });
   assert.deepEqual(sync.uncoveredOrders.map((order) => order.id), ['c']);
-  const solde = sync.variations.find((variation) => variation.modele === 'Lot Solde');
+  const solde = sync.variations.find((variation) => variation.modele === 'Lot Déstockage');
   assert.equal(solde.aConfectionner, 0);
   assert.equal(solde.reserveCommandes, 1);
   assert.equal(sync.couvertureCommandes.a.couvertParStock, true);
@@ -51,10 +49,10 @@ test('sans liste de déstockage, le calcul du stock ne change pas', () => {
 });
 
 test('les totaux d’un rayon additionnent seulement ses variations', () => {
-  const sansConfection = clearanceModelKeys([{ nom: 'Lot Solde', categorie: 'Déstockage' }]);
+  const sansConfection = clearanceModelKeys([{ nom: 'Lot Déstockage' }]);
   const sync = buildStockSynchronization({
-    orders: [validee('a', 'Lot Solde')],
-    stock: [piece('Lot Solde', 3), piece('ROBE AMINA', 5)],
+    orders: [validee('a', 'Lot Déstockage')],
+    stock: [piece('Lot Déstockage', 3), piece('ROBE AMINA', 5)],
     sansConfection,
   });
   const inRayon = (rayon) => sync.variations.filter((v) => belongsToRayon(v.key.split('::')[0], rayon, sansConfection));
@@ -71,37 +69,34 @@ test('seuls les rayons connus sont acceptés', () => {
   assert.equal(parseStockRayon(undefined), null);
 });
 
-test('un modèle de déstockage ne peut pas porter le nom d’un modèle normal ni de son stock', () => {
-  const modeles = [{ id: '1', nom: 'ROBE AMINA', categorie: 'Robe' }];
-  assert.match(clearanceNameProblem({ modeles, nom: 'Robe Amina', categorie: 'Déstockage' }), /ROBE AMINA/);
-  assert.match(clearanceNameProblem({ stockNames: ['Vieille Robe'], nom: 'VIEILLE ROBE', categorie: 'Déstockage' }), /stock normal/);
-  assert.equal(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA Déstockage', categorie: 'Déstockage' }), null);
+test('un modèle de déstockage ne peut pas reprendre un nom déjà présent dans le stock', () => {
+  assert.match(clearanceNameProblem({ stockNames: ['Vieille Robe Déstockage'], nom: 'VIEILLE ROBE DESTOCKAGE' }), /Du stock existe/);
+  assert.equal(clearanceNameProblem({ modeles: [{ id: '1', nom: 'ROBE AMINA' }], stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA Déstockage' }), null);
 });
 
 test('un modèle normal ne peut pas reprendre le nom d’un modèle de déstockage', () => {
-  const modeles = [{ id: '1', nom: 'Lot Solde', categorie: 'Déstockage' }];
-  assert.match(clearanceNameProblem({ modeles, nom: 'LOT SOLDE', categorie: 'Robe' }), /Lot Solde/);
+  const modeles = [{ id: '1', nom: 'Lot Déstockage' }];
+  assert.match(clearanceNameProblem({ modeles, nom: 'LOT DESTOCKAGE' }), /Lot Déstockage/);
 });
 
 test('les règles existantes entre modèles normaux ne changent pas', () => {
-  const modeles = [{ id: '1', nom: 'ROBE AMINA', categorie: 'Robe' }];
-  assert.equal(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'Robe Amina', categorie: 'Robe' }), null);
-  const actuel = modeles[0];
-  assert.equal(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA 2', categorie: 'Robe', actuel }), null);
+  const modeles = [{ id: '1', nom: 'ROBE AMINA' }];
+  assert.equal(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'Robe Amina' }), null);
+  assert.equal(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA 2', actuel: modeles[0] }), null);
 });
 
 test('un modèle qui a déjà du stock ne change plus de type', () => {
-  const normal = { id: '1', nom: 'ROBE AMINA', categorie: 'Robe' };
-  const solde = { id: '2', nom: 'Lot Solde', categorie: 'Déstockage' };
+  const normal = { id: '1', nom: 'ROBE AMINA' };
+  const solde = { id: '2', nom: 'Lot Déstockage' };
   const modeles = [normal, solde];
-  assert.match(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA', categorie: 'Déstockage', actuel: normal }), /changer de type/);
-  assert.match(clearanceNameProblem({ modeles, stockNames: ['Lot Solde'], nom: 'Lot Solde', categorie: 'Robe', actuel: solde }), /changer de type/);
-  assert.equal(clearanceNameProblem({ modeles, nom: 'Lot Solde', categorie: 'Robe', actuel: solde }), null);
+  assert.match(clearanceNameProblem({ modeles, stockNames: ['ROBE AMINA'], nom: 'ROBE AMINA Déstockage', actuel: normal }), /changer de type/);
+  assert.match(clearanceNameProblem({ modeles, stockNames: ['Lot Déstockage'], nom: 'Lot', actuel: solde }), /changer de type/);
+  assert.equal(clearanceNameProblem({ modeles, nom: 'Lot', actuel: solde }), null);
 });
 
 test('un modèle de déstockage garde son nom dès qu’il a du stock, mais reste modifiable', () => {
-  const solde = { id: '2', nom: 'Lot Solde', categorie: 'Déstockage' };
-  assert.match(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Solde'], nom: 'Autre Nom', categorie: 'Déstockage', actuel: solde }), /son nom/);
-  assert.equal(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Solde'], nom: 'Lot Solde', categorie: 'Déstockage', actuel: solde }), null);
-  assert.equal(stockModelKey('Lot-Solde'), stockModelKey('lot solde'));
+  const solde = { id: '2', nom: 'Lot Déstockage' };
+  assert.match(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Déstockage'], nom: 'Autre Déstockage', actuel: solde }), /son nom/);
+  assert.equal(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Déstockage'], nom: 'Lot Déstockage', actuel: solde }), null);
+  assert.equal(stockModelKey('Lot-Déstockage'), stockModelKey('lot destockage'));
 });
