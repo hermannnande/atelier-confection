@@ -7,6 +7,7 @@ import {
   fetchStockSynchronizationOrders,
   stockVariationKey,
 } from './stock-synchronization.service.js';
+import { loadClearanceModelKeys } from './clearance-stock.service.js';
 
 // Seules les colonnes utilisées par le calcul : l'historique donne la date de
 // validation et les pièces déjà réservées en Préparation Colis.
@@ -153,9 +154,10 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
     .eq('pays_code', country);
   if (signal) stockQuery = stockQuery.abortSignal(signal);
 
-  const [ordersResult, stockResult] = await Promise.all([
+  const [ordersResult, stockResult, clearance] = await Promise.all([
     fetchStockSynchronizationOrders(supabase, { country, select: SUMMARY_ORDER_COLUMNS, signal }),
     stockQuery,
+    loadClearanceModelKeys(supabase, { signal }).then((keys) => ({ keys }), (error) => ({ error })),
   ]);
 
   if (ordersResult.error) {
@@ -164,10 +166,14 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
   if (stockResult.error) {
     throw summaryReadError('Erreur lors du chargement du stock', stockResult.error);
   }
+  if (clearance.error) {
+    throw summaryReadError('Erreur lors du chargement des modèles', clearance.error);
+  }
 
   const synchronization = buildStockSynchronization({
     orders: ordersResult.data || [],
     stock: stockResult.data || [],
+    sansConfection: clearance.keys,
   });
   const groupes = groupPendingModels(
     synchronization.uncoveredOrders,

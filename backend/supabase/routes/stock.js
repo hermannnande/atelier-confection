@@ -7,7 +7,11 @@ import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
   stockVariationKey,
+  sumVariationTotals,
 } from '../../services/stock-synchronization.service.js';
+import {
+  belongsToRayon, loadClearanceModelKeys, parseStockRayon, stockModelKey,
+} from '../../services/clearance-stock.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 import { courierContext, buildCourierOffers, courierSynchronizationOrders, heldPieces } from '../../services/courier-stock.service.js';
@@ -57,11 +61,17 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
 router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
-    const context = await courierContext(supabase, req.country);
+    // ?rayon=normal ou destockage : la page Stock et la page Déstockage ; sans rayon, tout le stock.
+    const rayon = parseStockRayon(req.query.rayon);
+    const [context, clearanceKeys] = await Promise.all([
+      courierContext(supabase, req.country),
+      loadClearanceModelKeys(supabase),
+    ]);
     const stock = context.stock.map(mapStock);
     const synchronization = buildStockSynchronization({
       orders: courierSynchronizationOrders(context),
       stock,
+      sansConfection: clearanceKeys,
     });
     const offers = buildCourierOffers(context);
     for (const [id, offer] of Object.entries(offers)) {
@@ -76,16 +86,19 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
       const key = stockVariationKey(piece);
       livreurs.set(key, (livreurs.get(key) || 0) + 1);
     }
-    const valeurTotale = stock.reduce(
+    const rayonStock = stock.filter((item) => belongsToRayon(stockModelKey(item.modele), rayon, clearanceKeys));
+    const variations = synchronization.variations
+      .filter((variation) => belongsToRayon(variation.key.split('::')[0], rayon, clearanceKeys));
+    const valeurTotale = rayonStock.reduce(
       (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
       0,
     );
 
     return res.json({
-      stock: enrichStockWithSynchronization(stock, synchronization, { livreurs }),
-      variations: synchronization.variations,
+      stock: enrichStockWithSynchronization(rayonStock, synchronization, { livreurs }),
+      variations,
       couvertureCommandes: synchronization.couvertureCommandes,
-      totaux: { ...synchronization.totals, valeurTotale },
+      totaux: { ...(rayon ? sumVariationTotals(variations) : synchronization.totals), valeurTotale },
     });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur lors de la synchronisation du stock', error: error.message });
@@ -95,6 +108,8 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
 router.get('/historique', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
+    const rayon = parseStockRayon(req.query.rayon);
+    const clearanceKeys = rayon ? await loadClearanceModelKeys(supabase) : new Set();
     const { data: rows, error } = await supabase
       .from('stock')
       .select('id, modele, taille, couleur, mouvements')
@@ -102,7 +117,9 @@ router.get('/historique', authenticate, resolveCountry, authorize('gestionnaire_
 
     if (error) return res.status(500).json({ message: "Erreur lors du chargement de l'historique", error: error.message });
 
-    const rawMovements = (rows || []).flatMap((item) => (
+    const rawMovements = (rows || [])
+      .filter((item) => belongsToRayon(stockModelKey(item.modele), rayon, clearanceKeys))
+      .flatMap((item) => (
       (Array.isArray(item.mouvements) ? item.mouvements : []).map((movement, index) => ({
         ...movement,
         id: `${item.id}-${index}`,

@@ -6,6 +6,7 @@ import StockVerificationModal from '../components/StockVerificationModal';
 import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
 import { normalizeStockLabel, summarizeStockVariations } from '../utils/stockVariation';
+import { isModeleDestockage } from '../utils/stockRayon';
 import {
   AlertTriangle,
   Boxes,
@@ -26,7 +27,9 @@ import {
   X,
 } from 'lucide-react';
 
-const Stock = () => {
+// La page Déstockage réutilise cette page avec rayon="destockage".
+const Stock = ({ rayon = 'normal' }) => {
+  const destockage = rayon === 'destockage';
   const { user } = useAuthStore();
   const canEditPrices = ['administrateur', 'gestionnaire'].includes(user?.role);
   const canPinModels = ['administrateur', 'gestionnaire', 'gestionnaire_stock'].includes(user?.role);
@@ -95,7 +98,7 @@ const Stock = () => {
 
   const fetchStock = async () => {
     try {
-      const response = await api.get('/stock/suivi-commandes');
+      const response = await api.get('/stock/suivi-commandes', { params: { rayon } });
       setStock(response.data.stock || []);
       setStockTotals(response.data.totaux || {});
     } catch (error) {
@@ -118,7 +121,7 @@ const Stock = () => {
   const fetchHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await api.get('/stock/historique');
+      const response = await api.get('/stock/historique', { params: { rayon } });
       setHistory(response.data.mouvements || []);
     } catch (error) {
       toast.error("Erreur lors du chargement de l'historique");
@@ -437,8 +440,8 @@ const Stock = () => {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 overflow-x-hidden px-1 animate-fade-in sm:space-y-5 sm:px-3">
-      <AtelierLots onReceived={fetchStock} />
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-teal-700 to-cyan-800 p-4 text-white shadow-xl sm:rounded-3xl sm:p-6">
+      {!destockage && <AtelierLots onReceived={fetchStock} />}
+      <section className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${destockage ? 'from-rose-700 via-orange-600 to-amber-600' : 'from-emerald-700 via-teal-700 to-cyan-800'} p-4 text-white shadow-xl sm:rounded-3xl sm:p-6`}>
         <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10" />
         <div className="absolute -bottom-24 right-20 h-48 w-48 rounded-full bg-cyan-300/10" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -448,7 +451,7 @@ const Stock = () => {
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100">Inventaire synchronisé</p>
-              <h1 className="truncate text-2xl font-black sm:text-3xl">Gestion du stock</h1>
+              <h1 className="truncate text-2xl font-black sm:text-3xl">{destockage ? 'Déstockage' : 'Gestion du stock'}</h1>
               <p className="mt-0.5 text-xs text-emerald-50/90 sm:text-sm">
                 {allStockGroups.length} modèles · mise à jour avec les commandes en cours
               </p>
@@ -469,7 +472,7 @@ const Stock = () => {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800 shadow-lg transition hover:bg-emerald-50 active:scale-[0.98] sm:w-auto"
             >
               <Plus size={18} strokeWidth={3} />
-              Autre entrée de stock
+              {destockage ? 'Ajouter des pièces' : 'Autre entrée de stock'}
             </button>
           </div>
         </div>
@@ -477,6 +480,7 @@ const Stock = () => {
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Physique = étagère + colis en préparation + refus chez les livreurs</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Réservé = commandes en cours</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Disponible = pièces encore libres</span>
+          {destockage && <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Pas de confection : seules les pièces existantes sont vendues</span>}
         </div>
       </section>
 
@@ -564,8 +568,12 @@ const Stock = () => {
       {stockGroupe.length === 0 ? (
         <section className="rounded-2xl bg-white px-4 py-12 text-center shadow-sm ring-1 ring-gray-200/80">
           <PackageOpen className="mx-auto text-gray-300" size={46} />
-          <h2 className="mt-3 text-lg font-black text-gray-900">Aucun modèle trouvé</h2>
-          <p className="mt-1 text-sm text-gray-500">Modifiez la recherche ou choisissez un autre filtre.</p>
+          <h2 className="mt-3 text-lg font-black text-gray-900">{destockage && allStockGroups.length === 0 ? 'Aucune tenue de déstockage pour l’instant' : 'Aucun modèle trouvé'}</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {destockage && allStockGroups.length === 0
+              ? 'Créez un modèle « Vente de déstockage » dans la Bibliothèque de modèles, puis ajoutez ses pièces ici.'
+              : 'Modifiez la recherche ou choisissez un autre filtre.'}
+          </p>
         </section>
       ) : (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
@@ -1066,7 +1074,7 @@ const Stock = () => {
           <div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-gray-50 shadow-2xl animate-scale-in">
             <div className="sticky top-0 z-10 flex items-center justify-between bg-gradient-to-r from-emerald-700 to-teal-700 px-4 py-3 sm:px-5 sm:py-4">
               <h2 className="text-lg font-black text-white sm:text-xl">
-                Ajouter au Stock
+                {destockage ? 'Ajouter au déstockage' : 'Ajouter au Stock'}
               </h2>
               <button
                 onClick={() => {
@@ -1101,9 +1109,15 @@ const Stock = () => {
                       placeholder="Rechercher dans le catalogue…"
                     />
                   </div>
+                  {destockage && !modeles.some((m) => m.actif !== false && isModeleDestockage(m)) && (
+                    <p className="rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-900">
+                      Aucun modèle de déstockage. Créez-en un dans la Bibliothèque de modèles en choisissant « Vente de déstockage ».
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {modeles
                       .filter(m => m.actif !== false)
+                      .filter(m => isModeleDestockage(m) === destockage)
                       .filter(m => !modelSearchTerm.trim() || m.nom?.toLocaleLowerCase('fr').includes(modelSearchTerm.trim().toLocaleLowerCase('fr')))
                       .map((modele) => (
                       <button

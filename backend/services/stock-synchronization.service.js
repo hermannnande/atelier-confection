@@ -177,7 +177,33 @@ export function withWorkshopDispatchHolds(orders, stock) {
   return [...orders, ...holds];
 }
 
-export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
+export function sumVariationTotals(variations = []) {
+  return variations.reduce((acc, variation) => ({
+    stockPhysique: acc.stockPhysique + variation.stockPhysique,
+    enLivraison: acc.enLivraison + variation.enLivraison,
+    quantiteReservee: acc.quantiteReservee + variation.quantiteReservee,
+    reserveCommandes: acc.reserveCommandes + variation.reserveCommandes,
+    reservePreparation: acc.reservePreparation + variation.reservePreparation,
+    quantiteDisponible: acc.quantiteDisponible + variation.quantiteDisponible,
+    commandesValidees: acc.commandesValidees + variation.commandesValidees,
+    aConfectionner: acc.aConfectionner + variation.aConfectionner,
+    enCours: acc.enCours + variation.enCours,
+    aVerifier: acc.aVerifier + variation.aVerifier,
+  }), {
+    stockPhysique: 0,
+    enLivraison: 0,
+    quantiteReservee: 0,
+    reserveCommandes: 0,
+    reservePreparation: 0,
+    quantiteDisponible: 0,
+    commandesValidees: 0,
+    aConfectionner: 0,
+    enCours: 0,
+    aVerifier: 0,
+  });
+}
+
+export function buildStockSynchronization({ orders = [], stock = [], sansConfection = null } = {}) {
   const variationsByKey = new Map();
   const articleKeys = new Map();
   const workshopStates = new Map();
@@ -267,7 +293,9 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     const reserveCommandes = Math.min(disponibleAvantCommandes, eligibleOrders.length);
     const coveredOrders = eligibleOrders.slice(0, reserveCommandes);
     const missingOrders = [...eligibleOrders.slice(reserveCommandes), ...startedOrders];
-    const toProduce = missingOrders.filter(o => !['en_cours', 'recue'].includes(workshopStates.get(o)));
+    // Les tenues de déstockage ne se confectionnent pas : sans pièce, la commande attend hors atelier.
+    const sansAtelier = sansConfection?.has(variation.key.split('::')[0]);
+    const toProduce = sansAtelier ? [] : missingOrders.filter(o => !['en_cours', 'recue'].includes(workshopStates.get(o)));
     const quantiteReservee = Math.min(
       variation.stockPhysique,
       variation.reservePreparation + reserveCommandes,
@@ -323,29 +351,7 @@ export function buildStockSynchronization({ orders = [], stock = [] } = {}) {
     };
   });
 
-  const totals = variations.reduce((acc, variation) => ({
-    stockPhysique: acc.stockPhysique + variation.stockPhysique,
-    enLivraison: acc.enLivraison + variation.enLivraison,
-    quantiteReservee: acc.quantiteReservee + variation.quantiteReservee,
-    reserveCommandes: acc.reserveCommandes + variation.reserveCommandes,
-    reservePreparation: acc.reservePreparation + variation.reservePreparation,
-    quantiteDisponible: acc.quantiteDisponible + variation.quantiteDisponible,
-    commandesValidees: acc.commandesValidees + variation.commandesValidees,
-    aConfectionner: acc.aConfectionner + variation.aConfectionner,
-    enCours: acc.enCours + variation.enCours,
-    aVerifier: acc.aVerifier + variation.aVerifier,
-  }), {
-    stockPhysique: 0,
-    enLivraison: 0,
-    quantiteReservee: 0,
-    reserveCommandes: 0,
-    reservePreparation: 0,
-    quantiteDisponible: 0,
-    commandesValidees: 0,
-    aConfectionner: 0,
-    enCours: 0,
-    aVerifier: 0,
-  });
+  const totals = sumVariationTotals(variations);
 
   return {
     variations,

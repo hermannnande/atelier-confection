@@ -15,6 +15,7 @@ import PreparationColis from './pages/PreparationColis';
 import AtelierStyliste from './pages/AtelierStyliste';
 import AtelierCouturier from './pages/AtelierCouturier';
 import Stock from './pages/Stock';
+import Destockage from './pages/Destockage';
 import Modeles from './pages/Modeles';
 import Livraisons from './pages/Livraisons';
 import CaisseLivreurs from './pages/CaisseLivreurs';
@@ -178,6 +179,13 @@ function App() {
           <Route path="stock" element={
             <ProtectedRoute allowedRoles={['administrateur', 'gestionnaire', 'gestionnaire_stock']}>
               <Stock />
+            </ProtectedRoute>
+          } />
+
+          {/* Déstockage : même fonctionnement que Stock, limité aux modèles de déstockage */}
+          <Route path="destockage" element={
+            <ProtectedRoute allowedRoles={['administrateur', 'gestionnaire', 'gestionnaire_stock']}>
+              <Destockage />
             </ProtectedRoute>
           } />
           

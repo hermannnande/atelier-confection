@@ -1,5 +1,6 @@
 import { buildStockSynchronization, stockVariationKey } from './stock-synchronization.service.js';
 import { courierContext, courierSynchronizationOrders, readCountryRows, snapshotArticles } from './courier-stock.service.js';
+import { loadClearanceModelKeys } from './clearance-stock.service.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail = (message, status = 409) => { throw Object.assign(new Error(message), { status }); };
@@ -29,7 +30,8 @@ export async function startWorkshopLot(db, { country, actor, input }) {
   }
   const revision = await workshopRpc(db, 'atelier_revision', { p_country: country });
   const context = await courierContext(db, country);
-  const sync = buildStockSynchronization({ orders: courierSynchronizationOrders(context), stock: context.stock });
+  const sync = buildStockSynchronization({ orders: courierSynchronizationOrders(context), stock: context.stock,
+    sansConfection: await loadClearanceModelKeys(db) });
   if (sync.variations.some(v => v.key === input.key && v.incoherencesPreparation > 0)) {
     fail('Le stock réservé à d’anciens colis doit être vérifié par le responsable avant de recommencer ces pièces.');
   }

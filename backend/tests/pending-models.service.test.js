@@ -7,7 +7,7 @@ import {
 } from '../services/pending-models.service.js';
 
 // Client Supabase minimal : enregistre chaque lecture et renvoie les lignes de la table.
-function fakeSupabase({ commandes = [], stock = [], errors = {} } = {}) {
+function fakeSupabase({ commandes = [], stock = [], modeles = [], errors = {} } = {}) {
   const reads = [];
   return {
     reads,
@@ -23,7 +23,8 @@ function fakeSupabase({ commandes = [], stock = [], errors = {} } = {}) {
         range(from, to) { read.range = [from, to]; return builder; },
         abortSignal(signal) { read.signal = signal; return builder; },
         then(resolve, reject) {
-          const rows = (table === 'commandes' ? commandes : stock).filter(row => read.filters.every(([column, value, op]) => {
+          const source = { commandes, modeles }[table] ?? stock;
+          const rows = source.filter(row => read.filters.every(([column, value, op]) => {
             if (column === 'pays_code') return !row.pays_code || row.pays_code === value;
             if (column === 'atelier_pieces' && op === 'neq') return Object.keys(row.atelier_pieces || {}).length > 0;
             return Array.isArray(value) ? value.includes(row[column]) : row[column] === value;
@@ -148,7 +149,7 @@ test('le résumé ne garde que les commandes validées non couvertes par le stoc
   ]);
   assert.deepEqual(
     supabase.reads.map(({ table, filters }) => [table, filters[0]]).sort(),
-    [['commandes', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['stock', ['pays_code', 'CI']]],
+    [['commandes', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['modeles', undefined], ['stock', ['pays_code', 'CI']]],
   );
 });
 
@@ -193,4 +194,26 @@ test('une base injoignable ou trop lente donne une erreur 503 à retenter', asyn
 
   const invalid = fakeSupabase({ errors: { commandes: { message: 'column "x" does not exist' } } });
   await assert.rejects(loadPendingModelsSummary(invalid, { country: 'CI' }), (error) => error.status === 500);
+});
+
+test('une commande de déstockage sans pièce n’arrive pas dans Modèles en attente', async () => {
+  const supabase = fakeSupabase({
+    commandes: [
+      commandeDavichi('solde', 'validee', { modele: { nom: 'Lot Solde' } }),
+      commandeDavichi('normale', 'validee'),
+    ],
+    modeles: [{ nom: 'Lot Solde', categorie: 'Déstockage' }, { nom: 'DAVICHI', categorie: 'Robe' }],
+  });
+  const summary = await loadPendingModelsSummary(supabase, { country: 'CI' });
+  assert.deepEqual(summary.groupes.map((groupe) => groupe.nom), ['DAVICHI']);
+  assert.equal(summary.totalCommandes, 1);
+  assert.equal(summary.totalValidees, 2);
+});
+
+test('Modèles en attente signale une erreur si les modèles ne peuvent pas être lus', async () => {
+  const supabase = fakeSupabase({
+    commandes: [commandeDavichi('normale', 'validee')],
+    errors: { modeles: new Error('fetch failed') },
+  });
+  await assert.rejects(loadPendingModelsSummary(supabase, { country: 'CI' }), (error) => error.status === 503);
 });

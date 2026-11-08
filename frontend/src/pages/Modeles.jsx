@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Package, Plus, Search, Edit2, Trash2, Eye, X, Save, Image as ImageIcon } from 'lucide-react';
+import { CATEGORIE_DESTOCKAGE, isModeleDestockage } from '../utils/stockRayon';
+
+const TYPES_MODELE = [
+  { id: 'normal', titre: 'Stock normal', texte: 'Page Stock. S’il manque des pièces, la commande part à l’atelier.' },
+  { id: 'destockage', titre: 'Vente de déstockage', texte: 'Page Déstockage. Pas de confection : seules les pièces existantes sont vendues.' },
+];
 
 const Modeles = () => {
   const [modeles, setModeles] = useState([]);
@@ -14,7 +20,8 @@ const Modeles = () => {
     description: '',
     image: '',
     prixBase: '',
-    categorie: 'Robe'
+    categorie: 'Robe',
+    typeStock: 'normal'
   });
 
   const categories = ['Robe', 'Chemise', 'Pantalon', 'Ensemble', 'Accessoire', 'Autre'];
@@ -39,11 +46,13 @@ const Modeles = () => {
     e.preventDefault();
     
     try {
+      const { typeStock, ...champs } = formData;
+      const payload = { ...champs, categorie: typeStock === 'destockage' ? CATEGORIE_DESTOCKAGE : champs.categorie };
       if (editingModele) {
-        await api.put(`/modeles/${editingModele.id || editingModele._id}`, formData);
+        await api.put(`/modeles/${editingModele.id || editingModele._id}`, payload);
         toast.success('Modèle modifié avec succès !');
       } else {
-        await api.post('/modeles', formData);
+        await api.post('/modeles', payload);
         toast.success('Modèle créé avec succès !');
       }
       
@@ -63,7 +72,8 @@ const Modeles = () => {
       description: modele.description || '',
       image: modele.image || '',
       prixBase: modele.prixBase || modele.prix_base || '',
-      categorie: modele.categorie || 'Robe'
+      categorie: isModeleDestockage(modele) ? 'Robe' : (modele.categorie || 'Robe'),
+      typeStock: isModeleDestockage(modele) ? 'destockage' : 'normal'
     });
     setShowModal(true);
   };
@@ -86,7 +96,8 @@ const Modeles = () => {
       description: '',
       image: '',
       prixBase: '',
-      categorie: 'Robe'
+      categorie: 'Robe',
+      typeStock: 'normal'
     });
   };
 
@@ -276,6 +287,28 @@ const Modeles = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Type de modèle */}
+              <div>
+                <p className="label">Type de modèle *</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {TYPES_MODELE.map((type) => {
+                    const choisi = formData.typeStock === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        aria-pressed={choisi}
+                        onClick={() => setFormData({ ...formData, typeStock: type.id })}
+                        className={`rounded-xl border-2 p-3 text-left transition ${choisi ? 'border-purple-600 bg-purple-50' : 'border-gray-200 bg-white hover:border-purple-300'}`}
+                      >
+                        <span className="block font-black text-gray-900">{type.titre}</span>
+                        <span className="mt-0.5 block text-xs text-gray-600">{type.texte}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Nom & Catégorie */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -289,6 +322,7 @@ const Modeles = () => {
                     placeholder="Ex: Robe Africaine"
                   />
                 </div>
+                {formData.typeStock !== 'destockage' && (
                 <div>
                   <label className="label">Catégorie *</label>
                   <select
@@ -302,6 +336,7 @@ const Modeles = () => {
                     ))}
                   </select>
                 </div>
+                )}
               </div>
 
               {/* Description */}

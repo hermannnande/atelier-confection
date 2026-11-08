@@ -1,6 +1,7 @@
 import express from 'express';
 import { getSupabaseAdmin } from '../client.js';
 import { authenticate } from '../middleware/auth.js';
+import { clearanceNameProblem, readModelsAndStockNames } from '../../services/clearance-stock.service.js';
 
 const router = express.Router();
 
@@ -120,6 +121,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Un modèle avec ce nom existe déjà' });
     }
     
+    const probleme = clearanceNameProblem({ ...(await readModelsAndStockNames(supabase)), nom, categorie });
+    if (probleme) return res.status(409).json({ message: probleme });
+
     const { data, error } = await supabase
       .from('modeles')
       .insert({
@@ -174,6 +178,22 @@ router.put('/:id', async (req, res) => {
       }
     }
     
+    const { data: actuel, error: actuelError } = await supabase
+      .from('modeles')
+      .select('id, nom, categorie')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (actuelError) return res.status(500).json({ message: 'Erreur modification modèle', error: actuelError.message });
+    if (actuel) {
+      const probleme = clearanceNameProblem({
+        ...(await readModelsAndStockNames(supabase)),
+        nom: nom ?? actuel.nom,
+        categorie: categorie ?? actuel.categorie,
+        actuel,
+      });
+      if (probleme) return res.status(409).json({ message: probleme });
+    }
+
     const updates = {};
     if (nom !== undefined) updates.nom = nom;
     if (description !== undefined) updates.description = description;

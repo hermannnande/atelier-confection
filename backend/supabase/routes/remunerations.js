@@ -18,6 +18,7 @@ import {
   validateProductionItems,
 } from '../../services/remuneration.service.js';
 import { userTeam } from '../../services/team.service.js';
+import { isClearanceModel } from '../../services/clearance-stock.service.js';
 import { readCountryRows } from '../../services/courier-stock.service.js';
 
 const router = express.Router();
@@ -122,7 +123,10 @@ router.get('/tarifs', async (req, res) => {
     }
 
     const tarifByModele = new Map((tarifsResult.data || []).map((item) => [item.modele_id, item]));
-    const tarifs = (modelesResult.data || []).map((modele) => mapTarif(modele, tarifByModele.get(modele.id), sansBonus));
+    // Les tenues de déstockage ne se confectionnent pas : pas de tarif de couture.
+    const tarifs = (modelesResult.data || [])
+      .filter((modele) => !isClearanceModel(modele))
+      .map((modele) => mapTarif(modele, tarifByModele.get(modele.id), sansBonus));
     // Règles de chaque équipe, et l'équipe du couturier qui consulte ses tarifs.
     const regles = { jour: getRemunerationRule('jour'), nuit: getRemunerationRule('nuit') };
     const equipe = isCouturier(req) ? await couturierTeam(supabase, req.userId) : undefined;
