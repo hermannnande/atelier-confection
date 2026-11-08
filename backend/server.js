@@ -69,6 +69,11 @@ if (USE_SUPABASE) {
   app.use('/api/attendance', attendanceRoutes); // Routes pour le pointage GPS
   app.use('/api/ecommerce/products', ecommerceProductsRoutes); // Catalogue e-commerce (site-web)
   app.use('/api/ecommerce/categories', ecommerceCategoriesRoutes); // Catégories e-commerce (site-web)
+  // La vente de déstockage n'est servie que par le VPS : l'API de compatibilité Vercel ne la charge pas.
+  if (!process.env.VERCEL) {
+    const { default: destockagePublicRoutes } = await import('./supabase/routes/destockage-public.js');
+    app.use('/api/destockage', destockagePublicRoutes);
+  }
 
   console.log('🟣 Mode base de données: Supabase (PostgreSQL)');
 } else {

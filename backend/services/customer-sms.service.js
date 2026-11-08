@@ -132,8 +132,10 @@ export function buildCustomerSmsMessage(eventCode, commande = {}, extra = {}, te
   const values = {
     client: cleanText(commande.client?.nom || commande.clientNom, 'cher client'),
     numero_commande: cleanText(commande.numero_commande || commande.numeroCommande, 'non renseigné'),
+    // Une cliente ne voit jamais le mot « Déstockage » dans le nom de sa robe.
     modele: cleanText(
-      commande.modele?.nom || commande.modeleNom || commande.nom_modele || commande.produit?.nom || commande.name,
+      String(commande.modele?.nom || commande.modeleNom || commande.nom_modele || commande.produit?.nom || commande.name || '')
+        .replace(/\s+d[ée]stockage\s*$/i, ''),
       'non renseigné',
     ),
     couleur: cleanText(commande.couleur || commande.color || commande.produit?.couleur, 'non renseignée'),

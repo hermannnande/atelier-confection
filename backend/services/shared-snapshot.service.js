@@ -12,14 +12,14 @@ export function createSharedSnapshot({
 }) {
   const entries = new Map();
 
-  return async function readSnapshot(key) {
+  async function readSnapshot(key) {
     let entry = entries.get(key);
     if (!entry) {
       entry = { value: undefined, generatedAt: 0, pending: null };
       entries.set(key, entry);
     }
 
-    if (entry.generatedAt && now() - entry.generatedAt < maxAgeMs) {
+    if (entry.generatedAt && !entry.invalidated && now() - entry.generatedAt < maxAgeMs) {
       return { value: entry.value, generatedAt: entry.generatedAt, stale: false };
     }
 
@@ -29,6 +29,7 @@ export function createSharedSnapshot({
         .then((value) => {
           entry.value = value;
           entry.generatedAt = now();
+          entry.invalidated = false;
           return { value, generatedAt: entry.generatedAt, stale: false };
         })
         .finally(() => {
@@ -44,5 +45,13 @@ export function createSharedSnapshot({
       }
       throw error;
     }
+  }
+
+  // La prochaine lecture repart de la base ; la dernière version reste disponible en cas de panne.
+  readSnapshot.invalidate = (key) => {
+    const entry = entries.get(key);
+    if (entry) entry.invalidated = true;
   };
+
+  return readSnapshot;
 }

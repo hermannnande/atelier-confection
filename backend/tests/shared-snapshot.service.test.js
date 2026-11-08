@@ -133,3 +133,28 @@ test('une version trop ancienne n’est plus servie pendant une panne', async ()
 
   await assert.rejects(read('CI'), /fetch failed/);
 });
+
+test('invalider force une nouvelle lecture, sans perdre la dernière version en cas de panne', async () => {
+  let lectures = 0;
+  let panne = false;
+  const read = createSharedSnapshot({
+    maxAgeMs: 60000,
+    staleIfErrorMs: 60000,
+    load: async () => {
+      if (panne) throw new Error('panne');
+      lectures += 1;
+      return lectures;
+    },
+  });
+  assert.equal((await read('CI')).value, 1);
+  assert.equal((await read('CI')).value, 1);
+  read.invalidate('CI');
+  assert.equal((await read('CI')).value, 2);
+  assert.equal((await read('CI')).value, 2);
+  read.invalidate('CI');
+  panne = true;
+  const secours = await read('CI');
+  assert.equal(secours.value, 2);
+  assert.equal(secours.stale, true);
+  read.invalidate('inconnu');
+});

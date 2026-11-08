@@ -116,3 +116,13 @@ test('reprend un ancien texte WhatsApp comme brouillon SMS sans le renvoyer', as
   assert.equal(received.message, 'Ancien texte {client}');
   assert.equal(received.migratedFromWhatsApp, true);
 });
+
+test('une cliente ne voit pas le mot « Déstockage » dans le nom de sa robe', () => {
+  const message = buildCustomerSmsMessage(
+    CUSTOMER_SMS_EVENT_CODES.COMMANDE_RECUE,
+    { client: { nom: 'Awa' }, modele: { nom: 'DAVICHI ROYALE Déstockage' }, couleur: 'Beige' },
+    {},
+    '{client} {modele} {couleur}',
+  );
+  assert.equal(message, 'Awa DAVICHI ROYALE Beige');
+});
