@@ -22,6 +22,13 @@ s.parentNode.insertBefore(t,s)}
 
 fbq('init', '2681102638977083');
 fbq('track', 'PageView');
+try {
+  var achat = JSON.parse(window.sessionStorage.getItem('nuAchatPromo') || 'null');
+  if (achat && achat.value > 0) {
+    window.sessionStorage.removeItem('nuAchatPromo');
+    fbq('track', 'Purchase', { value: achat.value, currency: 'XOF', content_name: achat.name, content_category: 'Robe' });
+  }
+} catch (error) {}
 </script>
 <noscript><img height="1" width="1" src="https://www.facebook.com/tr?id=2681102638977083&ev=PageView&noscript=1" /></noscript>
 <!-- Fin Meta Pixel -->

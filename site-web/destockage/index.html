@@ -23,6 +23,7 @@ s.parentNode.insertBefore(t,s)}
 
 fbq('init', '2681102638977083');
 fbq('track', 'PageView');
+fbq('track', 'ViewContent', { content_name: 'PROMO BLACK FRIDAY', content_category: 'Robe' });
 </script>
 <noscript><img height="1" width="1" src="https://www.facebook.com/tr?id=2681102638977083&ev=PageView&noscript=1" /></noscript>
 <!-- Fin Meta Pixel -->
@@ -2652,6 +2653,19 @@ fbq('track', 'PageView');
       }
 
       sendToGoogleSheets(payload);
+      // Meta : la page de remerciement compte l'achat une seule fois, et jamais pour un double envoi.
+      if(response.status === 201){
+        try{
+          const infoPixel = PRESENTATION[current.name] || {};
+          const modelePixel = stockByName.get(current.name);
+          window.sessionStorage.setItem('nuAchatPromo', JSON.stringify({
+            value: Number(current.price) || 0,
+            name: infoPixel.titre || (modelePixel && modelePixel.nomAffiche) || 'PROMO BLACK FRIDAY'
+          }));
+        }catch(error){
+          console.warn('[Nous Unique] Achat non mémorisé pour Meta :', error);
+        }
+      }
       redirected = true;
       window.location.assign(CONFIG.THANK_YOU_URL);
     }catch(error){
