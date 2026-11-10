@@ -675,27 +675,27 @@ const ModelesEnAttente = () => {
 
       {filteredBesoinsStock.length > 0 && (
         <section aria-label="Pièces à coudre pour le stock" className="space-y-3">
-          <div className="flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 p-3 sm:p-4">
-            <Boxes className="mt-0.5 flex-shrink-0 text-teal-700" size={22} />
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 sm:p-4">
+            <Boxes className="mt-0.5 flex-shrink-0 text-blue-700" size={22} />
             <div className="min-w-0">
-              <h2 className="text-base font-black text-teal-950 sm:text-lg">À coudre pour le stock ({totalPourStock})</h2>
-              <p className="text-xs text-teal-900 sm:text-sm">Ces tenues sont passées sous leur seuil minimal. Les commandes clients passent d’abord.</p>
+              <h2 className="text-base font-black text-blue-950 sm:text-lg">À coudre pour le stock ({totalPourStock})</h2>
+              <p className="text-xs text-blue-900 sm:text-sm">Ces tenues sont passées sous leur seuil minimal. Les commandes clients passent d’abord.</p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4 xl:grid-cols-3">
             {filteredBesoinsStock.map((groupe) => (
-              <article key={groupe.id} className="overflow-hidden rounded-xl border border-teal-300 bg-white shadow-md">
+              <article key={groupe.id} className="overflow-hidden rounded-xl border border-blue-300 bg-white shadow-md">
                 <div className="flex items-center gap-3 border-b border-gray-100 p-3">
-                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 sm:h-16 sm:w-16">
+                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-blue-100 to-sky-100 sm:h-16 sm:w-16">
                     {groupe.image ? (
                       <img src={groupe.image} alt={groupe.nom} width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center"><Package className="text-teal-500" size={26} /></div>
+                      <div className="flex h-full w-full items-center justify-center"><Package className="text-blue-500" size={26} /></div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words text-base font-black leading-tight text-gray-900 sm:text-lg">{groupe.nom}</h3>
-                    <p className="mt-1 text-xs font-bold text-teal-700">{groupe.total} pièce{groupe.total > 1 ? 's' : ''} pour le stock</p>
+                    <p className="mt-1 text-xs font-bold text-blue-700">{groupe.total} pièce{groupe.total > 1 ? 's' : ''} pour le stock</p>
                   </div>
                 </div>
                 <div className="divide-y divide-gray-100 px-3">
@@ -710,7 +710,7 @@ const ModelesEnAttente = () => {
                             {variation.enCours > 0 && ` · En cours ${variation.enCours}`}
                           </p>
                         </div>
-                        <span className="min-w-9 rounded-lg bg-teal-100 px-2 py-1 text-center text-sm font-black text-teal-800">({variation.quantite})</span>
+                        <span className="min-w-9 rounded-lg bg-blue-100 px-2 py-1 text-center text-sm font-black text-blue-800">({variation.quantite})</span>
                         {variation.aVerifier && canVerifyStock ? (
                           <button
                             type="button"
