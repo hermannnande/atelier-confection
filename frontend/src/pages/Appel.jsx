@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { normalizeSize } from '../utils/sizeNormalization';
 import { sameStockLabel } from '../utils/stockVariation';
 import {
+  catalogSupplement,
   getOrderBasePrice,
   getOrderTotal,
   normalizeOrderSupplements,
@@ -408,13 +409,12 @@ const Appel = () => {
       ...prev,
       supplements: [
         ...(prev?.supplements || []),
-        {
+        catalogSupplement(modele, {
           id: `modele-${modele.id || modele._id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          libelle: modele.nom,
-          taille: normalizeSize(supplementTaille),
+          taille: supplementTaille,
           couleur: supplementCouleur,
           montant,
-        },
+        }),
       ],
     }));
     setSupplementModeleId('');

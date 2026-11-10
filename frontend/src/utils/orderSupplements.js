@@ -17,6 +17,20 @@ export function normalizeOrderSupplements(value) {
     .filter((item) => item.libelle && item.montant > 0);
 }
 
+// Une tenue choisie dans le catalogue : la marque la fait suivre dans le stock,
+// à l'atelier et à la livraison, comme l'article principal.
+export function catalogSupplement(modele, { id, taille, couleur, montant }) {
+  return {
+    id,
+    libelle: modele.nom,
+    image: modele.image || '',
+    taille: normalizeSize(taille),
+    couleur,
+    montant,
+    articleCatalogue: true,
+  };
+}
+
 export function getOrderBasePrice(commande) {
   if (commande?.prixBase != null || commande?.prix_base != null) {
     return Math.max(0, Number(commande.prixBase ?? commande.prix_base) || 0);
