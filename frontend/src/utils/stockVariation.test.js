@@ -22,3 +22,13 @@ test('l’aperçu regroupe les lignes historiques sans perdre quantité ni rése
   assert.equal(variation.quantiteReservee, 2);
   assert.equal(variation.quantiteDisponible, 1);
 });
+
+test('l’aperçu garde le besoin de couture quel que soit l’ordre des lignes en double', () => {
+  const [variation] = summarizeStockVariations([
+    { taille: 'L', couleur: 'Blanc', seuilMinimal: 5, aCoudrePourStock: 0, enCoursPourStock: 0 },
+    { taille: 'L', couleur: 'BLANC', seuilMinimal: 5, aCoudrePourStock: 2, enCoursPourStock: 1 },
+  ]);
+  assert.equal(variation.seuilMinimal, 5);
+  assert.equal(variation.aCoudrePourStock, 2);
+  assert.equal(variation.enCoursPourStock, 1);
+});

@@ -4,6 +4,7 @@
 import { normalizeSize } from './size-normalization.service.js';
 import {
   buildStockSynchronization,
+  fetchStockLots,
   fetchStockSynchronizationOrders,
   stockVariationKey,
 } from './stock-synchronization.service.js';
@@ -12,7 +13,7 @@ import { loadClearanceModelKeys } from './clearance-stock.service.js';
 // Seules les colonnes utilisées par le calcul : l'historique donne la date de
 // validation et les pièces déjà réservées en Préparation Colis.
 const SUMMARY_ORDER_COLUMNS = 'id, modele, taille, couleur, supplements, statut, urgence, created_at, historique, atelier_pieces';
-const SUMMARY_STOCK_COLUMNS = 'id, modele, taille, couleur, quantite_principale, quantite_en_livraison, image, mouvements';
+const SUMMARY_STOCK_COLUMNS = 'id, modele, taille, couleur, quantite_principale, quantite_en_livraison, image, mouvements, seuil_minimal';
 
 const TRACKED_STATUSES = new Set(['validee']);
 const SIZE_ORDER = ['STANDARD', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
@@ -137,6 +138,38 @@ export function groupPendingModels(orders = [], { recentAfter = null } = {}) {
     ));
 }
 
+// Pièces à coudre pour revenir au seuil minimal, sans lien avec une commande.
+export function groupStockNeeds(variations = []) {
+  const groups = new Map();
+  for (const variation of variations) {
+    if (!(variation.aCoudrePourStock > 0)) continue;
+    const id = variation.key.split('::')[0];
+    if (!groups.has(id)) groups.set(id, { id, nom: variation.modele, image: variation.image, total: 0, variations: [] });
+    const group = groups.get(id);
+    if (!group.image && variation.image) group.image = variation.image;
+    group.total += variation.aCoudrePourStock;
+    group.variations.push({
+      id: variation.key,
+      key: variation.key,
+      couleur: variation.couleur,
+      taille: variation.taille,
+      quantite: variation.aCoudrePourStock,
+      seuil: variation.seuilMinimal,
+      disponible: variation.quantiteDisponible,
+      enCours: variation.enCoursPourStock,
+      aVerifier: variation.incoherencesPreparation > 0,
+    });
+  }
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      variations: group.variations.sort((a, b) => (
+        a.couleur.localeCompare(b.couleur, 'fr', { numeric: true }) || compareSizes(a.taille, b.taille)
+      )),
+    }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { numeric: true }));
+}
+
 function summaryReadError(message, cause) {
   const error = new Error(message);
   error.cause = cause;
@@ -154,10 +187,11 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
     .eq('pays_code', country);
   if (signal) stockQuery = stockQuery.abortSignal(signal);
 
-  const [ordersResult, stockResult, clearance] = await Promise.all([
+  const [ordersResult, stockResult, clearance, stockLots] = await Promise.all([
     fetchStockSynchronizationOrders(supabase, { country, select: SUMMARY_ORDER_COLUMNS, signal }),
     stockQuery,
     loadClearanceModelKeys(supabase, { signal }).then((keys) => ({ keys }), (error) => ({ error })),
+    fetchStockLots(supabase, { country, signal }).then((rows) => ({ rows }), (error) => ({ error })),
   ]);
 
   if (ordersResult.error) {
@@ -169,11 +203,15 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
   if (clearance.error) {
     throw summaryReadError('Erreur lors du chargement des modèles', clearance.error);
   }
+  if (stockLots.error) {
+    throw summaryReadError('Erreur lors du chargement des lots pour le stock', stockLots.error);
+  }
 
   const synchronization = buildStockSynchronization({
     orders: ordersResult.data || [],
     stock: stockResult.data || [],
     sansConfection: clearance.keys,
+    lotsPourStock: stockLots.rows,
   });
   const groupes = groupPendingModels(
     synchronization.uncoveredOrders,
@@ -191,6 +229,8 @@ export async function loadPendingModelsSummary(supabase, { country, now = new Da
     totalModeles: groupes.length,
     totalEnCours: synchronization.totals.enCours,
     totalAVerifier: synchronization.totals.aVerifier,
+    besoinsStock: groupStockNeeds(synchronization.variations),
+    totalPourStock: synchronization.totals.aCoudrePourStock,
     recentWindowMinutes: 60,
   };
 }

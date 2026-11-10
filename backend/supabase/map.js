@@ -71,6 +71,7 @@ export function mapStock(row) {
       taille: normalizeSize(row.taille),
       quantitePrincipale: row.quantite_principale,
       quantiteEnLivraison: row.quantite_en_livraison,
+      seuilMinimal: row.seuil_minimal ?? 0,
     })
   );
 }

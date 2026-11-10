@@ -6,6 +6,7 @@ import { mapStock } from '../map.js';
 import {
   buildStockSynchronization,
   enrichStockWithSynchronization,
+  fetchStockLots,
   stockVariationKey,
   sumVariationTotals,
 } from '../../services/stock-synchronization.service.js';
@@ -14,7 +15,7 @@ import {
 } from '../../services/clearance-stock.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
-import { courierContext, buildCourierOffers, courierSynchronizationOrders, heldPieces } from '../../services/courier-stock.service.js';
+import { courierContext, buildCourierOffers, courierSynchronizationOrders, heldPieces, readCountryRows } from '../../services/courier-stock.service.js';
 import { assertNoPendingLot } from '../../services/atelier-lots.service.js';
 import {
   applyStockVerification, assertStockFloor, loadStockVerification,
@@ -63,15 +64,18 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
     const supabase = getSupabaseAdmin();
     // ?rayon=normal ou destockage : la page Stock et la page Déstockage ; sans rayon, tout le stock.
     const rayon = parseStockRayon(req.query.rayon);
-    const [context, clearanceKeys] = await Promise.all([
+    const [context, clearanceKeys, lotsPourStock] = await Promise.all([
       courierContext(supabase, req.country),
       loadClearanceModelKeys(supabase),
+      // Seule la page Stock affiche le seuil : Appel et Commandes, relues souvent, n'en ont pas besoin.
+      rayon === 'normal' ? fetchStockLots(supabase, { country: req.country }) : [],
     ]);
     const stock = context.stock.map(mapStock);
     const synchronization = buildStockSynchronization({
       orders: courierSynchronizationOrders(context),
       stock,
       sansConfection: clearanceKeys,
+      lotsPourStock,
     });
     const offers = buildCourierOffers(context);
     for (const [id, offer] of Object.entries(offers)) {
@@ -370,6 +374,35 @@ router.put('/:id', authenticate, resolveCountry, authorize('gestionnaire_stock',
 
     if (error) return res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
     return res.json({ message: 'Stock modifié avec succès', stockItem: mapStock(data) });
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message });
+  }
+});
+
+// Seuil minimal d'une tenue (modèle, couleur, taille) : 0 retire le seuil.
+router.put('/:id/seuil', authenticate, resolveCountry, authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {
+  try {
+    const seuil = Number(req.body?.seuil);
+    if (!Number.isInteger(seuil) || seuil < 0 || seuil > 1000) {
+      return res.status(400).json({ message: 'Le seuil doit être un nombre entier entre 0 et 1000' });
+    }
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: e1 } = await supabase.from('stock').select('*').eq('id', req.params.id).single();
+    if (e1 || !existing) return res.status(404).json({ message: 'Article non trouvé' });
+    if (!ensureCountryAccess(existing, req, res)) return;
+
+    const clearanceKeys = await loadClearanceModelKeys(supabase);
+    if (clearanceKeys.has(stockModelKey(existing.modele))) {
+      return res.status(400).json({ message: 'Le déstockage ne se confectionne pas : il n’a pas de seuil minimal' });
+    }
+
+    // Les anciennes lignes en double d'une même tenue gardent la même valeur.
+    const key = stockVariationKey(existing);
+    const lignes = (await readCountryRows(supabase, 'stock', req.country, q => q, 'id, modele, taille, couleur'))
+      .filter(ligne => stockVariationKey(ligne) === key);
+    const { error } = await supabase.from('stock').update({ seuil_minimal: seuil }).in('id', lignes.map(ligne => ligne.id));
+    if (error) return res.status(500).json({ message: 'Erreur lors de l’enregistrement du seuil', error: error.message });
+    return res.json({ message: seuil ? 'Seuil minimal enregistré' : 'Seuil minimal retiré', seuilMinimal: seuil });
   } catch (error) {
     return res.status(error.status || 500).json({ message: error.message });
   }

@@ -7,7 +7,7 @@ import {
 } from '../services/pending-models.service.js';
 
 // Client Supabase minimal : enregistre chaque lecture et renvoie les lignes de la table.
-function fakeSupabase({ commandes = [], stock = [], modeles = [], errors = {} } = {}) {
+function fakeSupabase({ commandes = [], stock = [], modeles = [], lots = [], errors = {} } = {}) {
   const reads = [];
   return {
     reads,
@@ -23,7 +23,7 @@ function fakeSupabase({ commandes = [], stock = [], modeles = [], errors = {} } 
         range(from, to) { read.range = [from, to]; return builder; },
         abortSignal(signal) { read.signal = signal; return builder; },
         then(resolve, reject) {
-          const source = { commandes, modeles }[table] ?? stock;
+          const source = { commandes, modeles, atelier_lots: lots }[table] ?? stock;
           const rows = source.filter(row => read.filters.every(([column, value, op]) => {
             if (column === 'pays_code') return !row.pays_code || row.pays_code === value;
             if (column === 'atelier_pieces' && op === 'neq') return Object.keys(row.atelier_pieces || {}).length > 0;
@@ -149,8 +149,52 @@ test('le résumé ne garde que les commandes validées non couvertes par le stoc
   ]);
   assert.deepEqual(
     supabase.reads.map(({ table, filters }) => [table, filters[0]]).sort(),
-    [['commandes', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['modeles', undefined], ['stock', ['pays_code', 'CI']]],
+    [['atelier_lots', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['commandes', ['pays_code', 'CI']], ['modeles', undefined], ['stock', ['pays_code', 'CI']]],
   );
+});
+
+test('les pièces à coudre pour le stock arrivent à part des commandes clients', async () => {
+  const supabase = fakeSupabase({
+    commandes: [commandeDavichi('1', 'validee'), commandeDavichi('2', 'validee')],
+    stock: [
+      { modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', quantite_principale: 5, seuil_minimal: 5, image: 'davichi.webp' },
+      { modele: 'KAYLA', couleur: 'Noir', taille: 'M', quantite_principale: 9, seuil_minimal: 5 },
+    ],
+  });
+
+  const summary = await loadPendingModelsSummary(supabase, { country: 'CI' });
+
+  assert.equal(summary.totalCommandes, 0);
+  assert.deepEqual(summary.groupes, []);
+  assert.equal(summary.totalPourStock, 2);
+  assert.deepEqual(summary.besoinsStock, [{
+    id: 'davichi',
+    nom: 'DAVICHI',
+    image: 'davichi.webp',
+    total: 2,
+    variations: [{
+      id: 'davichi::blanc::l',
+      key: 'davichi::blanc::l',
+      couleur: 'Blanc',
+      taille: 'L',
+      quantite: 2,
+      seuil: 5,
+      disponible: 3,
+      enCours: 0,
+      aVerifier: false,
+    }],
+  }]);
+});
+
+test('une pièce déjà lancée pour le stock n’est pas redemandée au styliste', async () => {
+  const supabase = fakeSupabase({
+    commandes: [commandeDavichi('1', 'validee'), commandeDavichi('2', 'validee')],
+    stock: [{ modele: 'DAVICHI', couleur: 'Blanc', taille: 'L', quantite_principale: 5, seuil_minimal: 5 }],
+    lots: [{ pays_code: 'CI', variation_key: 'davichi::blanc::l', quantite: 1, recues: 0, pour_stock: true }],
+  });
+  const summary = await loadPendingModelsSummary(supabase, { country: 'CI' });
+  assert.equal(summary.totalPourStock, 1);
+  assert.equal(summary.besoinsStock[0].variations[0].enCours, 1);
 });
 
 test('le stock libre couvre d’abord la commande urgente', async () => {

@@ -29,6 +29,8 @@ export function summarizeStockVariations(rows = []) {
         quantiteReservee: 0,
         quantiteDisponible: 0,
         quantiteEnLivraison: 0,
+        aCoudrePourStock: 0,
+        enCoursPourStock: 0,
       });
     }
     const summary = grouped.get(key);
@@ -38,6 +40,8 @@ export function summarizeStockVariations(rows = []) {
     summary.quantiteReservee += Number(row.quantiteReservee || 0);
     summary.quantiteDisponible += Number(row.quantiteDisponible || 0);
     summary.quantiteEnLivraison += Number(row.quantiteEnLivraison || 0);
+    summary.aCoudrePourStock += Number(row.aCoudrePourStock || 0);
+    summary.enCoursPourStock += Number(row.enCoursPourStock || 0);
   }
   return Array.from(grouped.values());
 }

@@ -13,6 +13,8 @@ export function pendingModelsState(data = {}) {
     totalCouvertesStock: Number(data?.totalCouvertesStock) || 0,
     totalEnCours: Number(data?.totalEnCours) || 0,
     totalAVerifier: Number(data?.totalAVerifier) || 0,
+    besoinsStock: Array.isArray(data?.besoinsStock) ? data.besoinsStock : [],
+    totalPourStock: Number(data?.totalPourStock) || 0,
     serverNow: data?.serverNow || null,
     generatedAt: data?.generatedAt || data?.serverNow || null,
     stale: data?.stale === true,

@@ -158,6 +158,17 @@ export async function fetchStockSynchronizationOrders(supabase, {
   return { data: rows, error: null };
 }
 
+// Lots lancés pour le stock : leurs pièces encore à l'atelier ne sont pas redemandées.
+export async function fetchStockLots(supabase, { country, signal } = {}) {
+  let query = supabase.from('atelier_lots').select('variation_key, quantite, recues, pour_stock')
+    .eq('pays_code', country).eq('pour_stock', true)
+    .order('created_at', { ascending: false }).range(0, DEFAULT_PAGE_SIZE - 1);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 export function withWorkshopDispatchHolds(orders, stock) {
   const applied = new Set(stock.flatMap(s => (s.mouvements || []).map(m => m.operation).filter(Boolean)));
   // Une tenue refusée reprise chez le livreur pour cette même affectation est déjà
@@ -189,6 +200,8 @@ export function sumVariationTotals(variations = []) {
     aConfectionner: acc.aConfectionner + variation.aConfectionner,
     enCours: acc.enCours + variation.enCours,
     aVerifier: acc.aVerifier + variation.aVerifier,
+    enCoursPourStock: acc.enCoursPourStock + variation.enCoursPourStock,
+    aCoudrePourStock: acc.aCoudrePourStock + variation.aCoudrePourStock,
   }), {
     stockPhysique: 0,
     enLivraison: 0,
@@ -200,13 +213,21 @@ export function sumVariationTotals(variations = []) {
     aConfectionner: 0,
     enCours: 0,
     aVerifier: 0,
+    enCoursPourStock: 0,
+    aCoudrePourStock: 0,
   });
 }
 
-export function buildStockSynchronization({ orders = [], stock = [], sansConfection = null } = {}) {
+export function buildStockSynchronization({ orders = [], stock = [], sansConfection = null, lotsPourStock = [] } = {}) {
   const variationsByKey = new Map();
   const articleKeys = new Map();
   const workshopStates = new Map();
+  const piecesPourStockEnCours = new Map();
+  for (const lot of lotsPourStock) {
+    if (!lot?.pour_stock) continue;
+    const restantes = Math.max(asQuantity(lot.quantite) - asQuantity(lot.recues), 0);
+    piecesPourStockEnCours.set(lot.variation_key, (piecesPourStockEnCours.get(lot.variation_key) || 0) + restantes);
+  }
 
   const ensureVariation = (source) => {
     const key = stockVariationKey(source);
@@ -222,6 +243,7 @@ export function buildStockSynchronization({ orders = [], stock = [], sansConfect
         enLivraison: 0,
         reservePreparation: 0,
         commandesValidees: [],
+        seuilMinimal: 0,
       });
     }
 
@@ -238,6 +260,11 @@ export function buildStockSynchronization({ orders = [], stock = [], sansConfect
     );
     variation.enLivraison += asQuantity(
       item?.quantiteEnLivraison ?? item?.quantite_en_livraison,
+    );
+    // Les anciennes lignes en double d'une même tenue partagent un seul seuil.
+    variation.seuilMinimal = Math.max(
+      variation.seuilMinimal,
+      asQuantity(item?.seuilMinimal ?? item?.seuil_minimal),
     );
   }
 
@@ -301,6 +328,11 @@ export function buildStockSynchronization({ orders = [], stock = [], sansConfect
       variation.reservePreparation + reserveCommandes,
     );
     const quantiteDisponible = Math.max(variation.stockPhysique - quantiteReservee, 0);
+    // Seuil minimal : l'atelier coud seulement ce qui manque pour y revenir, une fois
+    // déduites les pièces déjà lancées pour le stock. Les commandes clients restent à part.
+    const seuilMinimal = sansAtelier ? 0 : variation.seuilMinimal;
+    const enCoursPourStock = piecesPourStockEnCours.get(variation.key) || 0;
+    const aCoudrePourStock = Math.max(seuilMinimal - quantiteDisponible - enCoursPourStock, 0);
 
     coveredOrders.forEach((order) => {
       const id = order.sourceOrderId || orderId(order);
@@ -348,6 +380,9 @@ export function buildStockSynchronization({ orders = [], stock = [], sansConfect
         variation.reservePreparation - variation.stockPhysique,
         0,
       ),
+      seuilMinimal,
+      enCoursPourStock,
+      aCoudrePourStock,
     };
   });
 
@@ -414,6 +449,9 @@ export function enrichStockWithSynchronization(stock = [], synchronization, { li
       quantiteReserveePreparation,
       quantiteDisponible: Math.max(physical - quantiteReservee, 0),
       aConfectionner: variation?.aConfectionner || 0,
+      seuilMinimal: variation?.seuilMinimal || 0,
+      enCoursPourStock: firstOfVariant ? variation?.enCoursPourStock || 0 : 0,
+      aCoudrePourStock: firstOfVariant ? variation?.aCoudrePourStock || 0 : 0,
       colisPreparation: firstOfVariant ? variation?.reservePreparation || 0 : 0,
       chezLivreurs: firstOfVariant ? livreurs.get(key) || 0 : 0,
       stockAVerifier: firstOfVariant && (variation?.incoherencesPreparation || 0) > 0,

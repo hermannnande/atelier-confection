@@ -10,6 +10,20 @@ Les anciennes découpes et coutures restent visibles pour vérification. La
 migration ne modifie aucune quantité historique, ne fusionne aucune commande
 et ne suppose pas qu'une pièce ancienne a réellement été fabriquée.
 
+## Seuil minimal et commandes annulées — 10 novembre 2026
+
+Chaque tenue (modèle, couleur, taille) peut avoir un seuil minimal, réglé dans
+« Stock ». Une commande validée dans Appel réduit le Disponible. Quand il passe
+sous le seuil, « Modèles en attente » demande au styliste de coudre ce qui manque
+pour y revenir, moins les pièces déjà lancées pour le stock. Les commandes
+clients restent prioritaires et le déstockage n'a pas de seuil.
+
+Un lot « pour le stock » n'est lié à aucune commande : ses pièces arrivent libres.
+Une pièce dont la commande est annulée ou supprimée ne bloque plus son lot : elle
+entre aussi en stock comme pièce libre, et les clients qui attendent encore sont
+servis d'abord. Migration : `backend/supabase/migrations/20261110_seuil_stock.sql`,
+à exécuter avant de publier le code. Elle n'écrit aucune quantité.
+
 ## Installation
 
 1. Sauvegarder commandes, stock, livraisons, structure SQL et version active.

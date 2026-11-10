@@ -42,6 +42,97 @@ const stockDavichi = (quantity = 2) => ({
   quantiteEnLivraison: 0,
 });
 
+const avecSeuil = (quantity, seuilMinimal) => ({ ...stockDavichi(quantity), seuilMinimal });
+const cleDavichi = 'davichi::bleu marine::m';
+
+test('seuil : 5 en stock, seuil 5 et 2 commandes validées font coudre 2 pièces pour le stock', () => {
+  const result = buildStockSynchronization({ orders: [davichi('1'), davichi('2')], stock: [avecSeuil(5, 5)] });
+  const [variation] = result.variations;
+
+  assert.equal(variation.quantiteDisponible, 3);
+  assert.equal(variation.seuilMinimal, 5);
+  assert.equal(variation.aCoudrePourStock, 2);
+  // Les commandes suivent le parcours normal : elles restent couvertes par le stock.
+  assert.equal(result.couvertureCommandes['1'].couvertParStock, true);
+  assert.equal(result.couvertureCommandes['2'].couvertParStock, true);
+  assert.equal(result.uncoveredOrders.length, 0);
+});
+
+test('seuil : avec 8 en stock et seuil 5, rien à coudre tant que le disponible reste à 5 ou plus', () => {
+  const besoin = (commandes) => buildStockSynchronization({
+    orders: Array.from({ length: commandes }, (_, index) => davichi(String(index + 1))),
+    stock: [avecSeuil(8, 5)],
+  }).variations[0].aCoudrePourStock;
+
+  assert.equal(besoin(2), 0);
+  assert.equal(besoin(3), 0);
+  assert.equal(besoin(4), 1);
+});
+
+test('seuil : les commandes sans pièce restent à part et le stock vient en plus', () => {
+  const result = buildStockSynchronization({
+    orders: [davichi('1'), davichi('2'), davichi('3')],
+    stock: [avecSeuil(1, 5)],
+  });
+
+  assert.equal(result.variations[0].aConfectionner, 2);
+  assert.equal(result.variations[0].aCoudrePourStock, 5);
+  assert.equal(result.totals.aConfectionner, 2);
+  assert.equal(result.totals.aCoudrePourStock, 5);
+});
+
+test('seuil : une commande annulée libère sa pièce et fait disparaître la demande', () => {
+  const stock = [avecSeuil(5, 5)];
+  assert.equal(buildStockSynchronization({ orders: [davichi('1')], stock }).variations[0].aCoudrePourStock, 1);
+  assert.equal(buildStockSynchronization({ orders: [davichi('1', 'annulee')], stock }).variations[0].aCoudrePourStock, 0);
+});
+
+test('seuil : une commande pas encore validée ne déduit rien', () => {
+  for (const statut of ['en_attente_validation', 'en_attente_paiement', 'a_rappeler']) {
+    const result = buildStockSynchronization({ orders: [davichi('1', statut)], stock: [avecSeuil(5, 5)] });
+    assert.equal(result.variations[0].quantiteDisponible, 5);
+    assert.equal(result.variations[0].aCoudrePourStock, 0);
+  }
+});
+
+test('seuil : les pièces déjà lancées pour le stock ne sont pas redemandées', () => {
+  const lots = (quantite, recues) => [{ variation_key: cleDavichi, quantite, recues, pour_stock: true }];
+  const besoin = (lotsPourStock) => buildStockSynchronization({
+    orders: [davichi('1'), davichi('2')], stock: [avecSeuil(5, 5)], lotsPourStock,
+  }).variations[0];
+
+  assert.equal(besoin(lots(1, 0)).aCoudrePourStock, 1);
+  assert.equal(besoin(lots(1, 0)).enCoursPourStock, 1);
+  assert.equal(besoin(lots(2, 0)).aCoudrePourStock, 0);
+  assert.equal(besoin(lots(2, 1)).aCoudrePourStock, 1);
+  // Un lot client, même ouvert, ne compte pas comme une pièce pour le stock.
+  assert.equal(besoin([{ variation_key: cleDavichi, quantite: 2, recues: 0, pour_stock: false }]).aCoudrePourStock, 2);
+});
+
+test('seuil : une tenue sans seuil et le déstockage ne demandent aucune couture', () => {
+  assert.equal(buildStockSynchronization({ orders: [davichi('1')], stock: [stockDavichi(1)] }).totals.aCoudrePourStock, 0);
+  const destockage = buildStockSynchronization({
+    orders: [davichi('1')], stock: [avecSeuil(1, 5)], sansConfection: new Set(['davichi']),
+  });
+  assert.equal(destockage.variations[0].seuilMinimal, 0);
+  assert.equal(destockage.totals.aCoudrePourStock, 0);
+});
+
+test('seuil : les lignes en double d’une même tenue partagent un seul seuil, compté une fois', () => {
+  const stock = [
+    { ...avecSeuil(2, 5), id: 'a' },
+    { ...avecSeuil(1, 0), id: 'b', couleur: 'Bleu Marine' },
+  ];
+  const result = buildStockSynchronization({ orders: [], stock });
+  assert.equal(result.variations.length, 1);
+  assert.equal(result.variations[0].seuilMinimal, 5);
+  assert.equal(result.variations[0].aCoudrePourStock, 2);
+
+  const enrichis = enrichStockWithSynchronization(stock, result);
+  assert.deepEqual(enrichis.map((ligne) => ligne.aCoudrePourStock), [2, 0]);
+  assert.deepEqual(enrichis.map((ligne) => ligne.seuilMinimal), [5, 5]);
+});
+
 test('une commande validée réserve le stock sans modifier la quantité physique', () => {
   const result = buildStockSynchronization({
     orders: [davichi('1')],

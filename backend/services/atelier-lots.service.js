@@ -1,4 +1,4 @@
-import { buildStockSynchronization, stockVariationKey } from './stock-synchronization.service.js';
+import { buildStockSynchronization, fetchStockLots, stockVariationKey } from './stock-synchronization.service.js';
 import { courierContext, courierSynchronizationOrders, readCountryRows, snapshotArticles } from './courier-stock.service.js';
 import { loadClearanceModelKeys } from './clearance-stock.service.js';
 
@@ -53,6 +53,36 @@ export async function startWorkshopLot(db, { country, actor, input }) {
     p_pieces: [...available.values()].filter(p => selected.has(pieceKey(p))) });
 }
 
+export function validateStockStartInput(input) {
+  if (!UUID.test(input?.operationId) || typeof input.key !== 'string' || !input.key.includes('::') || input.key.length > 300
+    || !Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 500) {
+    fail('La liste doit être actualisée avant de commencer.', 400);
+  }
+}
+
+// Pièces cousues pour revenir au seuil minimal : elles ne sont liées à aucune commande.
+export async function startStockLot(db, { country, actor, input }) {
+  validateStockStartInput(input);
+  const revision = await workshopRpc(db, 'atelier_revision', { p_country: country });
+  const [context, sansConfection, lotsPourStock] = await Promise.all([
+    courierContext(db, country), loadClearanceModelKeys(db), fetchStockLots(db, { country }),
+  ]);
+  const sync = buildStockSynchronization({
+    orders: courierSynchronizationOrders(context), stock: context.stock, sansConfection, lotsPourStock,
+  });
+  const variation = sync.variations.find(v => v.key === input.key);
+  if (variation?.incoherencesPreparation > 0) {
+    fail('Le stock réservé à d’anciens colis doit être vérifié par le responsable avant de commencer ces pièces.');
+  }
+  if (!variation || input.quantity > variation.aCoudrePourStock) fail('Le besoin vient de changer. Actualisez la liste.');
+  const stock = context.stock.find(s => stockVariationKey(s) === input.key);
+  return workshopRpc(db, 'atelier_start_stock', {
+    p_id: input.operationId, p_country: country, p_actor: actor, p_revision: revision, p_key: input.key,
+    p_article: { modele: stock.modele, taille: stock.taille, couleur: stock.couleur, image: stock.image || '', prix: stock.prix ?? 0 },
+    p_quantity: input.quantity, p_open: variation.enCoursPourStock,
+  });
+}
+
 export async function receiveWorkshopLot(db, { country, actor, lotId, input }) {
   if (!UUID.test(lotId) || !UUID.test(input?.operationId) || !Number.isInteger(input.quantity) || input.quantity < 1
     || !Number.isInteger(input.expectedReceived) || input.expectedReceived < 0) fail('Quantité reçue invalide.', 400);
@@ -68,10 +98,16 @@ export async function listWorkshopLots(db, country) {
       'id, numero_commande, modele, taille, couleur, statut'),
   ]);
   const byId = new Map(orders.map(o => [o.id, o]));
+  // Même règle que la réception en base : sans commande qui l'attend, la pièce arrive libre.
+  const attendue = (lot, piece) => {
+    const order = byId.get(piece.commandeId);
+    const suivi = order?.atelier_pieces?.[piece.articleKey];
+    return ['validee', 'a_rappeler'].includes(order?.statut) && suivi?.lotId === lot.id && suivi?.etat === 'en_cours';
+  };
   return {
     lots: lots.filter(l => l.recues < l.quantite || Date.now() - new Date(l.updated_at).getTime() < 86400000)
       .sort((a, b) => Number(a.recues === a.quantite) - Number(b.recues === b.quantite) || a.created_at.localeCompare(b.created_at))
-      .map(l => ({ ...l, aVerifier: l.pieces.slice(l.recues).some(p => byId.get(p.commandeId)?.statut !== 'validee') })),
+      .map(l => ({ ...l, piecesLibres: l.pieces.slice(l.recues).filter(p => !attendue(l, p)).length })),
     anciens: legacy.map(o => ({ id: o.id, numero: o.numero_commande, modele: o.modele?.nom,
       taille: o.taille, couleur: o.couleur })),
   };

@@ -162,12 +162,14 @@ const Stock = ({ rayon = 'normal' }) => {
         quantiteLivraison: 0,
         valeurTotal: 0,
         aVerifier: 0,
+        sousSeuil: 0,
         taillesUniques: new Set(),
         couleursUniques: new Set()
       };
     }
     acc[key].variations.push(item);
     if (item.stockAVerifier) acc[key].aVerifier += 1;
+    if ((item.aCoudrePourStock || 0) > 0) acc[key].sousSeuil += 1;
     acc[key].quantiteTotal += item.quantitePrincipale || item.quantite || 0;
     acc[key].quantiteReservee += item.quantiteReservee || 0;
     acc[key].quantiteDisponible += item.quantiteDisponible || 0;
@@ -185,6 +187,7 @@ const Stock = ({ rayon = 'normal' }) => {
       couleursUniques: Array.from(item.couleursUniques),
       variations: [...item.variations].sort((a, b) => (
         Number(Boolean(b.stockAVerifier)) - Number(Boolean(a.stockAVerifier))
+        || (b.aCoudrePourStock || 0) - (a.aCoudrePourStock || 0)
         || (b.quantiteReservee || 0) - (a.quantiteReservee || 0)
         || (b.quantiteDisponible || 0) - (a.quantiteDisponible || 0)
         || String(a.couleur || '').localeCompare(String(b.couleur || ''), 'fr')
@@ -206,6 +209,7 @@ const Stock = ({ rayon = 'normal' }) => {
     low: allStockGroups.filter(item => item.quantiteTotal > 0 && item.quantiteDisponible <= 2).length,
     empty: allStockGroups.filter(item => item.quantiteTotal === 0).length,
     verify: allStockGroups.filter(item => item.aVerifier > 0).length,
+    seuil: allStockGroups.filter(item => item.sousSeuil > 0).length,
   };
   const modelesEnStock = allStockGroups.filter(item => item.quantiteTotal > 0).length;
 
@@ -224,6 +228,7 @@ const Stock = ({ rayon = 'normal' }) => {
     if (stockFilter === 'low') return item.quantiteTotal > 0 && item.quantiteDisponible <= 2;
     if (stockFilter === 'empty') return item.quantiteTotal === 0;
     if (stockFilter === 'verify') return item.aVerifier > 0;
+    if (stockFilter === 'seuil') return item.sousSeuil > 0;
     return true;
   });
 
@@ -287,11 +292,13 @@ const Stock = ({ rayon = 'normal' }) => {
     if (saveLock.current) return;
     saveLock.current = true;
     setSaving(true);
-    let successCount = 0;
+    const saved = new Set();
     const failures = [];
+    const originalOf = (variation) => selectedModeleDetails.variations.find(item => (item._id || item.id) === (variation._id || variation.id));
+    const failureOf = (variation, error) => variation.couleur + ' / ' + variation.taille + ' : ' + (error.response?.data?.message || 'enregistrement non confirmé');
     try {
       for (const variation of editedVariations) {
-        const original = selectedModeleDetails.variations.find(item => (item._id || item.id) === (variation._id || variation.id));
+        const original = originalOf(variation);
         const quantityChanged = Number(variation.quantitePrincipale) !== Number(original?.quantitePrincipale ?? original?.quantite ?? 0);
         const priceChanged = canEditPrices && Number(variation.prix) !== Number(original?.prix || 0);
         if (!quantityChanged && !priceChanged) continue;
@@ -300,14 +307,24 @@ const Stock = ({ rayon = 'normal' }) => {
           if (quantityChanged) payload.quantite = Number(variation.quantitePrincipale);
           if (priceChanged) payload.prix = Number(variation.prix);
           await api.put('/stock/' + (variation._id || variation.id), payload);
-          successCount++;
+          saved.add(variation._id || variation.id);
         } catch (error) {
-          failures.push(variation.couleur + ' / ' + variation.taille + ' : ' + (error.response?.data?.message || 'enregistrement non confirmé'));
+          failures.push(failureOf(variation, error));
         }
       }
-      if (successCount) toast.success(successCount + ' variation(s) enregistrée(s).');
+      // Le seuil passe après les quantités : il modifie toutes les lignes de la tenue.
+      for (const variation of destockage ? [] : editedVariations) {
+        if (Number(variation.seuilMinimal || 0) === Number(originalOf(variation)?.seuilMinimal || 0)) continue;
+        try {
+          await api.put('/stock/' + (variation._id || variation.id) + '/seuil', { seuil: Number(variation.seuilMinimal || 0) });
+          saved.add(variation._id || variation.id);
+        } catch (error) {
+          failures.push(failureOf(variation, error));
+        }
+      }
+      if (saved.size) toast.success(saved.size + ' variation(s) enregistrée(s).');
       if (failures.length) toast.error(failures.join('\n'), { duration: 8000 });
-      if (!successCount && !failures.length) toast.success('Aucune modification à enregistrer');
+      if (!saved.size && !failures.length) toast.success('Aucune modification à enregistrer');
       // Reload real quantities; never display failed edits as saved stock.
       setEditMode(false);
       setShowDetailsModal(false);
@@ -427,6 +444,19 @@ const Stock = ({ rayon = 'normal' }) => {
     );
   };
 
+  const thresholdLine = (variation) => {
+    if (destockage || !(variation.seuilMinimal > 0)) return null;
+    const aCoudre = variation.aCoudrePourStock || 0;
+    const enCours = variation.enCoursPourStock || 0;
+    return (
+      <p className={`mt-2 rounded-lg px-3 py-2 text-xs font-bold ${aCoudre > 0 ? 'bg-amber-50 text-amber-900' : 'bg-gray-50 text-gray-600'}`}>
+        Seuil minimal : {variation.seuilMinimal}
+        {aCoudre > 0 && ` · ${aCoudre} à coudre pour le stock`}
+        {enCours > 0 && ` · ${enCours} en cours à l’atelier`}
+      </p>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -480,7 +510,8 @@ const Stock = ({ rayon = 'normal' }) => {
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Physique = étagère + colis en préparation + refus chez les livreurs</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Réservé = commandes en cours</span>
           <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Disponible = pièces encore libres</span>
-          {destockage && <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Pas de confection : seules les pièces existantes sont vendues</span>}
+          {!destockage && <span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Seuil = minimum à garder disponible</span>}
+          {destockage &&<span className="rounded-full bg-white/10 px-3 py-1.5 ring-1 ring-white/15">Pas de confection : seules les pièces existantes sont vendues</span>}
         </div>
       </section>
 
@@ -538,6 +569,7 @@ const Stock = ({ rayon = 'normal' }) => {
               { id: 'reserved', label: 'Réservés', count: filterCounts.reserved },
               { id: 'low', label: 'Faibles', count: filterCounts.low },
               { id: 'empty', label: 'Vides', count: filterCounts.empty },
+              ...(filterCounts.seuil > 0 ? [{ id: 'seuil', label: 'Sous le seuil', count: filterCounts.seuil }] : []),
               ...(filterCounts.verify > 0 ? [{ id: 'verify', label: 'À vérifier', count: filterCounts.verify }] : []),
             ].map((filter) => (
               <button
@@ -584,6 +616,7 @@ const Stock = ({ rayon = 'normal' }) => {
               || (variation.quantiteReservee || 0) > 0
               || (variation.quantiteEnLivraison || 0) > 0
               || (variation.colisPreparation || 0) > 0
+              || (variation.aCoudrePourStock || 0) > 0
             ));
             const previewVariations = (usefulVariations.length > 0 ? usefulVariations : logicalVariations).slice(0, 4);
             const hiddenCount = logicalVariations.length - previewVariations.length;
@@ -692,6 +725,7 @@ const Stock = ({ rayon = 'normal' }) => {
                         </span>
                         <span className="whitespace-nowrap text-[10px] font-bold text-gray-500">
                           P <b className="text-emerald-700">{physical}</b> · R <b className="text-indigo-700">{variation.quantiteReservee || 0}</b> · D <b className="text-cyan-700">{variation.quantiteDisponible || 0}</b>
+                          {!destockage && variation.seuilMinimal > 0 && <> · S <b className={variation.aCoudrePourStock > 0 ? 'text-red-600' : 'text-gray-700'}>{variation.seuilMinimal}</b></>}
                         </span>
                       </div>
                     );
@@ -856,7 +890,7 @@ const Stock = ({ rayon = 'normal' }) => {
                       </div>
                       {notice && <div className="mt-2">{notice}</div>}
                       {editMode ? (
-                        <div className={`mt-3 grid gap-2 ${canEditPrices ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        <div className={`mt-3 grid gap-2 ${canEditPrices || !destockage ? 'grid-cols-2' : 'grid-cols-1'}`}>
                           <label className="text-[10px] font-black uppercase text-gray-500">
                             Total en stock
                             <input
@@ -880,6 +914,19 @@ const Stock = ({ rayon = 'normal' }) => {
                               />
                             </label>
                           )}
+                          {!destockage && (
+                            <label className="text-[10px] font-black uppercase text-gray-500">
+                              Seuil minimal
+                              <input
+                                type="number"
+                                value={variation.seuilMinimal || 0}
+                                onChange={(event) => handleEditVariation(index, 'seuilMinimal', parseInt(event.target.value) || 0)}
+                                min="0"
+                                max="1000"
+                                className="input mt-1 !py-2 text-sm font-black"
+                              />
+                            </label>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
@@ -896,6 +943,7 @@ const Stock = ({ rayon = 'normal' }) => {
                           ))}
                         </div>
                       )}
+                      {!editMode && thresholdLine(variation)}
                     </div>
                   );
                 })}
@@ -913,6 +961,7 @@ const Stock = ({ rayon = 'normal' }) => {
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Disponible</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">En Livraison</th>
                       <th className="px-4 py-3 text-left font-bold text-gray-700">Prix Unitaire</th>
+                      {!destockage && <th className="px-4 py-3 text-left font-bold text-gray-700">Seuil minimal</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -974,10 +1023,33 @@ const Stock = ({ rayon = 'normal' }) => {
                               </span>
                             )}
                           </td>
+                          {!destockage && (
+                            <td className="px-4 py-3">
+                              {editMode ? (
+                                <input
+                                  type="number"
+                                  value={variation.seuilMinimal || 0}
+                                  onChange={(e) => handleEditVariation(index, 'seuilMinimal', parseInt(e.target.value) || 0)}
+                                  min="0"
+                                  max="1000"
+                                  aria-label={`Seuil minimal ${variation.couleur} taille ${variation.taille}`}
+                                  className="input w-24 font-bold"
+                                />
+                              ) : variation.seuilMinimal > 0 ? (
+                                <div>
+                                  <span className="font-bold text-lg text-gray-900">{variation.seuilMinimal}</span>
+                                  {variation.aCoudrePourStock > 0 && <p className="text-xs font-bold text-amber-700">{variation.aCoudrePourStock} à coudre</p>}
+                                  {variation.enCoursPourStock > 0 && <p className="text-xs font-bold text-gray-500">{variation.enCoursPourStock} en cours</p>}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400">Aucun</span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                         {notice && (
                           <tr className="border-b border-gray-100">
-                            <td colSpan={7} className="px-4 pb-3">{notice}</td>
+                            <td colSpan={destockage ? 7 : 8} className="px-4 pb-3">{notice}</td>
                           </tr>
                         )}
                         </Fragment>

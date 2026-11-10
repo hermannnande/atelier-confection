@@ -34,7 +34,7 @@ import { createClientHistoryLoader } from '../../services/client-history.service
 import { loadPreparationOrders } from '../../services/preparation-orders.service.js';
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
-import { startWorkshopLot, receiveWorkshopLot, listWorkshopLots, workshopRpc } from '../../services/atelier-lots.service.js';
+import { startWorkshopLot, startStockLot, receiveWorkshopLot, listWorkshopLots, workshopRpc } from '../../services/atelier-lots.service.js';
 
 const router = express.Router();
 router.get('/modeles-en-attente/lots', authenticate, resolveCountry,
@@ -46,6 +46,14 @@ router.post('/modeles-en-attente/lots', authenticate, resolveCountry,
   authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
     try { res.json({ lot: await startWorkshopLot(getSupabaseAdmin(), { country: req.country, actor: req.userId, input: req.body }) }); }
     catch (error) { res.status(error.status || 503).json({ message: error.message }); }
+  });
+router.post('/modeles-en-attente/lots-stock', authenticate, resolveCountry,
+  authorize('styliste', 'gestionnaire', 'administrateur'), async (req, res) => {
+    try {
+      const lot = await startStockLot(getSupabaseAdmin(), { country: req.country, actor: req.userId, input: req.body });
+      readPendingModels.invalidate(req.country);
+      res.json({ lot });
+    } catch (error) { res.status(error.status || 503).json({ message: error.message }); }
   });
 router.post('/modeles-en-attente/lots/:lotId/recevoir', authenticate, resolveCountry,
   authorize('gestionnaire_stock', 'gestionnaire', 'administrateur'), async (req, res) => {

@@ -10,7 +10,7 @@ import {
   startButtonLabel,
   startSuccessMessage,
 } from '../utils/workshopStartSelection';
-import { AlertCircle, ClipboardCheck, Minus, Package, Plus, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
+import { AlertCircle, Boxes, ClipboardCheck, Minus, Package, Plus, RefreshCw, Scissors, Search, Sparkles, WifiOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCountryStore } from '../store/countryStore';
 import {
@@ -240,6 +240,8 @@ const ModelesEnAttente = () => {
   const totalCommandes = suivi?.totalCommandes || 0;
   const totalValidees = suivi?.totalValidees || 0;
   const totalCouvertesStock = suivi?.totalCouvertesStock || 0;
+  const besoinsStock = useMemo(() => suivi?.besoinsStock || [], [suivi]);
+  const totalPourStock = suivi?.totalPourStock || 0;
   const lastRefresh = useMemo(() => new Date(suivi?.serverNow || Date.now()), [suivi]);
   const refreshManually = () => load({ manual: true });
   const changeStartCount = (variation, delta) => {
@@ -279,6 +281,37 @@ const ModelesEnAttente = () => {
           }).filter(v => v.quantite > 0);
           return { ...g, variations, total: variations.reduce((n,v) => n + v.quantite, 0),
             urgentes: variations.reduce((n,v) => n + v.urgentes, 0) };
+        }).filter(g => g.variations.length) }));
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Action non confirmée. Actualisez : si elle a réussi, les pièces sont déjà en cours.');
+      await load();
+    } finally { startLock.current = false; setStarting(null); }
+  };
+
+  // Pièces à coudre pour revenir au seuil minimal : elles ne sont liées à aucune commande.
+  const startStockPieces = async variation => {
+    const count = chosenStartCount(startCounts[variation.key], variation.pieces.length);
+    if (startLock.current || !count) return;
+    startLock.current = true;
+    setStarting(variation.key);
+    try {
+      await api.post('/commandes/modeles-en-attente/lots-stock', {
+        operationId: crypto.randomUUID(), key: variation.cle, quantity: count,
+      }, { timeout: 20000 });
+      toast.success(startSuccessMessage(count, variation.pieces.length - count));
+      window.dispatchEvent(new Event('atelier-updated'));
+      setStartCounts(previous => {
+        const next = { ...previous };
+        delete next[variation.key];
+        return next;
+      });
+      setSuivi(previous => ({ ...previous,
+        totalPourStock: Math.max(0, previous.totalPourStock - count),
+        besoinsStock: previous.besoinsStock.map(g => {
+          const variations = g.variations
+            .map(v => (v.key === variation.cle ? { ...v, quantite: v.quantite - count, enCours: v.enCours + count } : v))
+            .filter(v => v.quantite > 0);
+          return { ...g, variations, total: variations.reduce((n, v) => n + v.quantite, 0) };
         }).filter(g => g.variations.length) }));
     } catch (e) {
       toast.error(e.response?.data?.message || 'Action non confirmée. Actualisez : si elle a réussi, les pièces sont déjà en cours.');
@@ -330,6 +363,19 @@ const ModelesEnAttente = () => {
         ))
       ));
   }, [filterMode, groupes, searchTerm]);
+
+  const filteredBesoinsStock = useMemo(() => {
+    if (filterMode !== 'all') return [];
+    const term = searchTerm.trim().toLocaleLowerCase('fr');
+    return besoinsStock.filter((groupe) => (
+      !term ||
+      groupe.nom.toLocaleLowerCase('fr').includes(term) ||
+      groupe.variations.some((variation) => (
+        variation.couleur.toLocaleLowerCase('fr').includes(term) ||
+        variation.taille.toLocaleLowerCase('fr').includes(term)
+      ))
+    ));
+  }, [besoinsStock, filterMode, searchTerm]);
 
   if (loading) {
     return (
@@ -442,7 +488,7 @@ const ModelesEnAttente = () => {
         </div>
       </div>
 
-      {groupes.length > 0 && (
+      {(groupes.length > 0 || besoinsStock.length > 0) && (
         <div className="card !rounded-xl !p-2.5 sm:!rounded-2xl sm:!p-4">
           <div className="mb-2.5 grid grid-cols-3 gap-1.5 sm:gap-2">
             <button
@@ -499,7 +545,7 @@ const ModelesEnAttente = () => {
         </div>
       )}
 
-      {filteredGroupes.length === 0 ? (
+      {filteredGroupes.length === 0 ? (groupes.length === 0 && filteredBesoinsStock.length > 0 ? null : (
         <div className="card !p-8 text-center sm:!p-12">
           <Package className="mx-auto mb-3 text-emerald-500" size={42} />
           <h3 className="mb-1 text-lg font-bold text-gray-900 sm:text-xl">
@@ -523,7 +569,7 @@ const ModelesEnAttente = () => {
                 : 'Modifiez votre recherche pour retrouver un modèle.'}
           </p>
         </div>
-      ) : (
+      )) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4 xl:grid-cols-3">
           {filteredGroupes.map((groupe) => (
             <article
@@ -625,6 +671,73 @@ const ModelesEnAttente = () => {
             </article>
           ))}
         </div>
+      )}
+
+      {filteredBesoinsStock.length > 0 && (
+        <section aria-label="Pièces à coudre pour le stock" className="space-y-3">
+          <div className="flex items-start gap-3 rounded-xl border border-teal-200 bg-teal-50 p-3 sm:p-4">
+            <Boxes className="mt-0.5 flex-shrink-0 text-teal-700" size={22} />
+            <div className="min-w-0">
+              <h2 className="text-base font-black text-teal-950 sm:text-lg">À coudre pour le stock ({totalPourStock})</h2>
+              <p className="text-xs text-teal-900 sm:text-sm">Ces tenues sont passées sous leur seuil minimal. Les commandes clients passent d’abord.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4 xl:grid-cols-3">
+            {filteredBesoinsStock.map((groupe) => (
+              <article key={groupe.id} className="overflow-hidden rounded-xl border border-teal-300 bg-white shadow-md">
+                <div className="flex items-center gap-3 border-b border-gray-100 p-3">
+                  <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 sm:h-16 sm:w-16">
+                    {groupe.image ? (
+                      <img src={groupe.image} alt={groupe.nom} width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center"><Package className="text-teal-500" size={26} /></div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words text-base font-black leading-tight text-gray-900 sm:text-lg">{groupe.nom}</h3>
+                    <p className="mt-1 text-xs font-bold text-teal-700">{groupe.total} pièce{groupe.total > 1 ? 's' : ''} pour le stock</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-100 px-3">
+                  {groupe.variations.map((variation) => {
+                    const control = { ...variation, key: `stock:${variation.key}`, cle: variation.key, pieces: Array.from({ length: variation.quantite }) };
+                    return (
+                      <div key={variation.id} className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="break-words font-bold text-gray-800">{variation.couleur}</p>
+                          <p className="text-xs font-semibold text-gray-500">
+                            Taille {variation.taille} · Seuil {variation.seuil} · Disponible {variation.disponible}
+                            {variation.enCours > 0 && ` · En cours ${variation.enCours}`}
+                          </p>
+                        </div>
+                        <span className="min-w-9 rounded-lg bg-teal-100 px-2 py-1 text-center text-sm font-black text-teal-800">({variation.quantite})</span>
+                        {variation.aVerifier && canVerifyStock ? (
+                          <button
+                            type="button"
+                            onClick={() => setVerifying(variation)}
+                            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-3 font-bold text-white hover:bg-amber-600"
+                          >
+                            <ClipboardCheck size={18} /> Vérifier le stock
+                          </button>
+                        ) : canStartLots && (
+                          <StartPiecesControl
+                            variation={control}
+                            chosen={startCounts[control.key]}
+                            busy={!!starting}
+                            saving={starting === control.key}
+                            disabled={!!starting || !!loadError || suivi.stale || variation.aVerifier}
+                            onChange={delta => changeStartCount(control, delta)}
+                            onStart={() => startStockPieces(control)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       {verifying && (

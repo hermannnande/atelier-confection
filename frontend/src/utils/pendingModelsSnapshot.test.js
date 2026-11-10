@@ -62,10 +62,22 @@ test('une réponse incomplète donne un état vide mais utilisable', () => {
     totalCouvertesStock: 0,
     totalEnCours: 0,
     totalAVerifier: 0,
+    besoinsStock: [],
+    totalPourStock: 0,
     serverNow: '2026-10-16T12:00:00.000Z',
     generatedAt: '2026-10-16T12:00:00.000Z',
     stale: false,
   });
+});
+
+test('les pièces à coudre pour le stock sont gardées dans le dernier état connu', () => {
+  const storage = memoryStorage();
+  const besoinsStock = [{ id: 'davichi', nom: 'DAVICHI', total: 2, variations: [] }];
+  savePendingModelsSnapshot('CI', pendingModelsState({ ...response, besoinsStock, totalPourStock: 2 }), { storage, now: 1000 });
+
+  const state = readPendingModelsSnapshot('CI', { storage, now: 2000 });
+  assert.deepEqual(state.besoinsStock, besoinsStock);
+  assert.equal(state.totalPourStock, 2);
 });
 
 test('le rythme de mise à jour s’espace après des échecs, sans dépasser 30 s', () => {

@@ -48,7 +48,12 @@ function Lots({ country, onReceived }) {
       if (!alive.current) return;
       setData(previous => ({ ...previous, lots: previous.lots.map(l => l.id === lot.id ? result.lot : l) }));
       setPartial(null);
-      toast.success(`${count} pièce${count > 1 ? 's' : ''} reçue${count > 1 ? 's' : ''} et réservée${count > 1 ? 's' : ''} aux commandes.`);
+      const s = count > 1 ? 's' : '';
+      toast.success(lot.pour_stock
+        ? `${count} pièce${s} reçue${s} et ajoutée${s} au stock.`
+        : lot.piecesLibres > 0
+          ? `${count} pièce${s} reçue${s}. Le stock et les commandes sont à jour.`
+          : `${count} pièce${s} reçue${s} et réservée${s} aux commandes.`);
       onReceived?.();
       window.dispatchEvent(new Event('atelier-updated'));
     } catch (e) {
@@ -76,16 +81,17 @@ function Lots({ country, onReceived }) {
           <div className="min-w-0 flex-1">
             <h3 className="font-black text-gray-900">{lot.article.modele}</h3>
             <p className="text-sm text-gray-700">{lot.article.couleur} · Taille {lot.article.taille}</p>
+            {lot.pour_stock && <span className="mt-1 inline-block rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-black text-teal-800">Pour le stock</span>}
             <p className="mt-2 text-xl font-black text-emerald-800">{lot.quantite - lot.recues} à recevoir</p>
             <p className="text-xs text-gray-500">{lot.recues} reçue{lot.recues > 1 ? 's' : ''} sur {lot.quantite} · commencé le {new Date(lot.created_at).toLocaleDateString('fr-FR')}</p>
           </div>
         </div>
-        {lot.aVerifier ? <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Une commande a changé. Le responsable doit vérifier ce lot. Ne recommencez pas la découpe.</p>
-          : receive && <div className="mt-3 flex flex-wrap gap-2">
+        {!lot.pour_stock && lot.piecesLibres > 0 && <p className="mt-3 rounded-lg bg-sky-50 p-3 text-sm text-sky-900">{lot.piecesLibres > 1 ? `${lot.piecesLibres} pièces de ce lot n’ont plus de commande : à leur réception, elles iront` : '1 pièce de ce lot n’a plus de commande : à sa réception, elle ira'} dans le stock disponible.</p>}
+        {receive && <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" disabled={!!busy || !!error} onClick={() => confirm(lot, lot.quantite - lot.recues)} className="min-h-12 flex-1 rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white disabled:opacity-50">{busy === lot.id ? 'Enregistrement…' : 'Tout reçu'}</button>
             {lot.quantite - lot.recues > 1 && <button type="button" disabled={!!busy || !!error} onClick={() => { setPartial(lot.id); setQuantity(1); }} className="min-h-12 flex-1 rounded-xl border border-emerald-700 px-4 py-3 font-bold text-emerald-800 disabled:opacity-50">Reçu une partie</button>}
           </div>}
-        {partial === lot.id && !lot.aVerifier && <form onSubmit={e => { e.preventDefault(); confirm(lot, Number(quantity)); }} className="mt-3 rounded-xl bg-gray-50 p-3">
+        {partial === lot.id && <form onSubmit={e => { e.preventDefault(); confirm(lot, Number(quantity)); }} className="mt-3 rounded-xl bg-gray-50 p-3">
           <label className="block text-sm font-bold" htmlFor={`quantity-${lot.id}`}>Combien de pièces avez-vous reçues maintenant ?</label>
           <input id={`quantity-${lot.id}`} type="number" inputMode="numeric" min="1" max={lot.quantite - lot.recues} step="1" required value={quantity} onChange={e => setQuantity(e.target.value)} className="my-2 w-full rounded-lg border p-3 text-xl" />
           <button type="submit" disabled={!!busy || !!error} className="rounded-lg bg-emerald-700 px-4 py-3 font-bold text-white disabled:opacity-50">Confirmer {quantity || 0} pièce(s) reçue(s)</button>
