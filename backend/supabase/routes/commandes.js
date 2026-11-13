@@ -35,6 +35,7 @@ import { loadPreparationOrders } from '../../services/preparation-orders.service
 import { normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
 import { startWorkshopLot, startStockLot, receiveWorkshopLot, listWorkshopLots, workshopRpc } from '../../services/atelier-lots.service.js';
+import { deletePreparationOrder } from '../../services/order-deletion.service.js';
 
 const router = express.Router();
 router.get('/modeles-en-attente/lots', authenticate, resolveCountry,
@@ -1053,6 +1054,20 @@ router.post('/:id/annuler', authenticate, resolveCountry, authorize('appelant', 
     return res.json({ message: 'Commande annulée', commande: mapCommande(data) });
   } catch (error) {
     return res.status(500).json({ message: 'Erreur', error: error.message });
+  }
+});
+
+// Supprimer depuis Préparation Colis (administrateur) : la commande est effacée et la robe
+// qui lui était réservée sort du stock. Contrairement à une annulation, elle ne redevient pas disponible.
+router.post('/:id/supprimer-preparation', authenticate, resolveCountry, authorize('administrateur'), async (req, res) => {
+  try {
+    const result = await deletePreparationOrder(getSupabaseAdmin(), {
+      country: req.country, orderId: req.params.id, userId: req.userId,
+      actorName: req.user?.nom || '', motif: String(req.body?.motif || '').trim().slice(0, 200),
+    });
+    return res.json({ message: 'Commande supprimée, robe retirée du stock', ...result });
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message || 'Erreur lors de la suppression' });
   }
 });
 

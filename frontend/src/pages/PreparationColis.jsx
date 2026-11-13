@@ -11,6 +11,7 @@ import {
   Truck,
   X,
   XCircle,
+  XOctagon,
   LayoutGrid,
   List as ListIcon,
   Users,
@@ -363,7 +364,60 @@ const PreparationColis = () => {
     fetchCommandes();
   };
 
-  // Batch annulation (admin only)
+  // Suppression groupée (administrateur seulement) : la commande est effacée et la robe qui lui
+  // était réservée sort du stock. Elle ne redevient pas disponible, contrairement à une annulation.
+  // Seules les commandes en stock sont concernées ; une commande encore à l'atelier s'annule.
+  const handleBatchSupprimer = async () => {
+    const cibles = selectedEnStock;
+    if (cibles.length === 0) return;
+    const horsStock = selectedCount - cibles.length;
+    if (!confirm(
+      `Supprimer définitivement ${cibles.length} commande(s) ?\n\n`
+      + 'Chaque commande sera effacée et la robe qui lui était réservée sera retirée du stock : '
+      + 'elle ne redeviendra pas disponible.'
+      + (horsStock > 0 ? `\n\n${horsStock} commande(s) encore à l'atelier ne seront pas supprimées.` : '')
+      + '\n\nCette action est irréversible.'
+    )) {
+      return;
+    }
+    const motif = window.prompt('Motif de la suppression (optionnel) :');
+    if (motif === null) return;
+
+    setBatchProcessing(true);
+    let success = 0;
+    let piecesRetirees = 0;
+    const errors = [];
+    // Une par une : deux commandes de la même tenue retirent chacune leur robe.
+    for (const cmd of cibles) {
+      try {
+        const { data } = await api.post(`/commandes/${cmd._id || cmd.id}/supprimer-preparation`, { motif });
+        success++;
+        piecesRetirees += (data.pieces || []).filter((p) => ['retiree', 'deja_retiree'].includes(p.resultat)).length;
+        const nonRetirees = (data.pieces || []).filter((p) => !['retiree', 'deja_retiree'].includes(p.resultat));
+        if (nonRetirees.length) {
+          errors.push({
+            numero: cmd.numeroCommande,
+            msg: `supprimée, mais robe non retirée du stock (${nonRetirees.map((p) => p.tenue).join(', ')}) : vérifiez-la dans Stock`,
+          });
+        }
+      } catch (error) {
+        errors.push({ numero: cmd.numeroCommande, msg: error.response?.data?.message || error.message || 'Erreur' });
+      }
+    }
+    setBatchProcessing(false);
+
+    if (success > 0) {
+      toast.success(`${success} commande(s) supprimée(s), ${piecesRetirees} robe(s) retirée(s) du stock`);
+    }
+    if (errors.length) {
+      toast.error(errors.map((e) => `${e.numero} : ${e.msg}`).join('\n'), { duration: 10000, style: { whiteSpace: 'pre-line' } });
+    }
+    setSelectedIds(new Set());
+    fetchCommandes();
+  };
+
+  // Annulation groupée : administrateur et gestionnaire principal (pas le gestionnaire de stock).
+  // La robe réservée redevient disponible dès que la commande est annulée.
   const handleBatchAnnuler = async () => {
     if (selectedCount === 0) return;
     if (!confirm(`Annuler définitivement ${selectedCount} commande(s) ?\n\nElles passeront en statut "annulée" et sortiront de la page Préparation Colis.`)) {
@@ -605,7 +659,7 @@ const PreparationColis = () => {
               <span className="hidden sm:inline">à un livreur</span>
             </button>
 
-            {user?.role === 'administrateur' && (
+            {['administrateur', 'gestionnaire'].includes(user?.role) && (
               <button
                 type="button"
                 onClick={handleBatchAnnuler}
@@ -615,6 +669,20 @@ const PreparationColis = () => {
                 <Trash2 size={16} />
                 <span className="hidden sm:inline">Annuler</span>
                 <span>{selectedCount}</span>
+              </button>
+            )}
+
+            {user?.role === 'administrateur' && (
+              <button
+                type="button"
+                onClick={handleBatchSupprimer}
+                disabled={selectedEnStock.length === 0 || batchProcessing}
+                title="Efface la commande et retire sa robe du stock (irréversible)"
+                className="bg-gray-900 hover:bg-black text-white px-3 sm:px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <XOctagon size={16} />
+                <span className="hidden sm:inline">Supprimer</span>
+                <span>{selectedEnStock.length}</span>
               </button>
             )}
 
