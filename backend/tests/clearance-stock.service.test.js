@@ -5,7 +5,10 @@ import {
   clearanceModelKeys,
   clearanceNameProblem,
   isClearanceModel,
+  loadRetiredClearanceModelKeys,
   parseStockRayon,
+  retiredClearanceModelKeys,
+  shownInRayon,
   stockModelKey,
 } from '../services/clearance-stock.service.js';
 import { buildStockSynchronization, sumVariationTotals } from '../services/stock-synchronization.service.js';
@@ -99,4 +102,53 @@ test('un modèle de déstockage garde son nom dès qu’il a du stock, mais rest
   assert.match(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Déstockage'], nom: 'Autre Déstockage', actuel: solde }), /son nom/);
   assert.equal(clearanceNameProblem({ modeles: [solde], stockNames: ['Lot Déstockage'], nom: 'Lot Déstockage', actuel: solde }), null);
   assert.equal(stockModelKey('Lot-Déstockage'), stockModelKey('lot destockage'));
+});
+
+test('un modèle de déstockage supprimé (inactif) est retiré de la page Déstockage', () => {
+  const modeles = [
+    { nom: 'JAMILA Déstockage', actif: false },
+    { nom: 'Robe Volante Déstockage', actif: true },
+    { nom: 'ROBE JOSY Déstockage' },
+    { nom: 'ROBE AMINA', actif: false },
+  ];
+  const retires = retiredClearanceModelKeys(modeles);
+  assert.deepEqual([...retires], [stockModelKey('JAMILA Déstockage')]);
+
+  const clearanceKeys = clearanceModelKeys(modeles);
+  const jamila = stockModelKey('jamila destockage');
+  const volante = stockModelKey('Robe Volante Déstockage');
+  assert.equal(shownInRayon(jamila, 'destockage', clearanceKeys, retires), false);
+  assert.equal(shownInRayon(volante, 'destockage', clearanceKeys, retires), true);
+});
+
+test('un modèle de déstockage retiré reste du déstockage et reste dans le stock complet', () => {
+  const modeles = [{ nom: 'JAMILA Déstockage', actif: false }, { nom: 'ROBE AMINA', actif: true }];
+  const retires = retiredClearanceModelKeys(modeles);
+  const clearanceKeys = clearanceModelKeys(modeles);
+  const jamila = stockModelKey('JAMILA Déstockage');
+  // Jamais dans le stock normal (pas de confection), toujours visible d'Appel et Commandes (sans rayon).
+  assert.equal(clearanceKeys.has(jamila), true);
+  assert.equal(shownInRayon(jamila, 'normal', clearanceKeys, retires), false);
+  assert.equal(shownInRayon(jamila, null, clearanceKeys, retires), true);
+  assert.equal(shownInRayon(stockModelKey('ROBE AMINA'), 'normal', clearanceKeys, retires), true);
+  assert.equal(shownInRayon(jamila, 'destockage', clearanceKeys), true);
+});
+
+test('les modèles retirés sont lus parmi les modèles inactifs seulement', async () => {
+  const appels = [];
+  const db = {
+    from(table) {
+      appels.push(table);
+      return {
+        select(colonnes) { appels.push(colonnes); return this; },
+        eq(colonne, valeur) {
+          appels.push(`${colonne}=${valeur}`);
+          return Promise.resolve({ data: [{ nom: 'Robe DAVICHI Déstockage', actif: false }, { nom: 'Robe X', actif: false }], error: null });
+        },
+      };
+    },
+  };
+  const retires = await loadRetiredClearanceModelKeys(db);
+  assert.deepEqual(appels, ['modeles', 'nom, actif', 'actif=false']);
+  assert.deepEqual([...retires], [stockModelKey('Robe DAVICHI Déstockage')]);
 });

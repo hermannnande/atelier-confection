@@ -11,7 +11,7 @@ import {
   sumVariationTotals,
 } from '../../services/stock-synchronization.service.js';
 import {
-  belongsToRayon, loadClearanceModelKeys, parseStockRayon, stockModelKey,
+  belongsToRayon, loadClearanceModelKeys, loadRetiredClearanceModelKeys, parseStockRayon, shownInRayon, stockModelKey,
 } from '../../services/clearance-stock.service.js';
 import { equivalentSizes, normalizeSize } from '../../services/size-normalization.service.js';
 import { findStockVariation } from '../../services/stock-variation.service.js';
@@ -43,7 +43,10 @@ router.get('/', authenticate, resolveCountry, async (req, res) => {
     const { data, error } = await q;
     if (error) return res.status(500).json({ message: 'Erreur lors de la récupération', error: error.message });
 
-    const stock = (data || []).map(mapStock);
+    // Création manuelle de commande : un modèle de déstockage supprimé n'y est plus proposé, même
+    // s'il lui reste des pièces (elles restent en base pour les commandes en cours et les retours).
+    const retiredKeys = await loadRetiredClearanceModelKeys(supabase);
+    const stock = (data || []).map(mapStock).filter((item) => !retiredKeys.has(stockModelKey(item.modele)));
     const totaux = {
       quantiteTotalePrincipale: stock.reduce((sum, i) => sum + (i.quantitePrincipale || 0), 0),
       quantiteTotaleEnLivraison: stock.reduce((sum, i) => sum + (i.quantiteEnLivraison || 0), 0),
@@ -64,9 +67,11 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
     const supabase = getSupabaseAdmin();
     // ?rayon=normal ou destockage : la page Stock et la page Déstockage ; sans rayon, tout le stock.
     const rayon = parseStockRayon(req.query.rayon);
-    const [context, clearanceKeys, lotsPourStock] = await Promise.all([
+    const [context, clearanceKeys, retiredKeys, lotsPourStock] = await Promise.all([
       courierContext(supabase, req.country),
       loadClearanceModelKeys(supabase),
+      // Page Déstockage : les modèles supprimés n'y sont plus montrés. Leur stock reste compté ailleurs.
+      rayon === 'destockage' ? loadRetiredClearanceModelKeys(supabase) : new Set(),
       // Seule la page Stock affiche le seuil : Appel et Commandes, relues souvent, n'en ont pas besoin.
       rayon === 'normal' ? fetchStockLots(supabase, { country: req.country }) : [],
     ]);
@@ -90,9 +95,9 @@ router.get('/suivi-commandes', authenticate, resolveCountry, async (req, res) =>
       const key = stockVariationKey(piece);
       livreurs.set(key, (livreurs.get(key) || 0) + 1);
     }
-    const rayonStock = stock.filter((item) => belongsToRayon(stockModelKey(item.modele), rayon, clearanceKeys));
+    const rayonStock = stock.filter((item) => shownInRayon(stockModelKey(item.modele), rayon, clearanceKeys, retiredKeys));
     const variations = synchronization.variations
-      .filter((variation) => belongsToRayon(variation.key.split('::')[0], rayon, clearanceKeys));
+      .filter((variation) => shownInRayon(variation.key.split('::')[0], rayon, clearanceKeys, retiredKeys));
     const valeurTotale = rayonStock.reduce(
       (sum, item) => sum + ((item.quantitePrincipale || 0) * (Number(item.prix) || 0)),
       0,

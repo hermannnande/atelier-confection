@@ -23,6 +23,21 @@ export async function loadClearanceModelKeys(db, { signal } = {}) {
   return clearanceModelKeys(data || []);
 }
 
+// Modèle de déstockage supprimé depuis Modèles (actif = false) : retiré de la vente. Il reste
+// un modèle de déstockage (jamais de confection, retours de livraison au bon endroit) et garde
+// son stock en base pour les commandes en cours ; seule la page Déstockage ne le montre plus.
+export function retiredClearanceModelKeys(modeles = []) {
+  return new Set(modeles
+    .filter((modele) => isClearanceModel(modele) && modele.actif === false)
+    .map((modele) => stockModelKey(modele.nom)));
+}
+
+export async function loadRetiredClearanceModelKeys(db) {
+  const { data, error } = await db.from('modeles').select('nom, actif').eq('actif', false);
+  if (error) throw error;
+  return retiredClearanceModelKeys(data || []);
+}
+
 // Sans rayon, tout le stock est renvoyé : Appel et Commandes en ont besoin.
 export function parseStockRayon(value) {
   return ['normal', 'destockage'].includes(value) ? value : null;
@@ -30,6 +45,12 @@ export function parseStockRayon(value) {
 
 export function belongsToRayon(modelKey, rayon, clearanceKeys) {
   return !rayon || clearanceKeys.has(modelKey) === (rayon === 'destockage');
+}
+
+// Ce qu'une page de stock affiche : son rayon, sans les modèles de déstockage retirés de la vente.
+export function shownInRayon(modelKey, rayon, clearanceKeys, retiredKeys = new Set()) {
+  if (rayon === 'destockage' && retiredKeys.has(modelKey)) return false;
+  return belongsToRayon(modelKey, rayon, clearanceKeys);
 }
 
 export async function readModelsAndStockNames(db) {
